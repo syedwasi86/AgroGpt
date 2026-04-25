@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie'
+import { detectCityFromGeolocation, getSoilProfile, getSoilNPK } from '../core/utils/geolocation'
 
 export type SyncStatus = 'pending' | 'synced'
 
@@ -33,14 +34,16 @@ export interface LedgerRecord {
 export interface ScanRecord {
   id?: number
   timestamp: number
+  createdAt: number
   /** JSON string: mode, title, meta, etc. */
   resultJson: string
   imageBlob: Blob
   sync_status: SyncStatus
 }
 
+
 export interface ProfileRecord {
-  id?: number
+  id?: number | string
   name?: string
   email?: string
   phone: string
@@ -49,7 +52,19 @@ export interface ProfileRecord {
   soilType: string
   city: string
   location: string
+  nitrogen?: number
+  phosphorus?: number
+  potassium?: number
   sync_status?: SyncStatus
+}
+
+export interface SyncMetadataRecord {
+  id?: number
+  tableName: string
+  recordId: number | string
+  action: 'create' | 'update' | 'delete'
+  isSynced: boolean
+  createdAt: number
 }
 
 export interface SettingsRecord {
@@ -85,9 +100,10 @@ export class AgroGPTDatabase extends Dexie {
   ledger!: Table<LedgerRecord, number>
   scans!: Table<ScanRecord, number>
   offlineMetadata!: Table<OfflineMetadataRecord, number>
-  profiles!: Table<ProfileRecord, number>
+  profiles!: Table<ProfileRecord, number | string>
   settings!: Table<SettingsRecord, number>
   weatherCache!: Table<WeatherCacheRecord, string>
+  syncMetadata!: Table<SyncMetadataRecord, number>
 
   constructor() {
     super('AgroGPT')
@@ -122,6 +138,12 @@ export class AgroGPTDatabase extends Dexie {
     })
     this.version(5).stores({
       weatherCache: 'id',
+    })
+    this.version(6).stores({
+      profiles: 'id',
+      scans: '++id, createdAt',
+      ledger: '++id, date, category, type',
+      syncMetadata: '++id, tableName, isSynced',
     })
   }
 }
@@ -172,3 +194,26 @@ export async function initializeUserPreferences() {
     })
   }
 }
+
+export async function initializeUserProfile() {
+  const existing = await db.profiles.get(1)
+  if (!existing) {
+    const city = await detectCityFromGeolocation()
+    const soilType = getSoilProfile(city)
+    const npk = getSoilNPK(soilType)
+    await db.profiles.put({
+      id: 1,
+      phone: '',
+      totalAcreage: 0,
+      primaryCrop: '',
+      soilType,
+      city,
+      location: '',
+      nitrogen: npk.nitrogen,
+      phosphorus: npk.phosphorus,
+      potassium: npk.potassium,
+      sync_status: 'pending'
+    })
+  }
+}
+

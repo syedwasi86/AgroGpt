@@ -49,3 +49,12 @@ export function getSoilProfile(city: string): string {
   }
   return 'Red Sandy Loam'
 }
+
+export function getSoilNPK(soilType: string): { nitrogen: number, phosphorus: number, potassium: number } {
+  if (soilType === 'Red Chalka') {
+    return { nitrogen: 120, phosphorus: 40, potassium: 30 }
+  } else if (soilType === 'Black Regur') {
+    return { nitrogen: 140, phosphorus: 60, potassium: 45 }
+  }
+  return { nitrogen: 100, phosphorus: 50, potassium: 50 } // Red Sandy Loam or default
+}

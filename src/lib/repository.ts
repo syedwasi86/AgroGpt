@@ -1,4 +1,4 @@
-import { db, type CropRecord, type LedgerRecord, type ScanRecord } from './db'
+import { db, type CropRecord, type LedgerRecord, type ScanRecord, initializeUserPreferences, initializeUserProfile } from './db'
 
 let initPromise: Promise<void> | null = null
 
@@ -10,6 +10,8 @@ export function initDatabase(): Promise<void> {
       await migrateLedgerFromLocalStorage()
       await migrateScansFromLocalStorage()
       await seedDefaultsIfEmpty()
+      await initializeUserPreferences()
+      await initializeUserProfile()
     })()
   }
   return initPromise
@@ -43,6 +45,7 @@ async function migrateScansFromLocalStorage(): Promise<void> {
         const imageBlob = await res.blob()
         await db.scans.add({
           timestamp: it.createdAt,
+          createdAt: it.createdAt,
           resultJson: JSON.stringify({
             mode: it.mode,
             title: it.title,
@@ -223,10 +226,33 @@ export async function addScan(input: {
   await initDatabase()
   return db.scans.add({
     timestamp: input.timestamp ?? Date.now(),
+    createdAt: input.timestamp ?? Date.now(),
     resultJson: input.resultJson,
     imageBlob: input.imageBlob,
     sync_status: 'pending',
   })
+}
+
+export async function saveScan(imageBlob: Blob, result: any): Promise<number> {
+  await initDatabase()
+  const now = Date.now()
+  const scanId = await db.scans.add({
+    timestamp: now,
+    createdAt: now,
+    resultJson: JSON.stringify(result),
+    imageBlob,
+    sync_status: 'pending',
+  })
+  
+  await db.syncMetadata.add({
+    tableName: 'scans',
+    recordId: scanId,
+    action: 'create',
+    isSynced: false,
+    createdAt: now,
+  })
+
+  return scanId
 }
 
 export async function getRecentScans(limit = 24): Promise<ScanRecord[]> {
@@ -244,3 +270,49 @@ export async function getPendingLedgerRows(): Promise<LedgerRecord[]> {
   await initDatabase()
   return db.ledger.where('sync_status').equals('pending').toArray()
 }
+
+export async function addTransaction(data: { amount: number, category: string, type: 'income' | 'expense', date: string }): Promise<number> {
+  await initDatabase()
+  const ledgerId = await db.ledger.add({
+    amount: data.amount,
+    category: data.category,
+    type: data.type,
+    date: data.date,
+    cropId: null,
+    sync_status: 'pending',
+  })
+  
+  await db.syncMetadata.add({
+    tableName: 'ledger',
+    recordId: ledgerId,
+    action: 'create',
+    isSynced: false,
+    createdAt: Date.now()
+  })
+  
+  return ledgerId
+}
+
+export async function updateSoilProfile(soilData: { id: string | number, nitrogen?: number, phosphorus?: number, potassium?: number }): Promise<void> {
+  await initDatabase()
+  await db.profiles.update(soilData.id, {
+    nitrogen: soilData.nitrogen,
+    phosphorus: soilData.phosphorus,
+    potassium: soilData.potassium,
+    sync_status: 'pending'
+  })
+
+  await db.syncMetadata.add({
+    tableName: 'profiles',
+    recordId: soilData.id,
+    action: 'update',
+    isSynced: false,
+    createdAt: Date.now()
+  })
+}
+
+export async function getUnsyncedRecords(tableName: string) {
+  await initDatabase()
+  return db.syncMetadata.where('tableName').equals(tableName).filter(rec => !rec.isSynced).toArray()
+}
+

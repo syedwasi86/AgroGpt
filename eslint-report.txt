@@ -1,0 +1,43 @@
+
+C:\Users\sghul\OneDrive\Desktop\AgroGPT\src\components\AuthProvider.tsx
+  24:9   error  Error: Cannot access variable before it is declared
+
+`syncProfile` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+C:\Users\sghul\OneDrive\Desktop\AgroGPT\src\components\AuthProvider.tsx:24:9
+  22 |       setUser(session?.user ?? null)
+  23 |       if (session) {
+> 24 |         syncProfile(session.user)
+     |         ^^^^^^^^^^^ `syncProfile` accessed before it is declared
+  25 |       }
+  26 |       setLoading(false)
+  27 |     })
+
+C:\Users\sghul\OneDrive\Desktop\AgroGPT\src\components\AuthProvider.tsx:43:3
+  41 |   }, [])
+  42 |
+> 43 |   const syncProfile = async (user: User) => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 44 |     try {
+     | ^^^^^^^^^
+> 45 |       // Identity Linking Logic: Sync with Supabase 'profiles' table
+     …
+     | ^^^^^^^^^
+> 77 |     }
+     | ^^^^^^^^^
+> 78 |   }
+     | ^^^^ `syncProfile` is declared here
+  79 |
+  80 |   return (
+  81 |     <AuthContext.Provider value={{ session, user, loading }}>  react-hooks/immutability
+  67:24  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+  87:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      react-refresh/only-export-components
+
+C:\Users\sghul\OneDrive\Desktop\AgroGPT\src\features\account\SettingsPage.tsx
+  25:7  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect')
+
+C:\Users\sghul\OneDrive\Desktop\AgroGPT\src\features\gis\services\weatherService.ts
+  1:1  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+✖ 5 problems (3 errors, 2 warnings)
+  0 errors and 2 warnings potentially fixable with the `--fix` option.

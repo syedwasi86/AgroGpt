@@ -233,7 +233,7 @@ export async function addScan(input: {
   })
 }
 
-export async function saveScan(imageBlob: Blob, result: any): Promise<number> {
+export async function saveScan(imageBlob: Blob, result: unknown): Promise<number> {
   await initDatabase()
   const now = Date.now()
   const scanId = await db.scans.add({
@@ -293,9 +293,10 @@ export async function addTransaction(data: { amount: number, category: string, t
   return ledgerId
 }
 
-export async function updateSoilProfile(soilData: { id: string | number, nitrogen?: number, phosphorus?: number, potassium?: number }): Promise<void> {
+export async function updateSoilProfile(soilData: { id?: string | number, nitrogen?: number, phosphorus?: number, potassium?: number }): Promise<void> {
   await initDatabase()
-  await db.profiles.update(soilData.id, {
+  const profileId = soilData.id ?? 1
+  await db.profiles.update(profileId, {
     nitrogen: soilData.nitrogen,
     phosphorus: soilData.phosphorus,
     potassium: soilData.potassium,
@@ -304,7 +305,7 @@ export async function updateSoilProfile(soilData: { id: string | number, nitroge
 
   await db.syncMetadata.add({
     tableName: 'profiles',
-    recordId: soilData.id,
+    recordId: profileId,
     action: 'update',
     isSynced: false,
     createdAt: Date.now()

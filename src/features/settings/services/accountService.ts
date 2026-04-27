@@ -1,4 +1,4 @@
-import { db, type ProfileRecord, type SettingsRecord } from '../../../lib/db'
+import { db, type ProfileRecord, type SettingsRecord } from '@/lib/db'
 
 export async function saveProfile(data: Omit<ProfileRecord, 'id' | 'sync_status'>) {
   const existing = await db.profiles.get(1)

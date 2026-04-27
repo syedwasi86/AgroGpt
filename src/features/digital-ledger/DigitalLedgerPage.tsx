@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { GlassCard } from '../../components/GlassCard'
-import { SkeletonRow } from '../../components/Skeleton'
+import { useEffect, useMemo, useState, useRef } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '@/lib/db'
+import { GlassCard } from '@/components/GlassCard'
+import { SkeletonRow } from '@/components/Skeleton'
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Trash2, Wallet, RefreshCw } from 'lucide-react'
-import { cn } from '../../core/utils/cn'
-import { useTranslation } from 'react-i18next'
-import { addExpense, addIncome, getLedgerEntries, initDatabase, deleteLedgerEntry } from '../../lib/repository'
-import { syncData } from '../../core/api/syncEngine'
-import type { LedgerRecord } from '../../lib/db'
+import { Trash2, Wallet, RefreshCw, Mic, MicOff, AlertCircle, TrendingUp, TrendingDown, Loader2 } from 'lucide-react'
+import { cn } from '@/core/utils/cn'
+import { addTransaction, initDatabase, deleteLedgerEntry } from '@/lib/repository'
+import { syncData } from '@/core/api/syncEngine'
 
 function inr(n: number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(n)
@@ -20,93 +20,198 @@ function formatLedgerDate(iso: string): string {
 }
 
 export function DigitalLedgerPage() {
-  const { t } = useTranslation()
-  const [rows, setRows] = useState<LedgerRecord[]>([])
+  const rawTransactions = useLiveQuery(() => db.ledger.orderBy('date').reverse().toArray())
+  const transactions = useMemo(() => rawTransactions || [], [rawTransactions])
+  
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
-  const [syncMsg, setSyncMsg] = useState<string | null>(null)
+  const [syncMsg, setSyncMsg] = useState<{ text: string, type: 'info' | 'error' | 'success' } | null>(null)
+  
+  // Voice State
+  const [isListening, setIsListening] = useState(false)
+  const [voiceError, setVoiceError] = useState<string | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null)
 
   // Form State
   const [amount, setAmount] = useState('')
   const [type, setType] = useState<'income' | 'expense'>('expense')
   const [category, setCategory] = useState('')
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const reload = useCallback(async () => {
-    await initDatabase()
-    const list = await getLedgerEntries()
-    setRows(list)
+  useEffect(() => {
+    void initDatabase().then(() => setLoading(false))
+    
+    // Cleanup recognition on unmount
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+      }
+    }
   }, [])
 
+  const { income, expense, profit } = useMemo(() => {
+    let inc = 0
+    let exp = 0
+    for (const e of transactions) {
+      if (e.type === 'income') inc += e.amount
+      else exp += e.amount
+    }
+    return { income: inc, expense: exp, profit: inc - exp }
+  }, [transactions])
+
   const chartData = useMemo(() => {
-    if (rows.length === 0) return []
+    if (transactions.length === 0) return []
     const now = Date.now()
     const weekMs = 7 * 24 * 60 * 60 * 1000
     const weekBuckets: Record<number, number> = {}
     
-    for (const row of rows) {
+    transactions.forEach(row => {
       const age = now - new Date(row.date).getTime()
       const weekIdx = Math.max(0, Math.min(5, Math.floor(age / weekMs)))
       const sign = row.type === 'income' ? 1 : -1
       weekBuckets[weekIdx] = (weekBuckets[weekIdx] ?? 0) + sign * row.amount
-    }
+    })
     
     return Array.from({ length: 6 }, (_, i) => ({
       w: `W${6 - i}`,
       profit: weekBuckets[5 - i] ?? 0,
     }))
-  }, [rows])
-
-  useEffect(() => {
-    let alive = true
-    ;(async () => {
-      try {
-        await reload()
-      } finally {
-        if (alive) setLoading(false)
-      }
-    })()
-    return () => {
-      alive = false
-    }
-  }, [reload])
-
-  const { income, expense, profit } = useMemo(() => {
-    let inc = 0
-    let exp = 0
-    for (const e of rows) {
-      if (e.type === 'income') inc += e.amount
-      else exp += e.amount
-    }
-    return { income: inc, expense: exp, profit: inc - exp }
-  }, [rows])
+  }, [transactions])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!amount || !category || !date) return
+    if (isSubmitting) return
 
     const numAmount = Number(amount)
-    if (Number.isNaN(numAmount) || numAmount <= 0) return
-
-    if (type === 'income') {
-      await addIncome({ amount: numAmount, category, date: new Date(date).toISOString() })
-    } else {
-      await addExpense({ amount: numAmount, category, date: new Date(date).toISOString() })
+    if (!amount || Number.isNaN(numAmount) || numAmount <= 0) {
+      alert("Please enter a valid amount.")
+      return
+    }
+    if (!category.trim()) {
+      alert("Please enter a category or note.")
+      return
     }
 
-    // Clear form
-    setAmount('')
-    setCategory('')
-    setDate(new Date().toISOString().slice(0, 10))
-    setType('expense')
-
-    await reload()
+    setIsSubmitting(true)
+    try {
+      await addTransaction({
+        amount: numAmount,
+        category: category.trim(),
+        type,
+        date: new Date(date).toISOString()
+      })
+      
+      // Reset form
+      setAmount('')
+      setCategory('')
+      setDate(new Date().toISOString().slice(0, 10))
+      setType('expense')
+    } catch (_err) {
+      console.error('Transaction failed:', _err)
+      alert('Failed to save transaction. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   async function handleDelete(id: number) {
     if (!confirm('Are you sure you want to delete this transaction?')) return
-    await deleteLedgerEntry(id)
-    await reload()
+    try {
+      await deleteLedgerEntry(id)
+    } catch {
+      alert('Failed to delete entry.')
+    }
+  }
+
+  const stopVoice = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+      setIsListening(false)
+    }
+  }
+
+  const startVoiceCapture = () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    
+    if (!SpeechRecognition) {
+      setVoiceError('Voice recognition not supported in this browser.')
+      return
+    }
+
+    if (isListening) {
+      stopVoice()
+      return
+    }
+
+    setVoiceError(null)
+    const recognition = new SpeechRecognition()
+    recognitionRef.current = recognition
+    
+    recognition.lang = 'en-US'
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+
+    recognition.onstart = () => setIsListening(true)
+    recognition.onend = () => setIsListening(false)
+    
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onerror = (event: any) => {
+      console.error('Speech Recognition Error:', event.error)
+      if (event.error === 'not-allowed') {
+        setVoiceError('Microphone permission denied.')
+      } else {
+        setVoiceError(`Voice error: ${event.error}`)
+      }
+      setIsListening(false)
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript.toLowerCase()
+      console.log('Transcribed:', transcript)
+
+      // Extraction Logic
+      const amountMatch = transcript.match(/\d+/)
+      if (amountMatch) setAmount(amountMatch[0])
+
+      // Intent extraction
+      const isIncome = /(earned|received|income|plus|add|credit|got)/i.test(transcript)
+      const isExpense = /(spent|paid|expense|minus|debit|gave|lost|on)/i.test(transcript)
+      
+      if (isIncome && !isExpense) setType('income')
+      if (isExpense) setType('expense')
+
+      // Category extraction
+      const prepositions = ['on', 'for', 'from', 'at', 'to']
+      const words = transcript.split(' ')
+      let categoryFound = ''
+      
+      for (const prep of prepositions) {
+        const idx = words.indexOf(prep)
+        if (idx !== -1 && idx < words.length - 1) {
+          categoryFound = words.slice(idx + 1).join(' ')
+          break
+        }
+      }
+
+      if (categoryFound) {
+        setCategory(categoryFound.charAt(0).toUpperCase() + categoryFound.slice(1))
+      }
+
+      if (!amountMatch && !categoryFound) {
+        setVoiceError("I caught some text, but couldn't find an amount or category. Try saying 'Spent 500 on seeds'.")
+      }
+    }
+
+    try {
+      recognition.start()
+    } catch (err) {
+      console.error('Failed to start recognition:', err)
+      setVoiceError('Recognition failed to start.')
+    }
   }
 
   async function handleSync() {
@@ -114,223 +219,264 @@ export function DigitalLedgerPage() {
     setSyncMsg(null)
     try {
       const { synced, failed } = await syncData()
-      setSyncMsg(
-        failed
-          ? t('ledger.syncPartial', { synced, failed, defaultValue: `Synced ${synced}, failed ${failed}` })
-          : t('ledger.syncOk', { synced, defaultValue: `Synced ${synced} row(s)` }),
-      )
-      await reload()
+      if (failed > 0) {
+        setSyncMsg({ 
+          text: `Sync partially completed. ${synced} synced, ${failed} failed.`, 
+          type: 'info' 
+        })
+      } else {
+        setSyncMsg({ 
+          text: `All transactions synced successfully (${synced} records).`, 
+          type: 'success' 
+        })
+      }
     } catch (e) {
-      setSyncMsg(e instanceof Error ? e.message : 'Sync failed')
+      setSyncMsg({ 
+        text: e instanceof Error ? e.message : 'Global sync failed. Check network.', 
+        type: 'error' 
+      })
     } finally {
       setSyncing(false)
     }
   }
 
+  const inputClass = "w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition focus:border-stroke-2 focus:ring-1 focus:ring-stroke-2/30 disabled:opacity-50"
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="mx-auto max-w-6xl space-y-8 pb-10">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <div className="agro-h1">{t('ledger.title', 'Digital Khata')}</div>
-          <p className="subtle mt-2 max-w-2xl">
-            {t('ledger.desc', 'Track your farm income and expenses locally.')}
-          </p>
+          <h1 className="agro-h1 flex items-center gap-3">
+            <Wallet className="text-secondary" />
+            Digital Khata
+          </h1>
+          <p className="subtle mt-1 text-sm">Offline-first ledger for your daily farm transactions.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void handleSync()}
-            disabled={syncing || loading}
-            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white/90 hover:bg-white/10 disabled:opacity-50 transition-colors"
-          >
-            <RefreshCw size={18} className={cn(syncing && 'animate-spin')} />
-            {t('ledger.syncNow', { defaultValue: 'Sync' })}
-          </button>
-        </div>
+        <button
+          onClick={() => void handleSync()}
+          disabled={syncing || loading}
+          className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-2.5 text-sm font-bold text-white hover:bg-white/10 transition-all disabled:opacity-50"
+        >
+          <RefreshCw size={18} className={cn(syncing && 'animate-spin')} />
+          Sync Ledger
+        </button>
       </div>
 
       {syncMsg && (
-        <div className="rounded-2xl border border-stroke-2 bg-primary-700/10 px-4 py-2 text-sm text-white/80 animate-in fade-in slide-in-from-top-1">
-          {syncMsg}
+        <div className={cn(
+          "flex items-center gap-3 rounded-2xl px-5 py-3 border animate-in slide-in-from-top-2",
+          syncMsg.type === 'success' ? "bg-green-500/10 border-green-500/20 text-green-400" :
+          syncMsg.type === 'error' ? "bg-red-500/10 border-red-500/20 text-red-400" :
+          "bg-blue-500/10 border-blue-500/20 text-blue-400"
+        )}>
+          <AlertCircle size={18} />
+          <span className="text-sm font-medium">{syncMsg.text}</span>
         </div>
       )}
 
-      {/* Summary Banner */}
-      <GlassCard className="p-5" variant="strong">
-        <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/5">
-            <Wallet size={18} className="text-white/80" />
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <GlassCard className="p-6 border-l-4 border-green-500" variant="strong">
+          <div className="flex items-center gap-3 text-white/50 mb-2">
+            <TrendingUp size={16} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Total Income</span>
           </div>
-          <div>
-            <div className="agro-h2">{t('ledger.summary', 'Summary')}</div>
-            <div className="subtle mt-0.5">{t('ledger.incomeVsExpense', 'Income vs Expenses')}</div>
-          </div>
-        </div>
-        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <div className="text-xs text-white/55">{t('ledger.income', 'Total Income')}</div>
-            <div className="mt-1 text-sm font-bold text-green-400">{inr(income)}</div>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-            <div className="text-xs text-white/55">{t('ledger.expense', 'Total Expense')}</div>
-            <div className="mt-1 text-sm font-bold text-red-400">{inr(expense)}</div>
-          </div>
-          <div className="rounded-2xl border border-stroke-2 bg-primary-700/15 p-3">
-            <div className="text-xs text-white/55">{t('ledger.profit', 'Net Profit')}</div>
-            <div className={cn("mt-1 text-sm font-bold", profit >= 0 ? "text-green-400" : "text-red-400")}>
-              {inr(profit)}
-            </div>
-          </div>
-        </div>
-      </GlassCard>
-
-      <div className="grid gap-6 lg:grid-cols-[1fr_2fr]">
-        {/* Input Form */}
-        <GlassCard className="p-5 h-fit">
-          <div className="agro-h2 mb-4">Add Transaction</div>
-          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
-            <div>
-              <label className="mb-1 block text-xs text-white/60">Type</label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value as 'income' | 'expense')}
-                className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-stroke-2"
-              >
-                <option value="income">Income</option>
-                <option value="expense">Expense</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-white/60">Amount (₹)</label>
-              <input
-                type="number"
-                min="1"
-                step="any"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="e.g. 5000"
-                className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-stroke-2"
-                required
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-white/60">Category / Note</label>
-              <input
-                type="text"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="e.g. Seeds, Labor"
-                className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-stroke-2"
-                required
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-white/60">Date</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-stroke-2"
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full rounded-xl border border-stroke-3 bg-secondary/12 py-2.5 text-sm font-semibold text-white shadow-glowSecondary hover:border-stroke-2 transition-colors"
-            >
-              Add Transaction
-            </button>
-          </form>
+          <div className="text-2xl font-black text-green-400">{inr(income)}</div>
         </GlassCard>
-
-        {/* Transaction List */}
-        <GlassCard className="p-5">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div className="agro-h2">Transaction List</div>
+        <GlassCard className="p-6 border-l-4 border-red-500" variant="strong">
+          <div className="flex items-center gap-3 text-white/50 mb-2">
+            <TrendingDown size={16} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Total Expenses</span>
           </div>
-          
-          <div className="divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10 bg-black/20">
-            {loading ? (
-              <>
-                <SkeletonRow /><SkeletonRow /><SkeletonRow />
-              </>
-            ) : rows.length === 0 ? (
-              <div className="px-4 py-8 text-center text-sm text-white/60">
-                No entries yet. Add your first transaction to the left.
-              </div>
-            ) : (
-              rows.map((e) => (
-                <div key={e.id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-white/[0.02] transition-colors">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-white">{e.category}</div>
-                    <div className="mt-0.5 text-xs text-white/55">{formatLedgerDate(e.date)}</div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={cn(
-                        'shrink-0 font-bold',
-                        e.type === 'income' ? 'text-green-400' : 'text-red-400',
-                      )}
-                    >
-                      {e.type === 'income' ? '+' : '-'}
-                      {inr(e.amount)}
-                    </div>
-                    <button 
-                      onClick={() => e.id && void handleDelete(e.id)}
-                      className="p-1.5 text-white/40 hover:text-red-400 hover:bg-white/5 rounded-md transition-colors"
-                      title="Delete Transaction"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
+          <div className="text-2xl font-black text-red-400">{inr(expense)}</div>
+        </GlassCard>
+        <GlassCard className={cn("p-6 border-l-4", profit >= 0 ? "border-secondary" : "border-amber-500")} variant="strong">
+          <div className="flex items-center gap-3 text-white/50 mb-2">
+            <Wallet size={16} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Net Profit</span>
+          </div>
+          <div className={cn("text-2xl font-black", profit >= 0 ? "text-white" : "text-amber-500")}>
+            {inr(profit)}
           </div>
         </GlassCard>
       </div>
 
-      <GlassCard className="p-6">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="agro-h2">{t('ledger.profitProjection', 'Profit Projection')}</div>
-            <div className="subtle mt-1">{t('ledger.weeklyProfitActivity', 'Weekly profit activity')}</div>
-          </div>
-          <span className="glass-chip border-stroke-2 bg-primary-700/12">
-            {t('ledger.baseline', 'Baseline')}: <span className="font-semibold text-white">{inr(profit)}</span>
-          </span>
+      <div className="grid gap-8 lg:grid-cols-[1.2fr_2fr]">
+        {/* Entry Form */}
+        <div className="space-y-6">
+          <GlassCard className="p-6" variant="strong">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="agro-h2">New Entry</h2>
+              <div className="flex flex-col items-end">
+                <button
+                  type="button"
+                  onClick={startVoiceCapture}
+                  className={cn(
+                    "group relative flex h-12 w-12 items-center justify-center rounded-full transition-all",
+                    isListening ? "bg-red-500 shadow-glowPrimary" : "bg-white/5 hover:bg-white/10"
+                  )}
+                >
+                  {isListening ? (
+                    <MicOff size={22} className="text-white animate-pulse" />
+                  ) : (
+                    <Mic size={22} className="text-white/60 group-hover:text-white" />
+                  )}
+                  {isListening && (
+                    <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-white border-2 border-red-500" />
+                  )}
+                </button>
+                {voiceError && <span className="mt-2 text-[10px] text-red-400 font-bold">{voiceError}</span>}
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="flex gap-2 p-1 bg-white/5 rounded-2xl border border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setType('expense')}
+                  className={cn("flex-1 py-2 text-xs font-bold rounded-xl transition-all", type === 'expense' ? "bg-red-500/20 text-red-400 shadow-sm" : "text-white/30")}
+                >
+                  Expense
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setType('income')}
+                  className={cn("flex-1 py-2 text-xs font-bold rounded-xl transition-all", type === 'income' ? "bg-green-500/20 text-green-400 shadow-sm" : "text-white/30")}
+                >
+                  Income
+                </button>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold text-white/40 uppercase tracking-wider">Amount (INR)</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-white/30">₹</span>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className={cn(inputClass, "pl-10")}
+                    placeholder="0.00"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold text-white/40 uppercase tracking-wider">Category / Details</label>
+                <input
+                  type="text"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className={inputClass}
+                  placeholder="e.g. Fertilizer, Seeds, Sale of Wheat"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold text-white/40 uppercase tracking-wider">Transaction Date</label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className={inputClass}
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-4 rounded-2xl bg-primary-600 text-sm font-black text-white shadow-glowPrimary hover:bg-primary-500 transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                {isSubmitting ? <Loader2 className="mx-auto animate-spin" size={20} /> : 'Post to Ledger'}
+              </button>
+            </form>
+          </GlassCard>
         </div>
-        <div className="mt-4 h-[260px] w-full min-w-0 overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-3">
-          <ResponsiveContainer width="99%" height="100%">
-            <LineChart data={chartData} margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
-              <XAxis dataKey="w" stroke="rgba(255,255,255,0.35)" tickLine={false} axisLine={false} />
-              <YAxis
-                stroke="rgba(255,255,255,0.35)"
-                tickLine={false}
-                axisLine={false}
-                width={45}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: 'rgba(10, 14, 12, 0.85)',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  borderRadius: 16,
-                }}
-                labelStyle={{ color: 'rgba(255,255,255,0.7)' }}
-                itemStyle={{ color: 'rgba(255,255,255,0.9)' }}
-                formatter={(v) => inr(Number(v))}
-              />
-              <Line
-                type="monotone"
-                dataKey="profit"
-                stroke="#FFA000"
-                strokeWidth={3}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+
+        {/* Ledger View */}
+        <div className="space-y-6">
+          <GlassCard className="p-0 overflow-hidden" variant="strong">
+            <div className="p-6 border-b border-white/5">
+              <h2 className="agro-h2">Recent Transactions</h2>
+            </div>
+            
+            <div className="max-h-[600px] overflow-y-auto">
+              {loading ? (
+                <div className="p-6 space-y-4">
+                  <SkeletonRow /><SkeletonRow /><SkeletonRow />
+                </div>
+              ) : transactions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-12 text-center">
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/5 text-white/20">
+                    <Wallet size={32} />
+                  </div>
+                  <p className="text-sm font-medium text-white/40">No records found. Start adding your daily transactions.</p>
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-white/5 text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                      <th className="px-6 py-3 font-bold">Details</th>
+                      <th className="px-6 py-3 font-bold">Date</th>
+                      <th className="px-6 py-3 text-right font-bold">Amount</th>
+                      <th className="px-6 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {transactions.map((e) => (
+                      <tr key={e.id} className="group hover:bg-white/[0.02] transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-bold text-white/90">{e.category}</div>
+                          <div className="text-[10px] font-bold text-white/30 uppercase">{e.type}</div>
+                        </td>
+                        <td className="px-6 py-4 text-xs text-white/50">{formatLedgerDate(e.date)}</td>
+                        <td className={cn(
+                          "px-6 py-4 text-right text-sm font-black",
+                          e.type === 'income' ? "text-green-400" : "text-red-400"
+                        )}>
+                          {e.type === 'income' ? '+' : '-'}{inr(e.amount)}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button 
+                            onClick={() => e.id && void handleDelete(e.id)}
+                            className="p-2 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </GlassCard>
+
+          {/* Chart Card */}
+          <GlassCard className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sm font-black uppercase tracking-widest text-white/40">Profit Trend (6-Week View)</h3>
+            </div>
+            <div className="h-[200px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <XAxis dataKey="w" stroke="rgba(255,255,255,0.1)" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis hide />
+                  <Tooltip
+                    contentStyle={{ background: '#1A211E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                    itemStyle={{ color: '#fff', fontSize: '12px' }}
+                    cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 2 }}
+                  />
+                  <Line type="monotone" dataKey="profit" stroke="#2E7D32" strokeWidth={3} dot={{ fill: '#2E7D32', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </GlassCard>
         </div>
-      </GlassCard>
+      </div>
     </div>
   )
 }

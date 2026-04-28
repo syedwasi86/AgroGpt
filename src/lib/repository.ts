@@ -1,4 +1,4 @@
-import { db, type CropRecord, type LedgerRecord, type ScanRecord, initializeUserPreferences, initializeUserProfile } from './db'
+import { db, type CropRecord, type LedgerRecord, type ScanRecord, type PendingQueryRecord, initializeUserPreferences, initializeUserProfile } from './db'
 
 let initPromise: Promise<void> | null = null
 
@@ -317,3 +317,39 @@ export async function getUnsyncedRecords(tableName: string) {
   return db.syncMetadata.where('tableName').equals(tableName).filter(rec => !rec.isSynced).toArray()
 }
 
+// ─── Pending Query Queue (offline AI questions) ────────────────────────────
+
+/** Save a chat prompt to the offline queue. */
+export async function savePendingQuery(
+  prompt: string,
+  context?: Record<string, string | undefined>,
+): Promise<number> {
+  await initDatabase()
+  return db.pending_queries.add({
+    prompt,
+    context: JSON.stringify(context ?? {}),
+    timestamp: Date.now(),
+    status: 'pending',
+  })
+}
+
+/** Retrieve all unanswered queued questions in chronological order. */
+export async function getPendingQueries(): Promise<PendingQueryRecord[]> {
+  await initDatabase()
+  return db.pending_queries
+    .where('status')
+    .equals('pending')
+    .sortBy('timestamp')
+}
+
+/** How many questions are currently waiting in the queue. */
+export async function getPendingQueryCount(): Promise<number> {
+  await initDatabase()
+  return db.pending_queries.where('status').equals('pending').count()
+}
+
+/** Mark a queued question as answered so it won't be re-synced. */
+export async function markQueryAnswered(id: number): Promise<void> {
+  await initDatabase()
+  await db.pending_queries.update(id, { status: 'answered' })
+}

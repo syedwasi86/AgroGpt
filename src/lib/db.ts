@@ -84,6 +84,16 @@ export interface WeatherCacheRecord {
   data: any
 }
 
+/** A chat query saved while offline, awaiting Gemini resolution when back online. */
+export interface PendingQueryRecord {
+  id?: number
+  prompt: string
+  /** JSON-serialised AIContext object (page, location, soil) */
+  context: string
+  timestamp: number
+  status: 'pending' | 'answered'
+}
+
 /** Single-device user profile synced from auth (id is always 1). */
 export interface OfflineMetadataRecord {
   id: number
@@ -104,6 +114,7 @@ export class AgroGPTDatabase extends Dexie {
   settings!: Table<SettingsRecord, number>
   weatherCache!: Table<WeatherCacheRecord, string>
   syncMetadata!: Table<SyncMetadataRecord, number>
+  pending_queries!: Table<PendingQueryRecord, number>
 
   constructor() {
     super('AgroGPT')
@@ -145,6 +156,17 @@ export class AgroGPTDatabase extends Dexie {
       ledger: '++id, date, category, type',
       syncMetadata: '++id, tableName, isSynced',
     })
+    this.version(7)
+      .stores({
+        // New table for offline-queued AI questions
+        pending_queries: '++id, status, timestamp',
+      })
+      .upgrade(_tx => {
+        // No structural changes to existing tables in v7.
+        // Upgrade block included to satisfy Dexie's migration contract and
+        // guarantee existing crops/ledger/scans/profiles data is untouched.
+        return Promise.resolve()
+      })
   }
 }
 

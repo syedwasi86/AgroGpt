@@ -23,7 +23,7 @@ export type AIMessage = {
 
 export type AIReply = {
   text: string
-  source: 'mock' | 'gemini' | 'local_tfjs'
+  source: 'mock' | 'gemini' | 'local_tfjs' | 'error'
 }
 
 export type AIContext = {
@@ -166,8 +166,7 @@ function buildSystemPrompt(rag: RAGContext, langCode: string, langName: string):
 
 // ── Gemini 1.5 Flash API call ─────────────────────────────────────────────────
 
-const GEMINI_ENDPOINT =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
+const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 /**
  * Call Gemini 1.5 Flash with full RAG context.
@@ -185,13 +184,22 @@ export async function callGeminiAPI(prompt: string): Promise<AIReply> {
   const systemText = buildSystemPrompt(rag, langCode, langName)
 
   const payload = {
-    system_instruction: { parts: [{ text: systemText }] },
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            // Combine your system prompt and user prompt into one block
+            text: `INSTRUCTIONS: ${systemText}\n\nUSER QUESTION: ${prompt}`
+          }
+        ]
+      }
+    ],
     generationConfig: {
       temperature: 0.4,
       topK: 40,
       topP: 0.9,
-      maxOutputTokens: 512,
+      maxOutputTokens: 2048,
     },
   }
 
@@ -240,18 +248,30 @@ export async function askAgroGPT(
   prompt: string,
   _context?: AIContext,
 ): Promise<AIReply> {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+
+  // 1. If no key is found in .env at all
   if (!apiKey) {
-    // No key configured — use keyword mock in dev
-    return { text: buildOnlineMockResponse(prompt), source: 'mock' }
+    return { text: buildOnlineMockResponse(prompt), source: 'mock' };
   }
 
-  // Attempt Gemini — throws GeminiError on any failure so caller can queue
   try {
-    return await callGeminiAPI(prompt)
-  } catch (err) {
-    console.error('[AgroGPT] Gemini call failed:', err)
-    throw err
+    // 2. Attempt the real API call
+    return await callGeminiAPI(prompt);
+  } catch (err: any) {
+    // 3. CHECK THE ERROR TYPE
+    // If it's a 403 or 401, the user IS online, but the key is the problem.
+    if (err.status === 403 || err.status === 401) {
+      return {
+        text: `⚠️ API Key Error: Google rejected your request (403). Please ensure your key in .env.local has no quotes and is valid.`,
+        source: 'error'
+      };
+    }
+
+    // 4. If it's a real network failure (e.g., DNS error), THEN throw
+    // so the UI can show the [Offline] message and queue the question.
+    console.error('[AgroGPT] Gemini call failed:', err);
+    throw err;
   }
 }
 

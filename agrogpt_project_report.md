@@ -40,8 +40,8 @@ The app targets farmers who need:
 | Layer | Technology |
 |---|---|
 | On-device ML | **TensorFlow.js v4** (`@tensorflow/tfjs`) — stub-loaded |
-| Cloud AI | Configurable via `VITE_AI_ENDPOINT` env var (currently mock) |
-| Pattern | Keyword-matched mock fallback system in `ai/provider.ts` |
+| Cloud AI | **Gemini 1.5 Flash** (via Google AI SDK / API) |
+| Pattern | **Hybrid RAG**: Live Gemini (online) or Keyword Mock + Offline Queue (offline) |
 
 ### Maps & GIS
 | Layer | Technology |
@@ -189,12 +189,13 @@ The app targets farmers who need:
 |---|---|
 | Chat UI (open/close, messages) | ✅ Real |
 | Quick chip buttons | ✅ Real — triggers send() |
-| Online: checks `VITE_AI_ENDPOINT` | ✅ Real — fetches real backend if env var set |
-| Offline fallback (keyword matching) | ✅ Real — `localInference()` covers 4 topic categories |
-| Mock mode (dev, no endpoint) | ✅ Real — keyword-matched static responses |
-| Actual TensorFlow.js model | ❌ **Stub** — `localModel = {} as GraphModel` (placeholder) |
+| Online: checks `VITE_GEMINI_API_KEY` | ✅ Real — Integrated with **Gemini 1.5 Flash** with RAG context |
+| Offline fallback (keyword matching) | ✅ Real — `localInference()` covers topic categories |
+| Offline Queueing | ✅ Real — Queues questions to Dexie (Version 7) when offline |
+| Cloud Sync | ✅ Real — Auto-syncs pending queries when connectivity restored |
+| Actual Gemini 1.5 Flash | ✅ Real — Full RAG (Crop, Soil NPK, Weather context) |
 | Voice input (Mic button) | ❌ **Not implemented** — toggles `listening` state but no Web Speech API |
-| Conversation context per page | ❌ **Partial** — `context` param sent to endpoint but ignored in mock |
+| Conversation context per page | ✅ Real — RAG context fetched from local DB |
 | Message streaming / typewriter | ❌ **Not implemented** |
 
 ---
@@ -225,11 +226,11 @@ The app targets farmers who need:
 | Precision Planning | 6 | 0 | 3 |
 | Digital Ledger | 8 | 0 | 4 |
 | Market & Post-Harvest | 1 | 3 | 5 |
-| AI Assistant | 5 | 1 | 3 |
+| AI Assistant | 8 | 0 | 2 |
 | Profile / Settings | 4 | 2 | 1 |
-| **Total** | **37** | **14** | **20** |
+| **Total** | **40** | **13** | **19** |
 
-> **Roughly 37 features work end-to-end, 14 are UI-only placeholders, and 20 more features are designed but not yet built.**
+> **Roughly 40 features work end-to-end, 13 are UI-only placeholders, and 19 more features are designed but not yet built.**
 
 ---
 
@@ -239,9 +240,9 @@ The following `.env` variables must be configured for full functionality:
 ```env
 VITE_SUPABASE_URL=<your-supabase-project-url>
 VITE_SUPABASE_ANON_KEY=<your-supabase-anon-key>
-VITE_AI_ENDPOINT=<optional-custom-ai-backend-url>
+VITE_GEMINI_API_KEY=<your-google-ai-api-key>
 ```
-Without these, the app runs in **demo/offline mode** (no cloud sync, AI uses keyword-matching mock).
+Without these, the app runs in **demo/offline mode** (AI uses keyword-matching mock).
 
 ---
 
@@ -254,7 +255,8 @@ Without these, the app runs in **demo/offline mode** (no cloud sync, AI uses key
 - [ ] **Field Vision — Live Camera Mode**: Implement `getUserMedia` camera stream with the 3 mode tabs (Disease Detection / Soil Analysis / AR Guide) instead of only file-upload.
 - [ ] **Field Vision — Save Scans**: Call `addScan({ imageBlob, resultJson })` after each analysis so results persist and sync.
 - [ ] **AI Assistant — Voice Input**: Implement Web Speech API (`SpeechRecognition`) behind the Mic button. Toggle `listening` state and pipe transcript into `send()`.
-- [ ] **AI Assistant — Real Backend**: Build/deploy a backend endpoint (`VITE_AI_ENDPOINT`) and connect to a real LLM (e.g., Gemini API, OpenAI). Update the prompt with farm context (crop name, soil, weather data).
+- [x] **AI Assistant — Real Backend**: Integrated **Gemini 1.5 Flash** via API key. Implemented RAG (Retrieval-Augmented Generation) using local farm data (crop, soil, weather).
+- [x] **AI Assistant — Offline Queue**: Implemented **Dexie Version 7** with `pending_queries` table. Chat now queues questions when offline and syncs them automatically when back online.
 
 ---
 

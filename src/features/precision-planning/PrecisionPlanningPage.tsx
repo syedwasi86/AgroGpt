@@ -58,51 +58,38 @@ export function PrecisionPlanningPage() {
     const fetchData = async () => {
       setLoading(true)
       try {
-        // Fetch cycle
-        const { data: cycleData } = await supabase
-          .from('crop_cycles')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single()
+        const weatherPromise = fetch(`https://api.open-meteo.com/v1/forecast?latitude=28.6139&longitude=77.2090&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=auto`).then(res => res.json())
+        const soilPromise = supabase.from('soil_reports').select('*').order('report_date', { ascending: false }).limit(1).single()
+        const reqPromise = supabase.from('crop_requirements').select('*')
         
-        if (cycleData) setCycle(cycleData)
-
-        // Fetch tasks
-        let fetchedTasks: Task[] = []
-        if (cycleData) {
-          const { data: tasksData } = await supabase
-            .from('daily_tasks')
-            .select('*')
-            .eq('cycle_id', cycleData.id)
-            .order('task_date', { ascending: true })
-          if (tasksData) {
-            fetchedTasks = tasksData
-            setTasks(fetchedTasks)
+        const fetchCycleAndTasks = async () => {
+          const { data: cycleData } = await supabase.from('crop_cycles').select('*').order('created_at', { ascending: false }).limit(1).single()
+          if (cycleData) {
+            const { data: tasksData } = await supabase.from('daily_tasks').select('*').eq('cycle_id', cycleData.id).order('task_date', { ascending: true })
+            return { cycleData, tasksData }
           }
+          return { cycleData: null, tasksData: null }
         }
 
-        // Fetch soil report
-        const { data: soilData } = await supabase
-          .from('soil_reports')
-          .select('*')
-          .order('report_date', { ascending: false })
-          .limit(1)
-          .single()
-        if (soilData) setSoil(soilData)
+        const [weatherData, soilRes, reqRes, { cycleData, tasksData }] = await Promise.all([
+          weatherPromise, soilPromise, reqPromise, fetchCycleAndTasks()
+        ])
 
-        // Fetch requirements
-        const { data: reqData } = await supabase.from('crop_requirements').select('*')
-
-        // Fetch Weather (Using geolocation or a default location for demo, using generic agricultural coordinates if not available)
-        const lat = 28.6139
-        const lon = 77.2090
-        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=auto`)
-        const weatherData = await res.json()
+        if (cycleData) setCycle(cycleData)
         
-        if (weatherData.daily) {
+        let fetchedTasks: Task[] = []
+        if (tasksData) {
+          fetchedTasks = tasksData
+          setTasks(fetchedTasks)
+        }
+
+        if (soilRes.data) setSoil(soilRes.data)
+        
+        if (weatherData && weatherData.daily) {
           setWeather(weatherData.daily)
         }
+        
+        const reqData = reqRes.data
 
         // Run Adaptive Logic
         if (weatherData.daily && fetchedTasks.length > 0) {
@@ -110,8 +97,8 @@ export function PrecisionPlanningPage() {
         }
 
         // Run Succession Logic
-        if (soilData && reqData && reqData.length > 0) {
-          runSuccessionPlanner(soilData, reqData)
+        if (soilRes.data && reqData && reqData.length > 0) {
+          runSuccessionPlanner(soilRes.data, reqData)
         }
 
       } catch (err) {
@@ -172,13 +159,7 @@ export function PrecisionPlanningPage() {
     setRecommendedCrop(bestMatch)
   }
 
-  if (loading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center text-white">
-        <RefreshCw className="animate-spin text-[#A67B5B]" size={40} />
-      </div>
-    )
-  }
+  // Removed blocking loader
 
   return (
     <div className="h-[calc(100vh-80px)] overflow-y-auto px-6 pb-20 pt-6">

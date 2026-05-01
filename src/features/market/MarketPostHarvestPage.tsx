@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../core/auth/supabaseClient'
-import { Banknote, ShoppingCart, TrendingUp, TrendingDown, RefreshCw, Beaker, Receipt, ArrowRightCircle, ExternalLink } from 'lucide-react'
+import { Banknote, ShoppingCart, TrendingUp, TrendingDown, RefreshCw, Beaker, Receipt, ArrowRightCircle, ExternalLink, Loader2 } from 'lucide-react'
 import { GlassCard } from '../../components/GlassCard'
 import { cn } from '../../core/utils/cn'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '../../lib/db'
+import { addTransaction as repoAddTransaction } from '../../lib/repository'
 
 interface LedgerItem {
   id: number
@@ -41,8 +44,9 @@ interface MandiPrice {
 }
 
 export function MarketPostHarvestPage() {
-  const [ledger, setLedger] = useState<LedgerItem[]>([])
-  const [soil, setSoil] = useState<SoilReport | null>(null)
+  const ledger = useLiveQuery(() => db.ledger.orderBy('date').reverse().toArray()) || []
+  const soil = useLiveQuery(() => db.profiles.get(1)) || null
+
   const [cropStandards, setCropStandards] = useState<CropRequirement[]>([])
   const [mandiPrices, setMandiPrices] = useState<MandiPrice[]>([])
   const [loading, setLoading] = useState(true)
@@ -54,15 +58,6 @@ export function MarketPostHarvestPage() {
   const fetchData = async () => {
     setLoading(true)
     try {
-      // Fetch Ledger
-      const { data: ledgerData } = await supabase.from('financial_ledger').select('*').order('transaction_date', { ascending: false })
-      if (ledgerData) setLedger(ledgerData)
-
-      // Fetch latest soil report
-      const { data: soilData } = await supabase.from('soil_reports').select('*').order('report_date', { ascending: false }).limit(1).single()
-      if (soilData) setSoil(soilData)
-
-      // Fetch crop standards
       const { data: reqData } = await supabase.from('crop_requirements').select('*')
       if (reqData) setCropStandards(reqData)
 
@@ -79,12 +74,14 @@ export function MarketPostHarvestPage() {
     }
   }
 
-  const addTransaction = async (type: 'Income' | 'Expense', amount: number, category: string, description: string) => {
+  const addTransaction = async (type: 'income' | 'expense', amount: number, category: string, description: string) => {
     try {
-      await supabase.from('financial_ledger').insert([
-        { transaction_type: type, amount, category, description }
-      ])
-      fetchData() // Refresh
+      await repoAddTransaction({
+        amount,
+        category: description,
+        type,
+        date: new Date().toISOString()
+      })
     } catch (err) {
       console.error(err)
     }
@@ -107,20 +104,14 @@ export function MarketPostHarvestPage() {
   const generateShoppingUrl = (query: string) => `https://www.bighaat.com/search?q=${encodeURIComponent(query)}`
 
   const financeOverview = ledger.reduce((acc, curr) => {
-    if (curr.transaction_type === 'Income') acc.income += Number(curr.amount)
-    if (curr.transaction_type === 'Expense') acc.expense += Number(curr.amount)
+    if (curr.type === 'income') acc.income += Number(curr.amount)
+    if (curr.type === 'expense') acc.expense += Number(curr.amount)
     return acc
   }, { income: 0, expense: 0 })
 
   const profit = financeOverview.income - financeOverview.expense
 
-  if (loading) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center text-white">
-        <RefreshCw className="animate-spin text-green-500" size={40} />
-      </div>
-    )
-  }
+  // Removed blocking loader
 
   return (
     <div className="h-[calc(100vh-80px)] overflow-y-auto px-6 pb-20 pt-6">
@@ -172,16 +163,16 @@ export function MarketPostHarvestPage() {
                 {ledger.map(item => (
                   <div key={item.id} className="flex items-center justify-between bg-white/5 border border-white/10 p-3 rounded-xl">
                     <div className="flex items-center gap-3">
-                      <div className={cn("p-2 rounded-lg", item.transaction_type === 'Income' ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400")}>
-                        {item.transaction_type === 'Income' ? <TrendingUp size={16}/> : <TrendingDown size={16}/>}
+                      <div className={cn("p-2 rounded-lg", item.type === 'income' ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400")}>
+                        {item.type === 'income' ? <TrendingUp size={16}/> : <TrendingDown size={16}/>}
                       </div>
                       <div>
-                        <div className="text-sm font-bold text-white truncate max-w-[120px]">{item.description}</div>
-                        <div className="text-[10px] text-white/50">{new Date(item.transaction_date).toLocaleDateString()}</div>
+                        <div className="text-sm font-bold text-white truncate max-w-[120px]">{item.category}</div>
+                        <div className="text-[10px] text-white/50">{new Date(item.date).toLocaleDateString()}</div>
                       </div>
                     </div>
-                    <div className={cn("font-bold", item.transaction_type === 'Income' ? "text-emerald-400" : "text-red-400")}>
-                      {item.transaction_type === 'Income' ? '+' : '-'}₹{item.amount}
+                    <div className={cn("font-bold", item.type === 'income' ? "text-emerald-400" : "text-red-400")}>
+                      {item.type === 'income' ? '+' : '-'}₹{item.amount}
                     </div>
                   </div>
                 ))}
@@ -229,7 +220,7 @@ export function MarketPostHarvestPage() {
                     
                     <div className="flex gap-2 mt-1">
                       <button 
-                        onClick={() => addTransaction('Income', mandi.price_per_qtl * 10, 'Mandi Tracker', `Sold ${mandi.crop}`)}
+                        onClick={() => addTransaction('income', mandi.price_per_qtl * 10, 'Mandi Tracker', `Sold ${mandi.crop}`)}
                         className="flex-1 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 px-3 py-2 rounded-lg text-xs font-bold transition-colors"
                       >
                         Record Sale
@@ -299,7 +290,7 @@ export function MarketPostHarvestPage() {
                       </div>
                       
                       <button 
-                        onClick={() => addTransaction('Expense', item.cost * item.qty, 'Shopping List', item.name)}
+                        onClick={() => addTransaction('expense', item.cost * item.qty, 'Shopping List', item.name)}
                         className="mt-1 w-full bg-white/10 hover:bg-white/20 text-white px-4 py-3 rounded-xl text-sm font-bold transition-colors text-center"
                       >
                         Log Expense

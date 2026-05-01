@@ -161,7 +161,16 @@ export async function getLedgerEntries(): Promise<LedgerRecord[]> {
 
 export async function deleteLedgerEntry(id: number): Promise<void> {
   await initDatabase()
-  await db.ledger.delete(id)
+  await db.transaction('rw', db.ledger, db.syncMetadata, async () => {
+    await db.ledger.delete(id)
+    await db.syncMetadata.add({
+      tableName: 'ledger',
+      recordId: id,
+      action: 'delete',
+      isSynced: false,
+      createdAt: Date.now()
+    })
+  })
 }
 
 export async function addExpense(input: {
@@ -273,24 +282,26 @@ export async function getPendingLedgerRows(): Promise<LedgerRecord[]> {
 
 export async function addTransaction(data: { amount: number, category: string, type: 'income' | 'expense', date: string }): Promise<number> {
   await initDatabase()
-  const ledgerId = await db.ledger.add({
-    amount: data.amount,
-    category: data.category,
-    type: data.type,
-    date: data.date,
-    cropId: null,
-    sync_status: 'pending',
+  return await db.transaction('rw', db.ledger, db.syncMetadata, async () => {
+    const ledgerId = await db.ledger.add({
+      amount: data.amount,
+      category: data.category,
+      type: data.type,
+      date: data.date,
+      cropId: null,
+      sync_status: 'pending',
+    })
+    
+    await db.syncMetadata.add({
+      tableName: 'ledger',
+      recordId: ledgerId,
+      action: 'create',
+      isSynced: false,
+      createdAt: Date.now()
+    })
+    
+    return ledgerId
   })
-  
-  await db.syncMetadata.add({
-    tableName: 'ledger',
-    recordId: ledgerId,
-    action: 'create',
-    isSynced: false,
-    createdAt: Date.now()
-  })
-  
-  return ledgerId
 }
 
 export async function updateSoilProfile(soilData: { id?: string | number, nitrogen?: number, phosphorus?: number, potassium?: number }): Promise<void> {

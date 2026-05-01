@@ -65,18 +65,29 @@ export function DigitalLedgerPage() {
     if (transactions.length === 0) return []
     const now = Date.now()
     const weekMs = 7 * 24 * 60 * 60 * 1000
-    const weekBuckets: Record<number, number> = {}
+    const weekBuckets: Record<number, { revenue: number, expense: number }> = {}
+    
+    // Initialize buckets
+    for (let i = 0; i <= 5; i++) {
+      weekBuckets[i] = { revenue: 0, expense: 0 }
+    }
     
     transactions.forEach(row => {
       const age = now - new Date(row.date).getTime()
+      if (age < 0) return // Skip future dates if any
       const weekIdx = Math.max(0, Math.min(5, Math.floor(age / weekMs)))
-      const sign = row.type === 'income' ? 1 : -1
-      weekBuckets[weekIdx] = (weekBuckets[weekIdx] ?? 0) + sign * row.amount
+      
+      if (row.type === 'income') {
+        weekBuckets[weekIdx].revenue += row.amount
+      } else {
+        weekBuckets[weekIdx].expense += row.amount
+      }
     })
     
     return Array.from({ length: 6 }, (_, i) => ({
       w: `W${6 - i}`,
-      profit: weekBuckets[5 - i] ?? 0,
+      revenue: weekBuckets[5 - i].revenue,
+      expense: weekBuckets[5 - i].expense,
     }))
   }, [transactions])
 
@@ -470,7 +481,8 @@ export function DigitalLedgerPage() {
                     itemStyle={{ color: '#fff', fontSize: '12px' }}
                     cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 2 }}
                   />
-                  <Line type="monotone" dataKey="profit" stroke="#2E7D32" strokeWidth={3} dot={{ fill: '#2E7D32', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                  <Line type="monotone" dataKey="revenue" name="Income" stroke="#4ade80" strokeWidth={3} dot={{ fill: '#4ade80', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                  <Line type="monotone" dataKey="expense" name="Expense" stroke="#f87171" strokeWidth={3} dot={{ fill: '#f87171', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

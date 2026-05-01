@@ -12,14 +12,14 @@ export type ConnectivityStatus = 'online' | 'local-only' | 'offline';
 export function useConnectivity(geminiProbe?: () => Promise<boolean>) {
   const [status, setStatus] = useState<ConnectivityStatus>('online');
   const consecutiveFailures = useRef(0);
-  const probeInterval = useRef<NodeJS.Timeout | null>(null);
+  const probeInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   async function relaxedProbe() {
     try {
       // Use a lightweight, high-availability endpoint (like Google's favicon)
       // rather than the heavy Gemini API which might have strict CORS/VPN blocks.
       // mode: 'no-cors' allows us to fetch without CORS issues, even if we can't read the body.
-      const response = await fetch('https://www.google.com/favicon.ico', { 
+      await fetch('https://www.google.com/favicon.ico', { 
         mode: 'no-cors', 
         cache: 'no-store',
         signal: AbortSignal.timeout(2000)

@@ -4,7 +4,6 @@ import { Loader2, FlaskConical } from 'lucide-react'
 import { GlassCard } from '../components/GlassCard'
 import { cn } from '../core/utils/cn'
 import { useTranslation } from 'react-i18next'
-import { supabase } from '../core/auth/supabaseClient'
 import { useAuth } from '../core/auth/AuthProvider'
 
 type AuthMode = 'google' | 'phone'

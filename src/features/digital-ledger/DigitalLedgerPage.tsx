@@ -6,7 +6,7 @@ import { SkeletonRow } from '@/components/Skeleton'
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Trash2, Wallet, RefreshCw, Mic, MicOff, AlertCircle, TrendingUp, TrendingDown, Loader2 } from 'lucide-react'
 import { cn } from '@/core/utils/cn'
-import { addTransaction, initDatabase, deleteLedgerEntry } from '@/lib/repository'
+import { addTransaction, initDatabase, deleteTransaction } from '@/lib/repository'
 import { syncData } from '@/core/api/syncEngine'
 
 function inr(n: number) {
@@ -20,7 +20,7 @@ function formatLedgerDate(iso: string): string {
 }
 
 export function DigitalLedgerPage() {
-  const rawTransactions = useLiveQuery(() => db.ledger.orderBy('date').reverse().toArray())
+  const rawTransactions = useLiveQuery(() => db.transactions.orderBy('transaction_date').reverse().toArray())
   const transactions = useMemo(() => rawTransactions || [], [rawTransactions])
   
   const [loading, setLoading] = useState(true)
@@ -37,7 +37,7 @@ export function DigitalLedgerPage() {
   const [amount, setAmount] = useState('')
   const [type, setType] = useState<'income' | 'expense'>('expense')
   const [category, setCategory] = useState('')
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [transactionDate, setTransactionDate] = useState(new Date().toISOString().slice(0, 10))
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
@@ -68,7 +68,7 @@ export function DigitalLedgerPage() {
     const weekBuckets: Record<number, number> = {}
     
     transactions.forEach(row => {
-      const age = now - new Date(row.date).getTime()
+      const age = now - new Date(row.transaction_date).getTime()
       const weekIdx = Math.max(0, Math.min(5, Math.floor(age / weekMs)))
       const sign = row.type === 'income' ? 1 : -1
       weekBuckets[weekIdx] = (weekBuckets[weekIdx] ?? 0) + sign * row.amount
@@ -100,13 +100,13 @@ export function DigitalLedgerPage() {
         amount: numAmount,
         category: category.trim(),
         type,
-        date: new Date(date).toISOString()
+        transaction_date: new Date(transactionDate).toISOString()
       })
       
       // Reset form
       setAmount('')
       setCategory('')
-      setDate(new Date().toISOString().slice(0, 10))
+      setTransactionDate(new Date().toISOString().slice(0, 10))
       setType('expense')
     } catch (_err) {
       console.error('Transaction failed:', _err)
@@ -116,10 +116,10 @@ export function DigitalLedgerPage() {
     }
   }
 
-  async function handleDelete(id: number) {
+  async function handleDelete(id: string) {
     if (!confirm('Are you sure you want to delete this transaction?')) return
     try {
-      await deleteLedgerEntry(id)
+      await deleteTransaction(id)
     } catch {
       alert('Failed to delete entry.')
     }
@@ -378,8 +378,8 @@ export function DigitalLedgerPage() {
                 <label className="mb-1.5 block text-[10px] font-bold text-white/40 uppercase tracking-wider">Transaction Date</label>
                 <input
                   type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  value={transactionDate}
+                  onChange={(e) => setTransactionDate(e.target.value)}
                   className={inputClass}
                   required
                 />
@@ -426,13 +426,13 @@ export function DigitalLedgerPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {transactions.map((e) => (
+                    {transactions.filter(t => !t.deleted_at).map((e) => (
                       <tr key={e.id} className="group hover:bg-white/[0.02] transition-colors">
                         <td className="px-6 py-4">
                           <div className="text-sm font-bold text-white/90">{e.category}</div>
                           <div className="text-[10px] font-bold text-white/30 uppercase">{e.type}</div>
                         </td>
-                        <td className="px-6 py-4 text-xs text-white/50">{formatLedgerDate(e.date)}</td>
+                        <td className="px-6 py-4 text-xs text-white/50">{formatLedgerDate(e.transaction_date)}</td>
                         <td className={cn(
                           "px-6 py-4 text-right text-sm font-black",
                           e.type === 'income' ? "text-green-400" : "text-red-400"

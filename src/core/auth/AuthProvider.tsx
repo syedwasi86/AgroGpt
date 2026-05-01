@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from './supabaseClient'
+import { db } from '../../lib/db'
+import { syncData } from '../api/syncEngine'
 
 const MOCK_USER = {
   id: 'dev-bypass-user',
@@ -53,6 +55,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function syncProfile(user: User) {
     try {
+      // 1. Align local Dexie profile ID to the authenticated user's ID
+      const localProfiles = await db.profiles.toArray()
+      let localData = localProfiles.length > 0 ? localProfiles[0] : null
+      
+      if (localData && localData.id !== user.id) {
+        await db.profiles.delete(localData.id)
+        localData.id = user.id
+        localData.updated_at = new Date().toISOString()
+        await db.profiles.put(localData)
+      } else if (!localData) {
+        localData = {
+          id: user.id,
+          phone: user.phone || '',
+          name: user.user_metadata?.full_name || '',
+          email: user.email || '',
+          city: '', soil_type: '', primary_crop: '', total_acreage: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+        await db.profiles.put(localData)
+      }
+
+      // 2. Sync with Supabase
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -86,11 +111,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
       if (session) {
-        syncProfile(session.user)
+        await syncProfile(session.user)
+        syncData(session).catch(e => console.error('Startup sync failed:', e))
       }
       setLoading(false)
     })
@@ -102,6 +128,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
         await syncProfile(session.user)
+        syncData(session).catch(e => console.error('Auth state sync failed:', e))
+      } else if (event === 'SIGNED_OUT') {
+        try {
+          await Promise.all(db.tables.map(table => table.clear()))
+          localStorage.removeItem('yield_user')
+          for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i)
+            if (key && key.startsWith('sb-')) {
+              localStorage.removeItem(key)
+            }
+          }
+        } catch (e) {
+          console.error('Error clearing local data on sign out:', e)
+        }
       }
     })
 
@@ -161,11 +201,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setBusy(true)
+    
+    // 1. Unconditionally and immediately destroy local session for reliable UX
+    // This instantly triggers the ProtectedRoute to navigate to /auth
+    setSession(null)
+    setUser(null)
+
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
+      // 2. Purge offline database to prevent cross-account data bleed
+      await Promise.all(db.tables.map(table => table.clear())).catch(e => console.error('Dexie clear error:', e))
+      
+      localStorage.removeItem('yield_user')
+      
+      // Nuke all Supabase tokens from local storage so getSession() doesn't restore a zombie session
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith('sb-')) {
+          localStorage.removeItem(key)
+        }
+      }
+
+      // 3. Attempt to tell Supabase to invalidate the token in the background
+      // We do not await this, so a slow network or hanging request won't freeze the app
+      if (session && session.user?.id !== 'dev-bypass-user') {
+        supabase.auth.signOut().catch(e => console.warn('Supabase signout skipped/failed:', e))
+      }
+      
       return { error: null }
     } catch (error: any) {
+      console.error('Logout cleanup error:', error)
       return { error }
     } finally {
       setBusy(false)

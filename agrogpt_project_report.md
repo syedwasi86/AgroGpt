@@ -34,7 +34,7 @@ The app targets farmers who need:
 |---|---|
 | Local DB | **Dexie.js v4** (IndexedDB wrapper) — offline-first |
 | Cloud DB/Auth | **Supabase** (@supabase/supabase-js v2) |
-| Sync | Custom bidirectional push/pull sync engine (`syncEngine.ts`) |
+| Sync | Custom bidirectional push/pull sync engine (`syncEngine.ts`) — handles race conditions & schema mapping |
 
 ### AI / ML
 | Layer | Technology |
@@ -78,7 +78,7 @@ The app targets farmers who need:
 ## 3. Feature Inventory
 
 ### 3.1 Authentication (`/auth`)
-**Status: 🟡 Partially Real**
+**Status: ✅ Mostly Real**
 
 | Sub-feature | Status |
 |---|---|
@@ -98,7 +98,7 @@ The app targets farmers who need:
 | GPS-based city auto-detection | ✅ Real — uses browser geolocation + Nominatim |
 | Soil profile from city | ✅ Real — rule-based lookup (limited Telugu cities) |
 | Live weather (temp, humidity, wind) | ✅ Real — calls Open-Meteo API |
-| ET₀-based irrigation formula | ✅ Real — Hargreaves formula in `formulas.ts` |
+| ET₀-based irrigation formula | ✅ Real — Hargreaves formula in `features/agronomy/logic/irrigationCalculator.ts` |
 | Stage-based NPK fertilizer formula | ✅ Real — table-based in `formulas.ts`, crops from IndexedDB |
 | OpenStreetMap field overview | ✅ Real — Leaflet map, lazy-loaded |
 | Soil health widget (N/P/K bars) | ❌ **Hardcoded** — fixed values: N=48, P=22, K=36 |
@@ -211,7 +211,7 @@ The app targets farmers who need:
 | Notifications toggle | ❌ **Dummy** — stored but no Push Notification/FCM integration |
 | Biometric login toggle | ❌ **Dummy** — stored but no WebAuthn/biometric API connected |
 | Sync Now button | ✅ Real — calls `syncData()` |
-| Logout (clears DB + Supabase session) | ✅ Real |
+| Logout (clears DB + Supabase session) | ✅ Real — Secure local DB clearing + race condition fixes implemented |
 | Profile photo upload | ❌ **Not implemented** |
 
 ---
@@ -277,7 +277,7 @@ Without these, the app runs in **demo/offline mode** (AI uses keyword-matching m
 - [ ] **Precision Planning — Save Plans**: Persist recommendation history to IndexedDB (add a `plans` table) so planning history survives app restart.
 - [ ] **Precision Planning — More Soil/Water Scenarios**: Expand `planningLogic.ts` beyond 5 hardcoded branches. Add at least Clay+Low, Clay+Medium, Sandy+High, Loam+Low, Loam+High cases.
 - [ ] **Precision Planning — Crop Stage**: Allow user to select crop growth stage (vegetative / flowering / fruiting / maturity) and feed it into fertilizer recommendations — `formulas.ts` already supports this.
-- [ ] **Geolocation — Soil Coverage**: Expand `getSoilProfile()` in `geolocation.ts` to cover more Indian cities/districts beyond the 8 currently hardcoded.
+- [ ] **Geolocation — Soil Coverage**: Expand `getSoilType()` in `features/gis/logic/soilMapping.ts` to cover more Indian cities/districts beyond the 7 currently hardcoded.
 - [ ] **Profile — Acreage → Dashboard**: Connect `profile.totalAcreage` to the irrigation and fertilizer formula on the Dashboard, instead of falling back to a 2-acre default.
 
 ---

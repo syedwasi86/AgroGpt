@@ -1,241 +1,160 @@
 import Dexie, { type Table } from 'dexie'
 import { detectCityFromGeolocation, getSoilProfile, getSoilNPK } from '../core/utils/geolocation'
 
-export type SyncStatus = 'pending' | 'synced'
-
-/** Crop status for rotation / harvest tracking */
-export type CropStatus = 'active' | 'harvested' | 'planned'
-
-export interface CropRecord {
-  id?: number
-  name: string
-  variety: string
-  /** ISO date string (YYYY-MM-DD) */
-  plantedDate: string
-  /** Area in acres */
-  area: number
-  status: CropStatus
-  sync_status: SyncStatus
-}
-
-export interface LedgerRecord {
-  id?: number
-  cropId?: number | null
-  type: 'income' | 'expense'
-  /** Display category / label (e.g. Diesel, Fertilizer) */
-  category: string
-  amount: number
-  /** ISO datetime string */
-  date: string
-  notes?: string
-  sync_status: SyncStatus
-}
-
-export interface ScanRecord {
-  id?: number
-  timestamp: number
-  createdAt: number
-  /** JSON string: mode, title, meta, etc. */
-  resultJson: string
-  imageBlob: Blob
-  sync_status: SyncStatus
-}
-
+export type CropStatus = 'planned' | 'active' | 'harvested'
+export type TransactionType = 'income' | 'expense'
 
 export interface ProfileRecord {
-  id?: number | string
+  id: string // UUID from Supabase auth
   name?: string
   email?: string
   phone: string
-  totalAcreage: number
-  primaryCrop: string
-  soilType: string
   city: string
-  location: string
+  soil_type: string
+  primary_crop: string
+  total_acreage: number
   nitrogen?: number
   phosphorus?: number
   potassium?: number
-  sync_status?: SyncStatus
+  created_at: string
+  updated_at: string
 }
 
-export interface SyncMetadataRecord {
-  id?: number
-  tableName: string
-  recordId: number | string
-  action: 'create' | 'update' | 'delete'
-  isSynced: boolean
-  createdAt: number
-}
-
-export interface SettingsRecord {
-  id?: number
-  language: string
-  fontSize: string
-  notificationsEnabled: boolean
-  biometricEnabled: boolean
-  lastSync: number
-  sync_status?: SyncStatus
-}
-
-export interface WeatherCacheRecord {
-  id: string
-  timestamp: number
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
-}
-
-/** A chat query saved while offline, awaiting Gemini resolution when back online. */
-export interface PendingQueryRecord {
-  id?: number
-  prompt: string
-  /** JSON-serialised AIContext object (page, location, soil) */
-  context: string
-  timestamp: number
-  status: 'pending' | 'answered'
-}
-
-/** Single-device user profile synced from auth (id is always 1). */
-export interface OfflineMetadataRecord {
-  id: number
+export interface CropRecord {
+  id: string // UUID
+  user_id?: string
   name: string
-  phone: string
-  email?: string
-  city?: string
-  updatedAt: number
-  sync_status: SyncStatus
+  variety: string
+  planted_date: string // ISO string
+  area: number
+  status: CropStatus
+  created_at: string
+  updated_at: string
+  deleted_at?: string | null
+}
+
+export interface TransactionRecord {
+  id: string // UUID
+  user_id?: string
+  crop_id?: string | null
+  type: TransactionType
+  category: string
+  amount: number
+  note?: string
+  transaction_date: string // ISO string
+  created_at: string
+  updated_at: string
+  deleted_at?: string | null
+}
+
+export interface ScanRecord {
+  id: string // UUID
+  user_id?: string
+  crop_id?: string | null
+  image_url: string // Base64 string for local offline preview
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  result: any
+  scanned_at: string // ISO string
+  created_at: string
+  updated_at: string
+  deleted_at?: string | null
+}
+
+export interface AiQueryRecord {
+  id: string // UUID
+  user_id?: string
+  question: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  context: any
+  answer: string | null
+  status: 'pending' | 'processing' | 'completed' | 'failed'
+  created_at: string
+  updated_at: string
+  deleted_at?: string | null
+}
+
+export interface UserSettingsRecord {
+  id: string // UUID
+  user_id?: string
+  language: string
+  font_size: string
+  notifications_enabled: boolean
+  biometric_enabled: boolean
+  last_sync: string // ISO string
+  created_at: string
+  updated_at: string
 }
 
 export class AgroGPTDatabase extends Dexie {
-  crops!: Table<CropRecord, number>
-  ledger!: Table<LedgerRecord, number>
-  scans!: Table<ScanRecord, number>
-  offlineMetadata!: Table<OfflineMetadataRecord, number>
-  profiles!: Table<ProfileRecord, number | string>
-  settings!: Table<SettingsRecord, number>
-  weatherCache!: Table<WeatherCacheRecord, string>
-  syncMetadata!: Table<SyncMetadataRecord, number>
-  pending_queries!: Table<PendingQueryRecord, number>
+  profiles!: Table<ProfileRecord, string>
+  crops!: Table<CropRecord, string>
+  transactions!: Table<TransactionRecord, string>
+  scans!: Table<ScanRecord, string>
+  ai_queries!: Table<AiQueryRecord, string>
+  user_settings!: Table<UserSettingsRecord, string>
 
   constructor() {
-    super('AgroGPT')
+    super('AgroGPT_v2')
     this.version(1).stores({
-      crops: '++id, name, status, plantedDate',
-      ledger: '++id, cropId, type, date, synced',
-      scans: '++id, timestamp',
-    })
-    this.version(2).stores({
-      offlineMetadata: 'id',
-    })
-    this.version(3).stores({
-      crops: '++id, name, status, plantedDate, sync_status',
-      ledger: '++id, cropId, type, date, sync_status',
-      scans: '++id, timestamp, sync_status',
-      offlineMetadata: 'id, sync_status',
-    }).upgrade(tx => {
-      // Migrate old data to the new sync_status structure
-      return Promise.all([
-        tx.table('crops').toCollection().modify(c => { c.sync_status = 'pending' }),
-        tx.table('ledger').toCollection().modify(l => { 
-          l.sync_status = l.synced === 1 ? 'synced' : 'pending'
-          delete l.synced
-        }),
-        tx.table('scans').toCollection().modify(s => { s.sync_status = 'pending' }),
-        tx.table('offlineMetadata').toCollection().modify(m => { m.sync_status = 'pending' })
-      ])
-    })
-    this.version(4).stores({
-      profiles: '++id, phone',
-      settings: '++id',
-    })
-    this.version(5).stores({
-      weatherCache: 'id',
-    })
-    this.version(6).stores({
       profiles: 'id',
-      scans: '++id, createdAt',
-      ledger: '++id, date, category, type',
-      syncMetadata: '++id, tableName, isSynced',
+      crops: 'id, user_id, status, planted_date, deleted_at',
+      transactions: 'id, user_id, crop_id, type, transaction_date, deleted_at',
+      scans: 'id, user_id, crop_id, scanned_at, deleted_at',
+      ai_queries: 'id, user_id, status, deleted_at',
+      user_settings: 'id, user_id'
     })
-    this.version(7)
-      .stores({
-        // New table for offline-queued AI questions
-        pending_queries: '++id, status, timestamp',
-      })
-      .upgrade(_tx => {
-        // No structural changes to existing tables in v7.
-        // Upgrade block included to satisfy Dexie's migration contract and
-        // guarantee existing crops/ledger/scans/profiles data is untouched.
-        return Promise.resolve()
-      })
   }
 }
 
 export const db = new AgroGPTDatabase()
 
-const PROFILE_ID = 1
-
-type UpsertOfflineInput = Pick<OfflineMetadataRecord, 'name' | 'phone'> & {
-  email?: string | undefined
-  city?: string | undefined
-  /** When true, replace email/city with `data` values (including clearing when undefined). */
-  replaceOptional?: boolean
-}
-
-export async function upsertOfflineMetadata(data: UpsertOfflineInput) {
-  const existing = await db.offlineMetadata.get(PROFILE_ID)
-  const email =
-    data.replaceOptional
-      ? data.email
-      : (data.email ?? existing?.email)
-  const city =
-    data.replaceOptional
-      ? data.city
-      : (data.city ?? existing?.city)
-  await db.offlineMetadata.put({
-    id: PROFILE_ID,
-    name: data.name || existing?.name || '',
-    phone: data.phone,
-    email: email || undefined,
-    city: city || undefined,
-    updatedAt: Date.now(),
-    sync_status: existing?.sync_status ?? 'pending',
-  })
-}
-
-export async function initializeUserPreferences() {
-  const existing = await db.settings.get(1)
+export async function initializeUserPreferences(userId?: string) {
+  const existing = await db.user_settings.toArray().then(a => a[0])
   if (!existing) {
-    await db.settings.put({
-      id: 1,
+    const now = new Date().toISOString()
+    await db.user_settings.put({
+      id: crypto.randomUUID(),
+      user_id: userId,
       language: 'en',
-      fontSize: 'medium',
-      notificationsEnabled: false,
-      biometricEnabled: false,
-      lastSync: 0,
-      sync_status: 'pending',
+      font_size: 'medium',
+      notifications_enabled: false,
+      biometric_enabled: false,
+      last_sync: new Date(0).toISOString(),
+      created_at: now,
+      updated_at: now,
     })
+  } else if (userId && !existing.user_id) {
+    await db.user_settings.update(existing.id, { user_id: userId, updated_at: new Date().toISOString() })
   }
 }
 
-export async function initializeUserProfile() {
-  const existing = await db.profiles.get(1)
+export async function initializeUserProfile(userId?: string) {
+  // Try to find a profile with this user ID, or the first one if we're not logged in
+  const existing = userId 
+    ? await db.profiles.get(userId)
+    : await db.profiles.toArray().then(a => a[0])
+
   if (!existing) {
     const city = await detectCityFromGeolocation()
     const soilType = getSoilProfile(city)
     const npk = getSoilNPK(soilType)
+    const now = new Date().toISOString()
+    
+    // We use the provided userId or a temporary un-synced ID that will be updated on login
+    const id = userId || crypto.randomUUID()
+    
     await db.profiles.put({
-      id: 1,
+      id,
       phone: '',
-      totalAcreage: 0,
-      primaryCrop: '',
-      soilType,
       city,
-      location: '',
+      soil_type: soilType,
+      primary_crop: '',
+      total_acreage: 0,
       nitrogen: npk.nitrogen,
       phosphorus: npk.phosphorus,
       potassium: npk.potassium,
-      sync_status: 'pending'
+      created_at: now,
+      updated_at: now,
     })
   }
 }
-

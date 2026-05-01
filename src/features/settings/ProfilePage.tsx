@@ -16,18 +16,17 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.j
 type ExtractionStatus = 'idle' | 'processing' | 'success' | 'partial' | 'failed'
 
 export function ProfilePage() {
-  const profile = useLiveQuery(() => db.profiles.get(1))
+  const profile = useLiveQuery(() => db.profiles.toArray().then(a => a[0]))
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    totalAcreage: 0,
-    primaryCrop: 'Cotton',
-    soilType: 'Red Sandy Loam',
-    city: '',
-    location: ''
+    total_acreage: 0,
+    primary_crop: 'Cotton',
+    soil_type: 'Red Sandy Loam',
+    city: ''
   })
 
   const [soilData, setSoilData] = useState({
@@ -45,7 +44,7 @@ export function ProfilePage() {
     async function setup() {
       try {
         await initDatabase()
-        const existing = await db.profiles.get(1)
+        const existing = await db.profiles.toArray().then(a => a[0])
         if (!existing) {
           const { data: { session } } = await supabase.auth.getSession()
           if (session?.user) {
@@ -55,11 +54,10 @@ export function ProfilePage() {
               name: isGoogle ? user.user_metadata?.full_name || '' : '',
               email: user.email || '',
               phone: isGoogle ? '' : user.phone || '',
-              totalAcreage: 0,
-              primaryCrop: 'Cotton',
-              soilType: 'Red Sandy Loam',
-              city: '',
-              location: ''
+              total_acreage: 0,
+              primary_crop: 'Cotton',
+              soil_type: 'Red Sandy Loam',
+              city: ''
             }
             setFormData(initialData)
             await saveProfile(initialData)
@@ -78,11 +76,10 @@ export function ProfilePage() {
         name: profile.name || '',
         email: profile.email || '',
         phone: profile.phone || '',
-        totalAcreage: profile.totalAcreage || 0,
-        primaryCrop: profile.primaryCrop || 'Cotton',
-        soilType: profile.soilType || 'Red Sandy Loam',
-        city: profile.city || '',
-        location: profile.location || ''
+        total_acreage: profile.total_acreage || 0,
+        primary_crop: profile.primary_crop || 'Cotton',
+        soil_type: profile.soil_type || 'Red Sandy Loam',
+        city: profile.city || ''
       })
       setSoilData({
         nitrogen: profile.nitrogen || 0,
@@ -104,13 +101,22 @@ export function ProfilePage() {
     }
   }
 
+  const fileToDataURL = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = error => reject(error)
+      reader.readAsDataURL(file)
+    })
+  }
+
   const processFile = async (file: File) => {
     setExtractionStatus('processing')
     setErrorMsg(null)
     setRawOcrText('')
 
     try {
-      let imageData: string | ArrayBuffer | null = null
+      let imageData: string | null = null
 
       if (file.type === 'application/pdf') {
         const arrayBuffer = await file.arrayBuffer()
@@ -122,11 +128,11 @@ export function ProfilePage() {
         canvas.height = viewport.height
         canvas.width = viewport.width
         if (context) {
-          await page.render({ canvasContext: context, viewport }).promise
+          await page.render({ canvasContext: context, viewport } as any).promise
           imageData = canvas.toDataURL('image/png')
         }
       } else {
-        imageData = file
+        imageData = await fileToDataURL(file)
       }
 
       if (!imageData) throw new Error('Failed to load file data')
@@ -182,7 +188,13 @@ export function ProfilePage() {
     }
 
     try {
+      if (!profile?.id) {
+        alert('No profile found. Please update general information first.')
+        return
+      }
+
       await updateSoilProfile({
+        id: profile.id,
         nitrogen,
         phosphorus,
         potassium
@@ -227,11 +239,11 @@ export function ProfilePage() {
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Total Acreage</label>
-                  <input type="number" step="0.1" className={inputClass} value={formData.totalAcreage} onChange={e => setFormData({...formData, totalAcreage: parseFloat(e.target.value) || 0})} />
+                  <input type="number" step="0.1" className={inputClass} value={formData.total_acreage} onChange={e => setFormData({...formData, total_acreage: parseFloat(e.target.value) || 0})} />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Primary Crop</label>
-                  <select className={inputClass} value={formData.primaryCrop} onChange={e => setFormData({...formData, primaryCrop: e.target.value})}>
+                  <select className={inputClass} value={formData.primary_crop} onChange={e => setFormData({...formData, primary_crop: e.target.value})}>
                     <option value="Cotton">Cotton</option>
                     <option value="Wheat">Wheat</option>
                     <option value="Rice">Rice</option>
@@ -359,5 +371,3 @@ export function ProfilePage() {
     </div>
   )
 }
-
-

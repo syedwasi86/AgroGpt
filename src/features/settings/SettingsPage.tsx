@@ -5,14 +5,15 @@ import { saveSettings } from './services/accountService'
 import { GlassCard } from '../../components/GlassCard'
 import { Save, RefreshCw, LogOut } from 'lucide-react'
 import { syncData } from '../../core/api/syncEngine'
-import { supabase } from '../../core/auth/supabaseClient'
-import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../core/auth/AuthProvider'
 
 export function SettingsPage() {
-  const settings = useLiveQuery(() => db.settings.get(1))
+  const settings = useLiveQuery(() => db.user_settings.toArray().then(a => a[0]))
   const [syncing, setSyncing] = useState(false)
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [isOffline, setIsOffline] = useState(!navigator.onLine)
   const [loggingOut, setLoggingOut] = useState(false)
-  const navigate = useNavigate()
+  const { signOut } = useAuth()
   
   const [formData, setFormData] = useState({
     notificationsEnabled: false,
@@ -23,8 +24,8 @@ export function SettingsPage() {
   useEffect(() => {
     if (settings) {
       setFormData({
-        notificationsEnabled: settings.notificationsEnabled,
-        biometricEnabled: settings.biometricEnabled,
+        notificationsEnabled: settings.notifications_enabled,
+        biometricEnabled: settings.biometric_enabled,
         language: settings.language
       })
     }
@@ -33,43 +34,50 @@ export function SettingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     await saveSettings({
-      notificationsEnabled: formData.notificationsEnabled,
-      biometricEnabled: formData.biometricEnabled,
+      notifications_enabled: formData.notificationsEnabled,
+      biometric_enabled: formData.biometricEnabled,
       language: formData.language
     })
     alert('Settings saved successfully!')
   }
 
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false)
+    const handleOffline = () => setIsOffline(true)
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
   const handleSync = async () => {
+    if (isOffline) return
     setSyncing(true)
+    setSyncStatus('idle')
     try {
-      await syncData()
-      alert('Sync complete!')
+      const res = await syncData()
+      if (res.failed > 0) throw new Error('Partial failure')
+      setSyncStatus('success')
+      setTimeout(() => setSyncStatus('idle'), 3000)
     } catch {
-      alert('Sync failed')
+      setSyncStatus('error')
     } finally {
       setSyncing(false)
     }
   }
 
+  const lastSyncDate = settings?.last_sync && settings.last_sync !== '1970-01-01T00:00:00.000Z'
+    ? new Date(settings.last_sync).toLocaleString() 
+    : 'Never'
+
   const handleLogout = async () => {
     setLoggingOut(true)
     try {
-      // 1. Sign out from Supabase
-      await supabase.auth.signOut()
-      
-      // 2. Wipe the local IndexedDB to prevent old data from bleeding to the next user
-      // We use clear() instead of delete() to keep the Dexie instance open for the next login
-      await Promise.all(db.tables.map(table => table.clear()))
-
-      // 3. Clear the custom auth guard session state
-      localStorage.removeItem('yield_user')
-
-      // 4. Wait for the CSS fade-out animation to finish
-      await new Promise(resolve => setTimeout(resolve, 600))
-
-      // 5. Navigate smoothly to auth
-      navigate('/auth', { replace: true })
+      await signOut()
+      // Force a full page reload to flush all React memory and ensure a clean slate
+      window.location.href = '/auth'
     } catch (error) {
       console.error('Logout error:', error)
       setLoggingOut(false)
@@ -125,13 +133,25 @@ export function SettingsPage() {
             </select>
           </div>
 
-          <div className="pt-4 flex flex-wrap gap-3 border-t border-white/10">
-            <button type="submit" className="flex items-center gap-2 rounded-2xl bg-[#2E7D32] px-6 py-3 text-sm font-semibold text-white shadow-glowPrimary hover:opacity-90 transition">
-              <Save size={18} /> Save Settings
-            </button>
-            <button type="button" onClick={() => void handleSync()} disabled={syncing} className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition disabled:opacity-50">
-              <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} /> Sync Now
-            </button>
+          <div className="pt-4 flex flex-col gap-4 border-t border-white/10">
+            <div className="flex items-center justify-between text-xs">
+               <div className="text-white/60">
+                 Last synced: <span className="text-white">{lastSyncDate}</span>
+               </div>
+               {isOffline && <div className="text-yellow-400 font-semibold">Offline Mode</div>}
+               {!isOffline && syncStatus === 'success' && <div className="text-green-400 font-semibold">Sync Successful!</div>}
+               {!isOffline && syncStatus === 'error' && <div className="text-red-400 font-semibold">Sync Failed</div>}
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button type="submit" className="flex items-center gap-2 rounded-2xl bg-[#2E7D32] px-6 py-3 text-sm font-semibold text-white shadow-glowPrimary hover:opacity-90 transition">
+                <Save size={18} /> Save Settings
+              </button>
+              <button type="button" onClick={() => void handleSync()} disabled={syncing || isOffline} className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition disabled:opacity-50">
+                <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} /> 
+                {syncing ? 'Syncing...' : 'Sync Now'}
+              </button>
+            </div>
           </div>
         </form>
 

@@ -44,72 +44,22 @@ interface MandiPrice {
 }
 
 export function MarketPostHarvestPage() {
-  const ledger = useLiveQuery(() => db.ledger.orderBy('date').reverse().toArray()) || []
-  const soil = useLiveQuery(() => db.profiles.get(1)) || null
+  const mandiRates = [
+    { id: 1, crop: 'Wheat (Gehu)', market: 'Hyderabad', price: 2350, trend: 'up' },
+    { id: 2, crop: 'Rice (Chawal)', market: 'Warangal', price: 3100, trend: 'stable' },
+    { id: 3, crop: 'Cotton (Kapas)', market: 'Nizamabad', price: 7200, trend: 'down' },
+    { id: 4, crop: 'Maize (Makka)', market: 'Hyderabad', price: 1950, trend: 'up' },
+    { id: 5, crop: 'Chilli (Mirch)', market: 'Warangal', price: 18500, trend: 'up' },
+  ]
 
-  const [cropStandards, setCropStandards] = useState<CropRequirement[]>([])
-  const [mandiPrices, setMandiPrices] = useState<MandiPrice[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
-    setLoading(true)
-    try {
-      const { data: reqData } = await supabase.from('crop_requirements').select('*')
-      if (reqData) setCropStandards(reqData)
-
-      // Mock Mandi Prices (Live simulation)
-      setMandiPrices([
-        { id: 1, crop: 'Wheat', market: 'Azadpur Mandi, Delhi', price_per_qtl: 2350, trend: 'up', arrival_tons: 120 },
-        { id: 2, crop: 'Cotton', market: 'Kapas Mandi, Gujarat', price_per_qtl: 7200, trend: 'down', arrival_tons: 45 },
-        { id: 3, crop: 'Rice', market: 'Karnal, Haryana', price_per_qtl: 3100, trend: 'stable', arrival_tons: 200 },
-      ])
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const addTransaction = async (type: 'income' | 'expense', amount: number, category: string, description: string) => {
-    try {
-      await repoAddTransaction({
-        amount,
-        category: description,
-        type,
-        date: new Date().toISOString()
-      })
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  const getFertilizerNeeds = () => {
-    if (!soil || cropStandards.length === 0) return []
-    const needs = []
-    // Assuming calculation against Wheat as default standard, or average
-    const targetCrop = cropStandards.find(c => c.crop_name === 'Wheat') || cropStandards[0]
-    
-    if (soil.nitrogen < targetCrop.min_n) needs.push({ name: 'IFFCO Urea', cost: 1200, qty: 2, type: 'Nitrogen' })
-    if (soil.phosphorus < targetCrop.min_p) needs.push({ name: 'DAP Fertilizer', cost: 2400, qty: 1, type: 'Phosphorus' })
-    if (soil.potassium < targetCrop.min_k) needs.push({ name: 'MOP Fertilizer', cost: 1700, qty: 1, type: 'Potassium' })
-    
-    if (needs.length === 0) needs.push({ name: 'Organic Compost', cost: 500, qty: 5, type: 'General' })
-    return needs
-  }
+  const bazaarItems = [
+    { name: 'Urea (IFFCO)', brand: 'IFFCO', price: '₹266.50', desc: 'Essential for growth' },
+    { name: 'DAP Fertilizer', brand: 'Paras', price: '₹1,350', desc: 'Root development' },
+    { name: 'Hybrid Tomato Seeds', brand: 'Seminis', price: '₹450', desc: 'High yield potential' },
+    { name: 'Neem Oil (Bio)', brand: 'Multiplex', price: '₹320', desc: 'Natural pest control' },
+  ]
 
   const generateShoppingUrl = (query: string) => `https://www.bighaat.com/search?q=${encodeURIComponent(query)}`
-
-  const financeOverview = ledger.reduce((acc, curr) => {
-    if (curr.type === 'income') acc.income += Number(curr.amount)
-    if (curr.type === 'expense') acc.expense += Number(curr.amount)
-    return acc
-  }, { income: 0, expense: 0 })
-
-  const profit = financeOverview.income - financeOverview.expense
 
   // Removed blocking loader
 
@@ -119,188 +69,113 @@ export function MarketPostHarvestPage() {
         
         {/* Header */}
         <div>
-          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
+          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#87A96B] to-[#A3B899]">
             Market & Mandi
           </h1>
-          <p className="text-white/60 mt-2 font-medium">Live Mandi Rates, Automated Shopping List, and Financial Tracking</p>
+          <p className="text-white/60 mt-2 font-medium italic">Check live market rates and shop for farm supplies</p>
         </div>
 
         {/* Dense Two-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
           
-          {/* Column 1: Financial Overview & Recent Ledger */}
-          <div className="flex flex-col gap-6">
-            
-            {/* Financial Overview Widget */}
-            <GlassCard className="p-6 border-white/10 shadow-lg bg-gradient-to-br from-gray-900 to-black rounded-3xl">
-              <div className="flex items-center gap-3 mb-4">
-                <Banknote className="text-emerald-400" size={20} />
-                <h3 className="font-bold text-white/90">Net Profit/Loss</h3>
-              </div>
-              <div className={cn("text-4xl font-black", profit >= 0 ? "text-emerald-400" : "text-red-400")}>
-                ₹{Math.abs(profit).toLocaleString()}
-                <span className="text-sm font-bold text-white/50 ml-2">{profit >= 0 ? "PROFIT" : "LOSS"}</span>
-              </div>
-              <div className="flex justify-between mt-4 text-xs font-semibold">
-                <span className="text-green-400/80">In: ₹{financeOverview.income.toLocaleString()}</span>
-                <span className="text-red-400/80">Out: ₹{financeOverview.expense.toLocaleString()}</span>
-              </div>
-            </GlassCard>
-
-            {/* Recent Financial Ledger */}
-            <GlassCard className="p-6 flex-1 border-white/10 shadow-lg bg-black/40 backdrop-blur-xl rounded-3xl" variant="strong">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 rounded-2xl border border-cyan-500/30">
-                  <Receipt className="text-cyan-400" size={24} />
+          {/* Column 1: Today's Mandi Rates */}
+          <div className="flex flex-col h-full">
+            <GlassCard className="p-8 flex-1 border-[#87A96B]/20 shadow-2xl bg-black/40 backdrop-blur-3xl rounded-[2rem] overflow-hidden flex flex-col" variant="strong">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="p-4 bg-gradient-to-br from-[#87A96B]/20 to-[#87A96B]/5 rounded-2xl border border-[#87A96B]/30 shadow-inner">
+                  <TrendingUp className="text-[#87A96B]" size={28} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white/90">Recent Ledger</h2>
-                  <p className="text-xs text-white/50 uppercase tracking-widest font-semibold mt-1">Automated Tracking</p>
+                  <h2 className="text-2xl font-black text-white/90 tracking-tight">Today's Mandi Rates</h2>
+                  <p className="text-xs text-[#87A96B] uppercase tracking-[0.2em] font-black mt-1">Mandi Bhav</p>
                 </div>
               </div>
 
-              <div className="space-y-3 overflow-y-auto max-h-[400px] custom-scrollbar pr-2">
-                {ledger.map(item => (
-                  <div key={item.id} className="flex items-center justify-between bg-white/5 border border-white/10 p-3 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className={cn("p-2 rounded-lg", item.type === 'income' ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400")}>
-                        {item.type === 'income' ? <TrendingUp size={16}/> : <TrendingDown size={16}/>}
-                      </div>
-                      <div>
-                        <div className="text-sm font-bold text-white truncate max-w-[120px]">{item.category}</div>
-                        <div className="text-[10px] text-white/50">{new Date(item.date).toLocaleDateString()}</div>
-                      </div>
-                    </div>
-                    <div className={cn("font-bold", item.type === 'income' ? "text-emerald-400" : "text-red-400")}>
-                      {item.type === 'income' ? '+' : '-'}₹{item.amount}
-                    </div>
-                  </div>
-                ))}
-                {ledger.length === 0 && <div className="text-white/40 text-sm text-center py-4">No transactions yet.</div>}
+              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                <table className="w-full text-left border-separate border-spacing-y-3">
+                  <thead>
+                    <tr className="text-[10px] font-black uppercase tracking-widest text-white/30 px-4">
+                      <th className="pb-2 pl-4">Crop</th>
+                      <th className="pb-2">Market</th>
+                      <th className="pb-2">Price (Qtl)</th>
+                      <th className="pb-2 text-right pr-4">Trend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mandiRates.map((mandi) => (
+                      <tr key={mandi.id} className="group">
+                        <td className="py-4 pl-4 bg-white/5 border-y border-l border-white/10 rounded-l-2xl group-hover:bg-white/10 transition-colors">
+                          <div className="font-bold text-white">{mandi.crop}</div>
+                        </td>
+                        <td className="py-4 bg-white/5 border-y border-white/10 group-hover:bg-white/10 transition-colors">
+                          <div className="text-sm text-white/60">{mandi.market}</div>
+                        </td>
+                        <td className="py-4 bg-white/5 border-y border-white/10 group-hover:bg-white/10 transition-colors">
+                          <div className="font-black text-white">₹{mandi.price.toLocaleString()}</div>
+                        </td>
+                        <td className="py-4 pr-4 bg-white/5 border-y border-r border-white/10 rounded-r-2xl group-hover:bg-white/10 transition-colors text-right">
+                          {mandi.trend === 'up' ? (
+                            <div className="flex items-center justify-end gap-1 text-[#87A96B]">
+                              <TrendingUp size={16} /> <span className="text-[10px] font-bold">UP</span>
+                            </div>
+                          ) : mandi.trend === 'down' ? (
+                            <div className="flex items-center justify-end gap-1 text-red-400">
+                              <TrendingDown size={16} /> <span className="text-[10px] font-bold">DOWN</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-end gap-1 text-yellow-400">
+                              <RefreshCw size={14} className="animate-spin-slow" /> <span className="text-[10px] font-bold">STABLE</span>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </GlassCard>
-            
           </div>
 
-          {/* Column 2: Live Mandi & Automated Shopping List */}
-          <div className="flex flex-col gap-6">
-
-            {/* Live Mandi Tracker with Purchase Links */}
-            <GlassCard className="p-6 border-white/10 shadow-lg bg-black/40 backdrop-blur-xl rounded-3xl" variant="strong">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 rounded-2xl border border-emerald-500/30">
-                  <TrendingUp className="text-emerald-400" size={24} />
+          {/* Column 2: Bazaar List */}
+          <div className="flex flex-col h-full">
+            <GlassCard className="p-8 flex-1 border-purple-500/20 shadow-2xl bg-black/40 backdrop-blur-3xl rounded-[2rem] flex flex-col" variant="strong">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="p-4 bg-gradient-to-br from-purple-500/20 to-purple-500/5 rounded-2xl border border-purple-500/30 shadow-inner">
+                  <ShoppingCart className="text-purple-400" size={28} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white/90">Live Mandi Tracker</h2>
-                  <p className="text-xs text-white/50 uppercase tracking-widest font-semibold mt-1">Wholesale Rates</p>
+                  <h2 className="text-2xl font-black text-white/90 tracking-tight">Bazaar List</h2>
+                  <p className="text-xs text-purple-400 uppercase tracking-[0.2em] font-black mt-1">Recommended for You</p>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                {mandiPrices.map(mandi => (
-                  <div key={mandi.id} className="bg-white/5 border border-white/10 p-4 rounded-xl flex flex-col gap-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="font-bold text-white text-lg">{mandi.crop}</div>
-                        <div className="text-xs text-white/50">{mandi.market}</div>
+              <div className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2">
+                {bazaarItems.map((item, idx) => (
+                  <div key={idx} className="group relative overflow-hidden p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-500/30 transition-all duration-300">
+                    <div className="flex justify-between items-start relative z-10">
+                      <div className="flex flex-col gap-1">
+                        <div className="text-lg font-black text-white group-hover:text-purple-400 transition-colors">{item.name}</div>
+                        <div className="text-xs text-white/40 font-bold uppercase tracking-widest">{item.brand}</div>
+                        <p className="text-xs text-white/60 mt-2 italic">{item.desc}</p>
                       </div>
                       <div className="text-right">
-                        <div className="font-black text-xl text-emerald-400">₹{mandi.price_per_qtl}</div>
-                        <div className="text-[10px] text-white/40 uppercase">per quintal</div>
+                        <div className="text-xl font-black text-white">{item.price}</div>
+                        <div className="text-[10px] text-white/40 uppercase mt-1">Market Price</div>
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2 text-xs font-semibold bg-black/20 p-2 rounded-lg">
-                      {mandi.trend === 'up' && <TrendingUp size={14} className="text-emerald-400"/>}
-                      {mandi.trend === 'down' && <TrendingDown size={14} className="text-red-400"/>}
-                      {mandi.trend === 'stable' && <ArrowRightCircle size={14} className="text-yellow-400"/>}
-                      <span className="text-white/60 uppercase">Trend: {mandi.trend} • Arrivals: {mandi.arrival_tons}t</span>
-                    </div>
-                    
-                    <div className="flex gap-2 mt-1">
-                      <button 
-                        onClick={() => addTransaction('income', mandi.price_per_qtl * 10, 'Mandi Tracker', `Sold ${mandi.crop}`)}
-                        className="flex-1 bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-300 px-3 py-2 rounded-lg text-xs font-bold transition-colors"
-                      >
-                        Record Sale
-                      </button>
-                      <a 
-                        href={generateShoppingUrl(`${mandi.crop} Seeds Fertilizer`)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex-1 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
-                        title={`Buy suggested inputs for ${mandi.crop}`}
-                      >
-                        Inputs <ExternalLink size={14} />
-                      </a>
-                    </div>
+                    <a 
+                      href={generateShoppingUrl(item.name)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-6 w-full bg-[#87A96B] hover:bg-[#9dbf83] text-white py-4 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 shadow-[0_10px_20px_-5px_rgba(135,169,107,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(135,169,107,0.5)] active:scale-95"
+                    >
+                      <ShoppingCart size={18} /> BUY NOW
+                    </a>
                   </div>
                 ))}
               </div>
             </GlassCard>
-
-            {/* Automated Shopping List with Direct Checkout */}
-            <GlassCard className="p-6 flex-1 border-white/10 shadow-lg bg-black/40 backdrop-blur-xl rounded-3xl" variant="strong">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 bg-gradient-to-br from-purple-500/20 to-purple-500/5 rounded-2xl border border-purple-500/30">
-                  <ShoppingCart className="text-purple-400" size={24} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white/90">Automated Shopping List</h2>
-                  <p className="text-xs text-white/50 uppercase tracking-widest font-semibold mt-1">Data-Driven Inputs</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {getFertilizerNeeds().map((item, idx) => (
-                  <div key={idx} className="flex flex-col bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-                    <div className="p-4 border-b border-white/10 flex items-center justify-between bg-black/20">
-                      <div>
-                        <div className="font-bold text-lg text-white flex items-center gap-2">
-                          <Beaker size={18} className="text-purple-400"/> {item.name}
-                        </div>
-                        <div className="text-sm text-white/60 mt-1">Deficiency: <span className="text-purple-300 font-semibold">{item.type}</span> • Est. ₹{item.cost * item.qty}</div>
-                      </div>
-                      <div className="text-sm font-bold bg-purple-500/20 text-purple-300 px-3 py-1.5 rounded-full">
-                        Qty: {item.qty}
-                      </div>
-                    </div>
-                    
-                    {/* Price Comparison & Buy Now Section */}
-                    <div className="p-4 flex flex-col gap-3">
-                      <div className="text-xs font-bold text-white/50 uppercase tracking-wider">Price Comparison & Buy Now</div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <a 
-                          href={`https://www.bighaat.com/search?q=${encodeURIComponent(item.name)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="bg-[#00A651]/20 hover:bg-[#00A651]/40 border border-[#00A651]/30 text-[#00A651] px-4 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2"
-                        >
-                          <ShoppingCart size={18} /> View on BigHaat
-                        </a>
-                        <a 
-                          href={`https://www.iffco.in/en/search?search_query=${encodeURIComponent(item.name)}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="bg-[#E4002B]/20 hover:bg-[#E4002B]/40 border border-[#E4002B]/30 text-[#E4002B] px-4 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2"
-                        >
-                          <ShoppingCart size={18} /> View on IFFCO
-                        </a>
-                      </div>
-                      
-                      <button 
-                        onClick={() => addTransaction('expense', item.cost * item.qty, 'Shopping List', item.name)}
-                        className="mt-1 w-full bg-white/10 hover:bg-white/20 text-white px-4 py-3 rounded-xl text-sm font-bold transition-colors text-center"
-                      >
-                        Log Expense
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </GlassCard>
-
           </div>
 
         </div>

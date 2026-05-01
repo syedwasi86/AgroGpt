@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../core/auth/supabaseClient'
-import { CloudRain, Sun, Sprout, CheckCircle2, Calendar, FlaskConical, Target, CloudLightning, RefreshCw, AlertCircle } from 'lucide-react'
+import { CloudRain, Sun, Sprout, CheckCircle2, Calendar, FlaskConical, Target, CloudLightning, RefreshCw, AlertCircle, Leaf, Wheat, Scissors, User } from 'lucide-react'
 import { GlassCard } from '../../components/GlassCard'
 import { cn } from '../../core/utils/cn'
+import { getUserLocation } from '../../core/utils/geolocation'
+import { fetchDailyWeather, type DailyWeatherData } from '../gis/services/weatherService'
 
 interface Task {
   id: number
@@ -38,18 +40,126 @@ interface CropRequirement {
   max_k: number
 }
 
-interface Weather {
-  time: string[]
-  precipitation_sum: number[]
-  temperature_2m_max: number[]
-  temperature_2m_min: number[]
+function LifecycleProgressBar() {
+  const totalDays = 120
+  const currentDay = 45
+  const remainingDays = totalDays - currentDay
+  const progress = (currentDay / totalDays) * 100
+
+  const milestones = [
+    { label: 'Seed', day: 0, icon: <Sprout size={18} />, pos: 0, active: true },
+    { label: 'Vegetative', day: 45, icon: <Leaf size={18} />, pos: (45 / 120) * 100, active: true },
+    { label: 'Reproductive', day: 60, icon: <Sprout size={18} />, pos: (60 / 120) * 100, active: false },
+    { label: 'Panicle Initiation', day: 85, icon: <Wheat size={18} />, pos: (85 / 120) * 100, active: false },
+    { label: 'HARVEST', day: 120, icon: <Scissors size={18} />, pos: 100, active: false },
+  ]
+
+  return (
+    <div className="w-full mb-12">
+      <GlassCard className="p-10 border-white/5 bg-[#121412]/80 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]" variant="strong">
+        <div className="flex justify-between items-center mb-10">
+          <h2 className="text-2xl font-black text-[#A3B899] tracking-widest uppercase">RICE LIFE CYCLE</h2>
+          <div className="text-xs font-bold text-white/40 tracking-[0.2em] uppercase">
+            REMAINING DAYS: <span className="text-white ml-1 font-black">{remainingDays}</span>
+          </div>
+        </div>
+
+        <div className="relative pt-12 pb-14">
+          {/* Walking Farmer Icon */}
+          <div 
+            className="absolute top-0 transition-all duration-1000 ease-out z-40"
+            style={{ left: `${progress}%`, transform: 'translateX(-50%)' }}
+          >
+            <div className="flex flex-col items-center">
+              <User size={32} className="text-white/90 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
+              <div className="w-px h-10 bg-gradient-to-b from-white/20 to-transparent mt-1" />
+            </div>
+          </div>
+
+          {/* Main Track */}
+          <div className="h-14 w-full bg-[#242824] rounded-full border border-white/5 relative flex items-center p-1 overflow-hidden">
+            {/* Green Progress Fill */}
+            <div 
+              className="h-full bg-gradient-to-r from-[#6A8E5C] to-[#87A96B] rounded-full relative transition-all duration-1000 ease-out shadow-[0_0_30px_rgba(135,169,107,0.4)]"
+              style={{ width: `${progress}%` }}
+            />
+            
+            {/* Milestone Circles inside the bar */}
+            <div className="absolute inset-0 w-full flex items-center justify-between px-2">
+              {milestones.map((m, idx) => (
+                <div 
+                  key={idx}
+                  className="absolute"
+                  style={{ left: `${m.pos}%`, transform: 'translateX(-50%)' }}
+                >
+                  <div className={cn(
+                    "w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-500",
+                    m.active 
+                      ? "bg-[#87A96B] border-white/40 text-white shadow-[0_0_20px_rgba(135,169,107,0.6)]" 
+                      : "bg-[#323832] border-white/5 text-white/20"
+                  )}>
+                    {m.icon}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Dashed Lines and Labels Below */}
+          <div className="absolute top-[104px] w-full flex justify-between px-1">
+            {milestones.map((m, idx) => (
+              <div 
+                key={idx} 
+                className="absolute flex flex-col items-center"
+                style={{ left: `${m.pos}%`, transform: 'translateX(-50%)' }}
+              >
+                {/* Dashed vertical line */}
+                <div className="w-px h-6 border-l border-dashed border-white/20 mb-3" />
+                
+                {/* Labels */}
+                <div className="text-center whitespace-nowrap">
+                  {idx === 1 ? (
+                    <div className="flex flex-col items-center">
+                      <span className="text-[#87A96B] text-[10px] font-black uppercase tracking-widest mb-1">COMPLETED</span>
+                      <span className="text-[#87A96B] text-[10px] font-black uppercase tracking-widest">(Vegetative)</span>
+                      <span className="text-[#87A96B] text-xs font-black mt-2">Day 45</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <span className={cn(
+                        "text-[10px] font-black uppercase tracking-widest",
+                        m.active ? "text-white/60" : "text-white/20",
+                        idx === 4 && "text-[#A67B5B]" // Harvest color
+                      )}>
+                        {m.label}
+                      </span>
+                      <span className={cn(
+                        "text-[10px] font-black mt-1",
+                        m.active ? "text-white/40" : "text-white/10",
+                        idx === 4 && "text-[#A67B5B]/50"
+                      )}>
+                        (Day {m.day})
+                      </span>
+                    </div>
+                  )}
+                  {idx === 0 && (
+                    <span className="text-white/40 text-[10px] font-black mt-2 block italic">Day 0</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </GlassCard>
+    </div>
+  )
 }
 
 export function PrecisionPlanningPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [cycle, setCycle] = useState<CropCycle | null>(null)
   const [soil, setSoil] = useState<SoilReport | null>(null)
-  const [weather, setWeather] = useState<Weather | null>(null)
+  const [weather, setWeather] = useState<DailyWeatherData | null>(null)
   const [loading, setLoading] = useState(true)
   const [recommendedCrop, setRecommendedCrop] = useState<string | null>(null)
   const [weatherAlert, setWeatherAlert] = useState<string | null>(null)
@@ -58,7 +168,8 @@ export function PrecisionPlanningPage() {
     const fetchData = async () => {
       setLoading(true)
       try {
-        const weatherPromise = fetch(`https://api.open-meteo.com/v1/forecast?latitude=28.6139&longitude=77.2090&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=auto`).then(res => res.json())
+        const coords = await getUserLocation()
+        const weatherPromise = fetchDailyWeather(coords.latitude, coords.longitude)
         const soilPromise = supabase.from('soil_reports').select('*').order('report_date', { ascending: false }).limit(1).single()
         const reqPromise = supabase.from('crop_requirements').select('*')
         
@@ -85,15 +196,15 @@ export function PrecisionPlanningPage() {
 
         if (soilRes.data) setSoil(soilRes.data)
         
-        if (weatherData && weatherData.daily) {
-          setWeather(weatherData.daily)
+        if (weatherData) {
+          setWeather(weatherData)
         }
         
         const reqData = reqRes.data
 
         // Run Adaptive Logic
-        if (weatherData.daily && fetchedTasks.length > 0) {
-          await runAdaptiveRoutine(weatherData.daily, fetchedTasks)
+        if (weatherData && fetchedTasks.length > 0) {
+          await runAdaptiveRoutine(weatherData, fetchedTasks)
         }
 
         // Run Succession Logic
@@ -111,7 +222,7 @@ export function PrecisionPlanningPage() {
     fetchData()
   }, [])
 
-  const runAdaptiveRoutine = async (dailyWeather: Weather, currentTasks: Task[]) => {
+  const runAdaptiveRoutine = async (dailyWeather: DailyWeatherData, currentTasks: Task[]) => {
     let tasksUpdated = false
     const newTasks = [...currentTasks]
     const todayStr = new Date().toISOString().split('T')[0]
@@ -171,7 +282,7 @@ export function PrecisionPlanningPage() {
             <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#87A96B] to-[#A67B5B]">
               Crop Calendar
             </h1>
-            <p className="text-white/60 mt-2 font-medium">Real-time adaptive routine & succession planner</p>
+            <p className="text-white/60 mt-2 font-medium">Your personalized daily farming guide</p>
           </div>
           {weatherAlert && (
             <div className="flex items-center gap-2 bg-red-500/20 text-red-300 border border-red-500/50 px-4 py-2 rounded-2xl animate-pulse">
@@ -180,6 +291,9 @@ export function PrecisionPlanningPage() {
             </div>
           )}
         </div>
+        
+        {/* Life-Cycle Progress Bar */}
+        <LifecycleProgressBar />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
           
@@ -193,8 +307,8 @@ export function PrecisionPlanningPage() {
                   <Sprout className="text-[#87A96B]" size={24} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white/90">Active Cycle</h2>
-                  <p className="text-xs text-white/50 uppercase tracking-widest font-semibold mt-1">Status Overview</p>
+                  <h2 className="text-2xl font-bold text-white/90">Current Crop</h2>
+                  <p className="text-sm text-white/50 font-semibold mt-1">Crop Info</p>
                 </div>
               </div>
               
@@ -221,8 +335,8 @@ export function PrecisionPlanningPage() {
                   <CloudLightning className="text-[#3b82f6]" size={24} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white/90">Local Forecast</h2>
-                  <p className="text-xs text-white/50 uppercase tracking-widest font-semibold mt-1">Open-Meteo API</p>
+                  <h2 className="text-2xl font-bold text-white/90">Weather</h2>
+                  <p className="text-sm text-white/50 font-semibold mt-1">Live Weather</p>
                 </div>
               </div>
 
@@ -266,8 +380,8 @@ export function PrecisionPlanningPage() {
                 <Target className="text-purple-400" size={24} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white/90">Adaptive Routine</h2>
-                <p className="text-xs text-white/50 uppercase tracking-widest font-semibold mt-1">Smart Task Engine</p>
+                <h2 className="text-2xl font-bold text-white/90">Today’s Work</h2>
+                <p className="text-sm text-white/50 font-semibold mt-1">Daily Guide</p>
               </div>
             </div>
 
@@ -322,8 +436,8 @@ export function PrecisionPlanningPage() {
                 <FlaskConical className="text-[#A67B5B]" size={24} />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-white/90">Succession Planner</h2>
-                <p className="text-xs text-white/50 uppercase tracking-widest font-semibold mt-1">Soil Intelligence</p>
+                <h2 className="text-2xl font-bold text-white/90">Next Best Crop</h2>
+                <p className="text-sm text-white/50 font-semibold mt-1">Soil Health</p>
               </div>
             </div>
 

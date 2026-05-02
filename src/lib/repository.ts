@@ -17,7 +17,7 @@ export function initDatabase(): Promise<void> {
 async function seedDefaultsIfEmpty(): Promise<void> {
 
   const actualCropCount = await db.crops.count()
-  
+
   if (actualCropCount === 0) {
     const now = new Date().toISOString()
     await db.crops.add({
@@ -91,7 +91,7 @@ export async function getTransactions(): Promise<TransactionRecord[]> {
 
 export async function deleteTransaction(id: string): Promise<void> {
   await initDatabase()
-  await db.transactions.update(id, { 
+  await db.transactions.update(id, {
     deleted_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
   })
@@ -260,7 +260,7 @@ export async function getPendingAiQueries(): Promise<AiQueryRecord[]> {
     .where('status')
     .equals('pending')
     .toArray()
-    
+
   return queries
     .filter(q => !q.deleted_at)
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
@@ -273,17 +273,17 @@ export async function getPendingAiQueryCount(): Promise<number> {
 
 export async function markAiQueryProcessing(id: string): Promise<void> {
   await initDatabase()
-  await db.ai_queries.update(id, { 
-    status: 'processing', 
-    updated_at: new Date().toISOString() 
+  await db.ai_queries.update(id, {
+    status: 'processing',
+    updated_at: new Date().toISOString()
   })
 }
 
 export async function markAiQueryAnswered(id: string, answer: string): Promise<void> {
   await initDatabase()
-  await db.ai_queries.update(id, { 
-    status: 'completed', 
+  await db.ai_queries.update(id, {
+    status: 'completed',
     answer,
-    updated_at: new Date().toISOString() 
+    updated_at: new Date().toISOString()
   })
 }

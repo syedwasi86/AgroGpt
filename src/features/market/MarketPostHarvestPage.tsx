@@ -1,133 +1,186 @@
-import { useMemo } from 'react'
+import { useEffect, useState } from 'react'
+import { supabase } from '../../core/auth/supabaseClient'
+import { Banknote, ShoppingCart, TrendingUp, TrendingDown, RefreshCw, Beaker, Receipt, ArrowRightCircle, ExternalLink, Loader2 } from 'lucide-react'
 import { GlassCard } from '../../components/GlassCard'
-import { ArrowRight, BadgeCheck, Sprout } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { cn } from '../../core/utils/cn'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from '../../lib/db'
+import { addTransaction as repoAddTransaction } from '../../lib/repository'
 
-type Crop = {
-  name: string
-  depletion: { n: number; p: number; k: number } // rough placeholder
+interface LedgerItem {
+  id: number
+  transaction_type: string
+  amount: number
+  category: string
+  description: string
+  transaction_date: string
 }
 
-function scoreNextCrop(soil: { n: number; p: number; k: number }, candidate: Crop) {
-  // Simple “soil depletion logic” placeholder:
-  // - prefer crops that demand less of the most depleted nutrient.
-  const need = candidate.depletion
-  const penalty = (1 / (soil.n + 1)) * need.n + (1 / (soil.p + 1)) * need.p + (1 / (soil.k + 1)) * need.k
-  return 100 - penalty * 18
+interface SoilReport {
+  id: number
+  nitrogen: number
+  phosphorus: number
+  potassium: number
+}
+
+interface CropRequirement {
+  id: number
+  crop_name: string
+  min_n: number
+  max_n: number
+  min_p: number
+  max_p: number
+  min_k: number
+  max_k: number
+}
+
+interface MandiPrice {
+  id: number
+  crop: string
+  market: string
+  price_per_qtl: number
+  trend: 'up' | 'down' | 'stable'
+  arrival_tons: number
 }
 
 export function MarketPostHarvestPage() {
-  const { t } = useTranslation()
-  const soil = useMemo(() => ({ n: 48, p: 22, k: 36 }), [])
+  const mandiRates = [
+    { id: 1, crop: 'Wheat (Gehu)', market: 'Hyderabad', price: 2350, trend: 'up' },
+    { id: 2, crop: 'Rice (Chawal)', market: 'Warangal', price: 3100, trend: 'stable' },
+    { id: 3, crop: 'Cotton (Kapas)', market: 'Nizamabad', price: 7200, trend: 'down' },
+    { id: 4, crop: 'Maize (Makka)', market: 'Hyderabad', price: 1950, trend: 'up' },
+    { id: 5, crop: 'Chilli (Mirch)', market: 'Warangal', price: 18500, trend: 'up' },
+  ]
 
-  const candidates: Crop[] = useMemo(
-    () => [
-      { name: t('data.crop.greengram', 'Green gram (Moong)'), depletion: { n: 8, p: 10, k: 10 } },
-      { name: t('data.crop.sesame', 'Sesame'), depletion: { n: 10, p: 12, k: 14 } },
-      { name: t('data.crop.sorghum', 'Sorghum'), depletion: { n: 14, p: 10, k: 16 } },
-      { name: t('data.crop.sunflower', 'Sunflower'), depletion: { n: 16, p: 12, k: 18 } },
-      { name: t('data.crop.maize', 'Maize'), depletion: { n: 22, p: 18, k: 20 } },
-    ],
-    [t],
-  )
+  const bazaarItems = [
+    { name: 'Urea (IFFCO)', brand: 'IFFCO', price: '₹266.50', desc: 'Essential for growth' },
+    { name: 'DAP Fertilizer', brand: 'Paras', price: '₹1,350', desc: 'Root development' },
+    { name: 'Hybrid Tomato Seeds', brand: 'Seminis', price: '₹450', desc: 'High yield potential' },
+    { name: 'Neem Oil (Bio)', brand: 'Multiplex', price: '₹320', desc: 'Natural pest control' },
+  ]
 
-  const ranked = useMemo(
-    () =>
-      [...candidates]
-        .map((c) => ({ ...c, score: scoreNextCrop(soil, c) }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 4),
-    [candidates, soil],
-  )
+  const generateShoppingUrl = (query: string) => `https://www.bighaat.com/search?q=${encodeURIComponent(query)}`
+
+  // Removed blocking loader
 
   return (
-    <div className="space-y-6">
-      <div>
-        <div className="agro-h1">{t('market.title')}</div>
-        <p className="subtle mt-2 max-w-2xl">
-          {t('market.desc')}
-        </p>
-      </div>
+    <div className="h-[calc(100vh-80px)] overflow-y-auto px-6 pb-20 pt-6">
+      <div className="flex flex-col gap-6 h-full max-w-[1400px] mx-auto">
+        
+        {/* Header */}
+        <div>
+          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#87A96B] to-[#A3B899]">
+            Market & Mandi
+          </h1>
+          <p className="text-white/60 mt-2 font-medium italic">Check live market rates and shop for farm supplies</p>
+        </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <GlassCard className="p-6" variant="strong">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="agro-h2">{t('market.harvestQualityGrading')}</div>
-              <div className="subtle mt-1">{t('market.gradePlaceholders')}</div>
-            </div>
-            <span className="glass-chip border-stroke-2 bg-primary-700/12">
-              <BadgeCheck size={14} className="text-primary-300" /> {t('market.aiGrading')}
-            </span>
-          </div>
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            {[
-              { grade: 'A', pct: 62, tone: 'border-stroke-2 bg-primary-700/15' },
-              { grade: 'B', pct: 28, tone: 'border-white/10 bg-white/5' },
-              { grade: 'C', pct: 10, tone: 'border-stroke-3 bg-secondary/10' },
-            ].map((g) => (
-              <div key={g.grade} className={`rounded-3xl border p-4 ${g.tone}`}>
-                <div className="text-xs font-semibold text-white/70">{t('market.grade')}</div>
-                <div className="mt-1 text-3xl font-semibold text-white">{g.grade}</div>
-                <div className="mt-2 text-xs text-white/60">{g.pct}% {t('market.lots')}</div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/5">
-                  <div
-                    className="h-full bg-gradient-to-r from-white/15 to-white/5"
-                    style={{ width: `${g.pct}%` }}
-                  />
+        {/* Dense Two-Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1">
+          
+          {/* Column 1: Today's Mandi Rates */}
+          <div className="flex flex-col h-full">
+            <GlassCard className="p-8 flex-1 border-[#87A96B]/20 shadow-2xl bg-black/40 backdrop-blur-3xl rounded-[2rem] overflow-hidden flex flex-col" variant="strong">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="p-4 bg-gradient-to-br from-[#87A96B]/20 to-[#87A96B]/5 rounded-2xl border border-[#87A96B]/30 shadow-inner">
+                  <TrendingUp className="text-[#87A96B]" size={28} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-white/90 tracking-tight">Today's Mandi Rates</h2>
+                  <p className="text-xs text-[#87A96B] uppercase tracking-[0.2em] font-black mt-1">Mandi Bhav</p>
                 </div>
               </div>
-            ))}
-          </div>
 
-          <div className="mt-4 rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-white/75">
-            {t('market.upgradePath')}
-          </div>
-        </GlassCard>
-
-        <GlassCard className="p-6">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="agro-h2">{t('market.nextCrops')}</div>
-              <div className="subtle mt-1">{t('market.soilDepletionBased')}</div>
-            </div>
-            <span className="glass-chip">
-              {t('dashboard.soil')}: <span className="font-semibold text-white">N48 P22 K36</span>
-            </span>
-          </div>
-
-          <div className="mt-5 space-y-3">
-            {ranked.map((c) => (
-              <div
-                key={c.name}
-                className="flex items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/5 p-4"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <Sprout size={16} className="text-primary-300" />
-                    <div className="truncate text-sm font-semibold text-white">{c.name}</div>
-                  </div>
-                  <div className="mt-1 text-xs text-white/55">
-                    {t('market.suitabilityScore')}: <span className="font-semibold text-white/75">{Math.round(c.score)}</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
-                >
-                  {t('market.plan')} <ArrowRight size={14} />
-                </button>
+              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                <table className="w-full text-left border-separate border-spacing-y-3">
+                  <thead>
+                    <tr className="text-[10px] font-black uppercase tracking-widest text-white/30 px-4">
+                      <th className="pb-2 pl-4">Crop</th>
+                      <th className="pb-2">Market</th>
+                      <th className="pb-2">Price (Qtl)</th>
+                      <th className="pb-2 text-right pr-4">Trend</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {mandiRates.map((mandi) => (
+                      <tr key={mandi.id} className="group">
+                        <td className="py-4 pl-4 bg-white/5 border-y border-l border-white/10 rounded-l-2xl group-hover:bg-white/10 transition-colors">
+                          <div className="font-bold text-white">{mandi.crop}</div>
+                        </td>
+                        <td className="py-4 bg-white/5 border-y border-white/10 group-hover:bg-white/10 transition-colors">
+                          <div className="text-sm text-white/60">{mandi.market}</div>
+                        </td>
+                        <td className="py-4 bg-white/5 border-y border-white/10 group-hover:bg-white/10 transition-colors">
+                          <div className="font-black text-white">₹{mandi.price.toLocaleString()}</div>
+                        </td>
+                        <td className="py-4 pr-4 bg-white/5 border-y border-r border-white/10 rounded-r-2xl group-hover:bg-white/10 transition-colors text-right">
+                          {mandi.trend === 'up' ? (
+                            <div className="flex items-center justify-end gap-1 text-[#87A96B]">
+                              <TrendingUp size={16} /> <span className="text-[10px] font-bold">UP</span>
+                            </div>
+                          ) : mandi.trend === 'down' ? (
+                            <div className="flex items-center justify-end gap-1 text-red-400">
+                              <TrendingDown size={16} /> <span className="text-[10px] font-bold">DOWN</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-end gap-1 text-yellow-400">
+                              <RefreshCw size={14} className="animate-spin-slow" /> <span className="text-[10px] font-bold">STABLE</span>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))}
+            </GlassCard>
           </div>
 
-          <div className="mt-4 rounded-3xl border border-stroke-2 bg-primary-700/10 p-4 text-xs text-white/65">
-            {t('market.logicNote')}
+          {/* Column 2: Bazaar List */}
+          <div className="flex flex-col h-full">
+            <GlassCard className="p-8 flex-1 border-purple-500/20 shadow-2xl bg-black/40 backdrop-blur-3xl rounded-[2rem] flex flex-col" variant="strong">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="p-4 bg-gradient-to-br from-purple-500/20 to-purple-500/5 rounded-2xl border border-purple-500/30 shadow-inner">
+                  <ShoppingCart className="text-purple-400" size={28} />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-white/90 tracking-tight">Bazaar List</h2>
+                  <p className="text-xs text-purple-400 uppercase tracking-[0.2em] font-black mt-1">Recommended for You</p>
+                </div>
+              </div>
+
+              <div className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-2">
+                {bazaarItems.map((item, idx) => (
+                  <div key={idx} className="group relative overflow-hidden p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-500/30 transition-all duration-300">
+                    <div className="flex justify-between items-start relative z-10">
+                      <div className="flex flex-col gap-1">
+                        <div className="text-lg font-black text-white group-hover:text-purple-400 transition-colors">{item.name}</div>
+                        <div className="text-xs text-white/40 font-bold uppercase tracking-widest">{item.brand}</div>
+                        <p className="text-xs text-white/60 mt-2 italic">{item.desc}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xl font-black text-white">{item.price}</div>
+                        <div className="text-[10px] text-white/40 uppercase mt-1">Market Price</div>
+                      </div>
+                    </div>
+                    
+                    <a 
+                      href={generateShoppingUrl(item.name)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-6 w-full bg-[#87A96B] hover:bg-[#9dbf83] text-white py-4 rounded-xl text-sm font-black transition-all flex items-center justify-center gap-2 shadow-[0_10px_20px_-5px_rgba(135,169,107,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(135,169,107,0.5)] active:scale-95"
+                    >
+                      <ShoppingCart size={18} /> BUY NOW
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
           </div>
-        </GlassCard>
+
+        </div>
+
       </div>
     </div>
   )
 }
-

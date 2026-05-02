@@ -22,11 +22,11 @@ function formatLedgerDate(iso: string): string {
 export function DigitalLedgerPage() {
   const rawTransactions = useLiveQuery(() => db.transactions.orderBy('transaction_date').reverse().toArray())
   const transactions = useMemo(() => rawTransactions || [], [rawTransactions])
-  
+
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [syncMsg, setSyncMsg] = useState<{ text: string, type: 'info' | 'error' | 'success' } | null>(null)
-  
+
   // Voice State
   const [isListening, setIsListening] = useState(false)
   const [voiceError, setVoiceError] = useState<string | null>(null)
@@ -42,7 +42,7 @@ export function DigitalLedgerPage() {
 
   useEffect(() => {
     void initDatabase().then(() => setLoading(false))
-    
+
     // Cleanup recognition on unmount
     return () => {
       if (recognitionRef.current) {
@@ -65,18 +65,28 @@ export function DigitalLedgerPage() {
     if (transactions.length === 0) return []
     const now = Date.now()
     const weekMs = 7 * 24 * 60 * 60 * 1000
-    const weekBuckets: Record<number, number> = {}
-    
+    const weekBuckets: Record<number, { revenue: number, expense: number }> = {}
+
+    // Initialize buckets
+    for (let i = 0; i <= 5; i++) {
+      weekBuckets[i] = { revenue: 0, expense: 0 }
+    }
+
     transactions.forEach(row => {
       const age = now - new Date(row.transaction_date).getTime()
       const weekIdx = Math.max(0, Math.min(5, Math.floor(age / weekMs)))
-      const sign = row.type === 'income' ? 1 : -1
-      weekBuckets[weekIdx] = (weekBuckets[weekIdx] ?? 0) + sign * row.amount
+
+      if (row.type === 'income') {
+        weekBuckets[weekIdx].revenue += row.amount
+      } else {
+        weekBuckets[weekIdx].expense += row.amount
+      }
     })
-    
+
     return Array.from({ length: 6 }, (_, i) => ({
       w: `W${6 - i}`,
-      profit: weekBuckets[5 - i] ?? 0,
+      revenue: weekBuckets[5 - i].revenue,
+      expense: weekBuckets[5 - i].expense,
     }))
   }, [transactions])
 
@@ -102,7 +112,7 @@ export function DigitalLedgerPage() {
         type,
         transaction_date: new Date(transactionDate).toISOString()
       })
-      
+
       // Reset form
       setAmount('')
       setCategory('')
@@ -135,7 +145,7 @@ export function DigitalLedgerPage() {
   const startVoiceCapture = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    
+
     if (!SpeechRecognition) {
       setVoiceError('Voice recognition not supported in this browser.')
       return
@@ -149,14 +159,14 @@ export function DigitalLedgerPage() {
     setVoiceError(null)
     const recognition = new SpeechRecognition()
     recognitionRef.current = recognition
-    
+
     recognition.lang = 'en-US'
     recognition.interimResults = false
     recognition.maxAlternatives = 1
 
     recognition.onstart = () => setIsListening(true)
     recognition.onend = () => setIsListening(false)
-    
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onerror = (event: any) => {
       console.error('Speech Recognition Error:', event.error)
@@ -180,7 +190,7 @@ export function DigitalLedgerPage() {
       // Intent extraction
       const isIncome = /(earned|received|income|plus|add|credit|got)/i.test(transcript)
       const isExpense = /(spent|paid|expense|minus|debit|gave|lost|on)/i.test(transcript)
-      
+
       if (isIncome && !isExpense) setType('income')
       if (isExpense) setType('expense')
 
@@ -188,7 +198,7 @@ export function DigitalLedgerPage() {
       const prepositions = ['on', 'for', 'from', 'at', 'to']
       const words = transcript.split(' ')
       let categoryFound = ''
-      
+
       for (const prep of prepositions) {
         const idx = words.indexOf(prep)
         if (idx !== -1 && idx < words.length - 1) {
@@ -220,20 +230,20 @@ export function DigitalLedgerPage() {
     try {
       const { synced, failed } = await syncData()
       if (failed > 0) {
-        setSyncMsg({ 
-          text: `Sync partially completed. ${synced} synced, ${failed} failed.`, 
-          type: 'info' 
+        setSyncMsg({
+          text: `Sync partially completed. ${synced} synced, ${failed} failed.`,
+          type: 'info'
         })
       } else {
-        setSyncMsg({ 
-          text: `All transactions synced successfully (${synced} records).`, 
-          type: 'success' 
+        setSyncMsg({
+          text: `All transactions synced successfully (${synced} records).`,
+          type: 'success'
         })
       }
     } catch (e) {
-      setSyncMsg({ 
-        text: e instanceof Error ? e.message : 'Global sync failed. Check network.', 
-        type: 'error' 
+      setSyncMsg({
+        text: e instanceof Error ? e.message : 'Global sync failed. Check network.',
+        type: 'error'
       })
     } finally {
       setSyncing(false)
@@ -266,8 +276,8 @@ export function DigitalLedgerPage() {
         <div className={cn(
           "flex items-center gap-3 rounded-2xl px-5 py-3 border animate-in slide-in-from-top-2",
           syncMsg.type === 'success' ? "bg-green-500/10 border-green-500/20 text-green-400" :
-          syncMsg.type === 'error' ? "bg-red-500/10 border-red-500/20 text-red-400" :
-          "bg-blue-500/10 border-blue-500/20 text-blue-400"
+            syncMsg.type === 'error' ? "bg-red-500/10 border-red-500/20 text-red-400" :
+              "bg-blue-500/10 border-blue-500/20 text-blue-400"
         )}>
           <AlertCircle size={18} />
           <span className="text-sm font-medium">{syncMsg.text}</span>
@@ -402,7 +412,7 @@ export function DigitalLedgerPage() {
             <div className="p-6 border-b border-white/5">
               <h2 className="agro-h2">Recent Transactions</h2>
             </div>
-            
+
             <div className="max-h-[600px] overflow-y-auto">
               {loading ? (
                 <div className="p-6 space-y-4">
@@ -440,7 +450,7 @@ export function DigitalLedgerPage() {
                           {e.type === 'income' ? '+' : '-'}{inr(e.amount)}
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button 
+                          <button
                             onClick={() => e.id && void handleDelete(e.id)}
                             className="p-2 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                           >
@@ -470,7 +480,8 @@ export function DigitalLedgerPage() {
                     itemStyle={{ color: '#fff', fontSize: '12px' }}
                     cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 2 }}
                   />
-                  <Line type="monotone" dataKey="profit" stroke="#2E7D32" strokeWidth={3} dot={{ fill: '#2E7D32', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                  <Line type="monotone" dataKey="revenue" name="Income" stroke="#4ade80" strokeWidth={3} dot={{ fill: '#4ade80', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                  <Line type="monotone" dataKey="expense" name="Expense" stroke="#f87171" strokeWidth={3} dot={{ fill: '#f87171', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

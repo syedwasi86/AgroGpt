@@ -5,11 +5,11 @@ type Dict = Record<string, string>
 
 const en: Dict = {
   'app.tagline': 'AI Agriculture OS',
-  'nav.dashboard': 'Dashboard',
+  'nav.dashboard': 'My Farm',
   'nav.fieldVision': 'Field Vision',
-  'nav.precisionPlanning': 'Precision Planning',
-  'nav.digitalLedger': 'Digital Ledger',
-  'nav.market': 'Market & Post-Harvest',
+  'nav.precisionPlanning': 'Crop Calendar',
+  'nav.digitalLedger': 'Digital Khata',
+  'nav.market': 'Market & Mandi',
   'ui.menu': 'Menu',
   'ui.today': 'Today',
   'ui.tip': 'Tip',
@@ -25,9 +25,9 @@ const en: Dict = {
   'dashboard.aiSuggestion': 'AI Suggestion',
 
   'fieldVision.title': 'Field Vision',
-  'planning.title': 'Precision Planning',
-  'ledger.title': 'Digital Ledger',
-  'market.title': 'Market & Post‑Harvest',
+  'planning.title': 'Crop Calendar',
+  'ledger.title': 'Digital Khata',
+  'market.title': 'Market & Mandi',
 
   'assistant.pillTitle': 'Ask AgroGPT',
   'assistant.pillSubtitle': 'Voice / text · global assistant',

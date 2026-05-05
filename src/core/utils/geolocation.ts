@@ -58,3 +58,25 @@ export function getSoilNPK(soilType: string): { nitrogen: number, phosphorus: nu
   }
   return { nitrogen: 100, phosphorus: 50, potassium: 50 } // Red Sandy Loam or default
 }
+
+export async function getUserLocation(): Promise<{ latitude: number, longitude: number }> {
+  // Default coordinates (Hyderabad)
+  const defaultCoords = { latitude: 17.385, longitude: 78.4867 }
+  
+  if (!navigator.geolocation) return defaultCoords
+
+  const pos = await new Promise<GeolocationPosition | null>((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve(pos),
+      () => resolve(null),
+      {
+        enableHighAccuracy: false,
+        timeout: 10_000,
+        maximumAge: 60_000,
+      },
+    )
+  })
+
+  if (!pos) return defaultCoords
+  return { latitude: pos.coords.latitude, longitude: pos.coords.longitude }
+}

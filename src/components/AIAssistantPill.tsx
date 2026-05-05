@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Mic, RefreshCw, Send, Sparkles, WifiOff, X, AlertCircle, CloudOff } from 'lucide-react'
+import { Mic, RefreshCw, Send, Sparkles, WifiOff, X, CloudOff } from 'lucide-react'
 import { GlassCard } from './GlassCard'
 import { cn } from '../core/utils/cn'
-import { askAgroGPT, callGeminiAPI, localInference, GeminiError } from '../ai/provider'
-import { savePendingQuery, getPendingQueries, getPendingQueryCount, markQueryAnswered } from '../lib/repository'
+import { askAgroGPT, callGeminiAPI, localInference } from '../ai/provider'
+import { saveAiQuery, getPendingAiQueries, getPendingAiQueryCount, markAiQueryAnswered, markAiQueryProcessing } from '../lib/repository'
 import { useTranslation } from 'react-i18next'
 import { useConnectivity } from '../hooks/useConnectivity'
 
@@ -31,7 +31,7 @@ export function AIAssistantPill() {
       // 2. Instead of pinging the restricted Gemini API, 
       // ping a "Generate 204" endpoint (Standard Android/Chrome connectivity check).
       // This requires NO API key and NO specific method.
-      const res = await fetch('https://connectivitycheck.gstatic.com/generate_204', {
+      await fetch('https://connectivitycheck.gstatic.com/generate_204', {
         method: 'HEAD', 
         mode: 'no-cors',
         signal: AbortSignal.timeout(2000)
@@ -56,7 +56,7 @@ export function AIAssistantPill() {
   const handleReconnect = useCallback(async () => {
     if (isSyncModalOpenRef.current) return
     try {
-      const count = await getPendingQueryCount()
+      const count = await getPendingAiQueryCount()
       if (count > 0) {
         isSyncModalOpenRef.current = true
         setPendingCount(count)
@@ -87,22 +87,23 @@ export function AIAssistantPill() {
 
     let queued: any[] = []
     try {
-      queued = await getPendingQueries()
+      queued = await getPendingAiQueries()
     } catch (err) {
       setSyncing(false)
       return
     }
 
     for (const record of queued) {
-      const questionMsg: Message = { role: 'user', content: record.prompt }
+      const questionMsg: Message = { role: 'user', content: record.question }
       setMessages(prev => [...prev, questionMsg])
 
       try {
-        const reply = await callGeminiAPI(record.prompt)
+        if (record.id != null) await markAiQueryProcessing(record.id)
+        const reply = await callGeminiAPI(record.question)
         setMessages(prev => [...prev, { role: 'assistant', content: reply.text }])
-        if (record.id != null) await markQueryAnswered(record.id)
+        if (record.id != null) await markAiQueryAnswered(record.id, reply.text)
       } catch (err) {
-        const fallback = localInference(record.prompt)
+        const fallback = localInference(record.question)
         setMessages(prev => [...prev, { role: 'assistant', content: fallback + ' (Retry queued)' }])
       }
     }
@@ -122,7 +123,7 @@ export function AIAssistantPill() {
       if (connectivity === 'offline') {
         const offlineReply = localInference(prompt)
         setMessages(prev => [...prev, { role: 'assistant', content: offlineReply }])
-        await savePendingQuery(prompt)
+        await saveAiQuery(prompt)
         setMessages(prev => [...prev, { role: 'assistant', content: 'Saved question for later.' }])
       } else {
         try {
@@ -130,7 +131,7 @@ export function AIAssistantPill() {
           setMessages(prev => [...prev, { role: 'assistant', content: reply.text }])
         } catch (err) {
           // If it's a fetch error and we think we are online
-          if (err instanceof TypeError && connectivity !== 'offline') {
+          if (err instanceof TypeError) {
             setShaky(true)
             // Try one more time after a short delay
             await new Promise(r => setTimeout(r, 1500))
@@ -146,7 +147,7 @@ export function AIAssistantPill() {
 
           const fallback = localInference(prompt)
           setMessages(prev => [...prev, { role: 'assistant', content: fallback + ' (Queued for retry)' }])
-          await savePendingQuery(prompt)
+          await saveAiQuery(prompt)
         }
       }
     } finally {

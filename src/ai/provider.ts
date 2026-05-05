@@ -34,12 +34,14 @@ export type AIContext = {
 
 /** Thrown when the Gemini call fails so callers can keep the query queued. */
 export class GeminiError extends Error {
+  readonly status?: number
   constructor(
     message: string,
-    public readonly status?: number,
+    status?: number,
   ) {
     super(message)
     this.name = 'GeminiError'
+    this.status = status
   }
 }
 
@@ -109,27 +111,17 @@ async function fetchRAGContext(): Promise<RAGContext> {
   let phosphorus = 'N/A'
   let potassium = 'N/A'
   try {
-    const profile = await db.profiles.get(1)
+    const profile = await db.profiles.toArray().then(a => a[0])
     if (profile) {
-      soilType = profile.soilType ?? 'N/A'
+      soilType = profile.soil_type ?? 'N/A'
       nitrogen = profile.nitrogen != null ? String(profile.nitrogen) : 'N/A'
       phosphorus = profile.phosphorus != null ? String(profile.phosphorus) : 'N/A'
       potassium = profile.potassium != null ? String(profile.potassium) : 'N/A'
     }
   } catch { /* ignore */ }
 
-  // 3. Latest weather from Dexie cache (offline-first)
+  // 3. Latest weather (Offline fallback: unavailable since cache removed)
   let tempC = 'N/A'
-  try {
-    const entries = await db.weatherCache.orderBy('timestamp').reverse().first()
-    // Support both OpenWeatherMap and WeatherAPI response shapes
-    const temp =
-      entries?.data?.main?.temp ??
-      entries?.data?.current?.temp_c ??
-      entries?.data?.current?.temp ??
-      null
-    if (temp != null) tempC = String(Math.round(Number(temp)))
-  } catch { /* ignore */ }
 
   return { cropName, soilType, nitrogen, phosphorus, potassium, tempC }
 }

@@ -1,10 +1,9 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Loader2, FlaskConical } from 'lucide-react'
 import { GlassCard } from '../components/GlassCard'
 import { cn } from '../core/utils/cn'
 import { useTranslation } from 'react-i18next'
-import { supabase } from '../core/auth/supabaseClient'
 import { useAuth } from '../core/auth/AuthProvider'
 
 type AuthMode = 'google' | 'phone'
@@ -34,49 +33,53 @@ function GoogleIcon({ className }: { className?: string }) {
 
 export function Auth() {
   const { t } = useTranslation()
-  const { devLogin } = useAuth()
+  const { devLogin, signInWithGoogle, signInWithPhone, verifyOtp, busy: authBusy, user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [mode, setMode] = useState<AuthMode>('google')
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
   const [step, setStep] = useState<'phone' | 'otp'>('phone')
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (user) {
+      const from = (location.state as any)?.from?.pathname || '/dashboard'
+      navigate(from, { replace: true })
+    }
+  }, [user, navigate, location])
 
   const handleGoogleLogin = async () => {
     setError(null)
-    setBusy(true)
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google' })
+    const { error } = await signInWithGoogle()
     if (error) {
       setError(error.message)
-      setBusy(false)
     }
   }
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
-    setBusy(true)
     setError(null)
-    const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`
-    const { error } = await supabase.auth.signInWithOtp({ phone: formattedPhone })
+    const { error } = await signInWithPhone(phone)
     if (error) {
       setError(error.message)
     } else {
       setStep('otp')
     }
-    setBusy(false)
   }
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault()
-    setBusy(true)
     setError(null)
-    const formattedPhone = phone.startsWith('+') ? phone : `+91${phone}`
-    const { error } = await supabase.auth.verifyOtp({ phone: formattedPhone, token: otp, type: 'sms' })
+    const { error } = await verifyOtp(phone, otp)
     if (error) {
       setError(error.message)
+    } else {
+      // On success, the useEffect will trigger and navigate, 
+      // but we can also navigate here explicitly for immediate feedback
+      navigate('/dashboard', { replace: true })
     }
-    setBusy(false)
   }
 
   const inputClass =
@@ -139,10 +142,10 @@ export function Auth() {
               <button
                 type="button"
                 onClick={() => void handleGoogleLogin()}
-                disabled={busy}
+                disabled={authBusy}
                 className="flex w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] py-3 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/[0.1] disabled:opacity-50"
               >
-                {busy ? <Loader2 className="animate-spin" size={20} /> : <GoogleIcon className="h-5 w-5" />}
+                {authBusy ? <Loader2 className="animate-spin" size={20} /> : <GoogleIcon className="h-5 w-5" />}
                 Sign in with Google
               </button>
             </div>
@@ -165,11 +168,11 @@ export function Auth() {
                 </div>
                 <button
                   type="submit"
-                  disabled={busy}
+                  disabled={authBusy}
                   className="w-full rounded-2xl py-3 text-sm font-semibold text-white shadow-glowPrimary transition hover:opacity-95 disabled:opacity-50"
                   style={{ backgroundColor: '#2E7D32' }}
                 >
-                  {busy ? <Loader2 className="animate-spin inline-block mr-2" size={16} /> : null}
+                  {authBusy ? <Loader2 className="animate-spin inline-block mr-2" size={16} /> : null}
                   Send OTP
                 </button>
               </form>
@@ -191,11 +194,11 @@ export function Auth() {
                 </div>
                 <button
                   type="submit"
-                  disabled={busy}
+                  disabled={authBusy}
                   className="w-full rounded-2xl py-3 text-sm font-semibold text-white shadow-glowPrimary transition hover:opacity-95 disabled:opacity-50"
                   style={{ backgroundColor: '#2E7D32' }}
                 >
-                  {busy ? <Loader2 className="animate-spin inline-block mr-2" size={16} /> : null}
+                  {authBusy ? <Loader2 className="animate-spin inline-block mr-2" size={16} /> : null}
                   Verify & Sign In
                 </button>
                 <button

@@ -1,34 +1,48 @@
-import { db, type ProfileRecord, type SettingsRecord } from '@/lib/db'
+import { db, type ProfileRecord, type UserSettingsRecord } from '@/lib/db'
 
-export async function saveProfile(data: Omit<ProfileRecord, 'id' | 'sync_status'>) {
-  const existing = await db.profiles.get(1)
-  return db.profiles.put({
-    ...existing,
-    ...data,
-    id: 1,
-    sync_status: 'pending'
-  })
+export async function saveProfile(data: Partial<ProfileRecord>) {
+  const existing = await db.profiles.toArray().then(a => a[0])
+  if (existing) {
+    return db.profiles.update(existing.id, {
+      ...data,
+      updated_at: new Date().toISOString()
+    })
+  } else {
+    const now = new Date().toISOString()
+    return db.profiles.put({
+      id: crypto.randomUUID(), // Or get auth user ID if available
+      phone: '',
+      city: '',
+      soil_type: '',
+      primary_crop: '',
+      total_acreage: 0,
+      ...data,
+      created_at: now,
+      updated_at: now
+    })
+  }
 }
 
-export async function saveSettings(data: Partial<Omit<SettingsRecord, 'id' | 'sync_status'>>) {
-  const existing = await db.settings.get(1)
+export async function saveSettings(data: Partial<UserSettingsRecord>) {
+  const existing = await db.user_settings.toArray().then(a => a[0])
   if (existing) {
-    return db.settings.put({
-      ...existing,
+    return db.user_settings.update(existing.id, {
       ...data,
-      sync_status: 'pending'
+      updated_at: new Date().toISOString()
     })
   } else {
     // If not exists, use defaults
-    return db.settings.put({
+    const now = new Date().toISOString()
+    return db.user_settings.put({
+      id: crypto.randomUUID(),
       language: 'en',
-      fontSize: 'medium',
-      notificationsEnabled: false,
-      biometricEnabled: false,
-      lastSync: Date.now(),
+      font_size: 'medium',
+      notifications_enabled: false,
+      biometric_enabled: false,
+      last_sync: new Date(0).toISOString(),
       ...data,
-      id: 1,
-      sync_status: 'pending'
+      created_at: now,
+      updated_at: now
     })
   }
 }

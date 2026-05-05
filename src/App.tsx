@@ -13,6 +13,8 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { Auth } from './pages/Auth'
 import { ProfilePage } from './features/settings/ProfilePage'
 import { SettingsPage } from './features/settings/SettingsPage'
+import { useEffect } from 'react'
+import { syncData } from './core/api/syncEngine'
 
 function ProtectedShell() {
   return (
@@ -26,6 +28,19 @@ function ProtectedShell() {
 }
 
 export default function App() {
+  useEffect(() => {
+    const handleOnline = async () => {
+      try {
+        await syncData()
+      } catch (err) {
+        console.error('Auto-sync on reconnect failed:', err)
+      }
+    }
+    
+    window.addEventListener('online', handleOnline)
+    return () => window.removeEventListener('online', handleOnline)
+  }, [])
+
   return (
     <AuthProvider>
       <div className="agro-bg min-h-screen">

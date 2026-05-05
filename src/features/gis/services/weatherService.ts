@@ -32,6 +32,26 @@ export async function fetchWeather(lat: number, lon: number): Promise<WeatherDat
   }
 }
 
+export interface DailyWeatherData {
+  time: string[];
+  precipitation_sum: number[];
+  temperature_2m_max: number[];
+  temperature_2m_min: number[];
+}
+
+export async function fetchDailyWeather(lat: number, lon: number): Promise<DailyWeatherData | null> {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=auto`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Weather API failed');
+    const data = await res.json();
+    return data.daily;
+  } catch (error) {
+    console.error('Daily weather fetch failed:', error);
+    return null;
+  }
+}
+
 export function getWeatherCondition(code: number): string {
   // Simple WMO code mapping
   if (code === 0) return 'Sunny';

@@ -73,6 +73,7 @@ Contains generic, reusable UI components that are domain-agnostic.
 ### `hooks/` (Custom React Hooks)
 - **`useAuth.ts`**: A custom hook for accessing the current user's authentication context globally.
 - **`useLocalStorageState.ts`**: A custom hook that syncs a React state variable directly with browser `localStorage`.
+- **`useConnectivity.ts`**: A custom hook to detect online/offline network status and manage connectivity state.
 
 ### `assets/` (Static Assets)
 - Contains images, SVGs, and icons used in the UI, such as `hero.png`, `react.svg`, and `vite.svg`.

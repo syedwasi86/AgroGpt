@@ -51,9 +51,12 @@ export interface ScanRecord {
   id: string // UUID
   user_id?: string
   crop_id?: string | null
+  crop_type: string
   image_url: string // Base64 string for local offline preview
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  result: any
+  prediction: string
+  confidence: number
+  is_low_confidence: boolean
+  feedback?: 'yes' | 'no' | null
   scanned_at: string // ISO string
   created_at: string
   updated_at: string

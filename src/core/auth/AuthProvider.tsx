@@ -111,25 +111,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session) {
-        await syncProfile(session.user)
-        syncData(session).catch(e => console.error('Startup sync failed:', e))
+    let mounted = true;
+    console.log('[AuthProvider] Initializing session...');
+
+    async function initAuth() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        console.log('[AuthProvider] Session retrieved:', session?.user?.id || 'No session');
+        setSession(session);
+        setUser(session?.user ?? null);
+
+        if (session) {
+          console.log('[AuthProvider] Starting profile sync...');
+          // Don't await syncProfile here to prevent blocking the entire app if Supabase/Dexie is slow
+          syncProfile(session.user)
+            .catch(e => console.error('[AuthProvider] Profile sync error:', e))
+            .finally(() => {
+              if (mounted) setLoading(false);
+            });
+          
+          syncData(session).catch(e => console.error('[AuthProvider] Initial sync error:', e));
+        } else {
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('[AuthProvider] Critical auth init error:', err);
+        if (mounted) setLoading(false);
       }
-      setLoading(false)
-    })
+    }
+
+    initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
+      console.log('[AuthProvider] Auth state change:', event);
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
       
       if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-        await syncProfile(session.user)
-        syncData(session).catch(e => console.error('Auth state sync failed:', e))
+        syncProfile(session.user).catch(e => console.error('Auth state sync failed:', e));
+        syncData(session).catch(e => console.error('Auth state sync failed:', e));
       } else if (event === 'SIGNED_OUT') {
+
         try {
           await Promise.all(db.tables.map(table => table.clear()))
           localStorage.removeItem('yield_user')

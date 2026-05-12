@@ -165,8 +165,10 @@ export async function getLedgerSummary(): Promise<{
 
 export async function addScan(input: {
   image_url: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  result: any
+  crop_type: string
+  prediction: string
+  confidence: number
+  is_low_confidence: boolean
   scanned_at?: string
 }): Promise<string> {
   await initDatabase()
@@ -177,16 +179,24 @@ export async function addScan(input: {
     scanned_at: input.scanned_at ?? now,
     created_at: now,
     updated_at: now,
-    result: input.result,
+    crop_type: input.crop_type,
+    prediction: input.prediction,
+    confidence: input.confidence,
+    is_low_confidence: input.is_low_confidence,
     image_url: input.image_url,
     deleted_at: null
   })
   return id
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function saveScan(image_url: string, result: any): Promise<string> {
-  return addScan({ image_url, result })
+export async function saveScan(input: {
+  image_url: string
+  crop_type: string
+  prediction: string
+  confidence: number
+  is_low_confidence: boolean
+}): Promise<string> {
+  return addScan(input)
 }
 
 export async function getRecentScans(limit = 24): Promise<ScanRecord[]> {

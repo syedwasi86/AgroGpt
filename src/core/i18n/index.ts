@@ -564,6 +564,7 @@ i18n.use(initReactI18next).init({
   lng: defaultLng,
   fallbackLng: 'en',
   interpolation: { escapeValue: false },
+  react: { useSuspense: false }
 })
 
 i18n.on('languageChanged', (lng) => {

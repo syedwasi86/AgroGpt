@@ -18,7 +18,7 @@ export async function loadCropModel(crop: string): Promise<tf.GraphModel | tf.La
       modelCache[cropLower] = model
       return model
     } catch (e) {
-      console.error(`loadLayersModel failed for ${cropLower}:`, e)
+      // console.error(`loadLayersModel failed for ${cropLower}:`, e)
       const model = await tf.loadGraphModel(modelUrl)
       modelCache[cropLower] = model
       return model

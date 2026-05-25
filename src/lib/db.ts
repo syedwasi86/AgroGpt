@@ -57,6 +57,8 @@ export interface ScanRecord {
   confidence: number
   is_low_confidence: boolean
   feedback?: 'yes' | 'no' | null
+  ai_enhanced?: boolean
+  aiEnhanced?: boolean
   scanned_at: string // ISO string
   created_at: string
   updated_at: string

@@ -15,12 +15,12 @@ export async function runInference(crop: string, img: HTMLImageElement): Promise
     return null // model missing
   }
 
-  // Force CPU backend. WebGL often lacks support for MobileNetV3's _fusedhardswish 
-  // operation on many devices. CPU is stable and fast enough for this lightweight model.
-  await tf.setBackend('cpu')
+  // All models (MobileNetV2 and MobileNetV3) now use pure tfjs ops without _fusedhardswish.
+  // We can safely use the much faster webgl backend for everything!
+  await tf.setBackend('webgl')
   await tf.ready()
 
-  const tensor = preprocessImage(img)
+  const tensor = preprocessImage(img, crop)
   
   let prediction: tf.Tensor
   try {

@@ -11,12 +11,14 @@ export async function loadCropModel(crop: string): Promise<tf.GraphModel | tf.La
   }
 
   try {
-    const modelUrl = `${MODEL_BASE_URL}/${cropLower}/model.json`
+    const timestamp = Date.now()
+    const modelUrl = `${MODEL_BASE_URL}/${cropLower}/model.json?t=${timestamp}`
     try {
       const model = await tf.loadLayersModel(modelUrl)
       modelCache[cropLower] = model
       return model
     } catch (e) {
+      console.error(`loadLayersModel failed for ${cropLower}:`, e)
       const model = await tf.loadGraphModel(modelUrl)
       modelCache[cropLower] = model
       return model

@@ -24,9 +24,16 @@ export async function validateImage(img: HTMLImageElement): Promise<{ valid: boo
   return { valid: true }
 }
 
-export function preprocessImage(img: HTMLImageElement): tf.Tensor {
+export function preprocessImage(img: HTMLImageElement, crop?: string): tf.Tensor {
   return tf.tidy(() => {
-    const tensor = tf.browser.fromPixels(img).toFloat()
+    let tensor = tf.browser.fromPixels(img).toFloat()
+    
+    // MobileNetV2 models (Maize, Cotton, Chili, Rice, Tomato) expect inputs in [-1, 1]
+    // MobileNetV3 models (others, for now) have a Rescaling layer built into the model
+    if (crop && ['maize', 'cotton', 'chili', 'rice', 'tomato'].includes(crop.toLowerCase())) {
+      tensor = tensor.div(127.5).sub(1)
+    }
+
     const resized = tf.image.resizeBilinear(tensor, [224, 224])
     return resized.expandDims(0)
   })

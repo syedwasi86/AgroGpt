@@ -1,9 +1,9 @@
 export const CROP_DISEASES: Record<string, string[]> = {
   chili: ['healthy', 'cercospora', 'murda_complex', 'nutritional', 'powdery_mildew'],
-  cotton: ['healthy', 'bacterial_blight', 'curl_virus', 'fusarium_wilt'],
-  maize: ['healthy', 'blight', 'gray_leaf_spot', 'rust'],
-  rice: ['healthy', 'bacterial_blight', 'brown_spot', 'leaf_blast'],
-  tomato: ['healthy', 'bacterial_spot', 'early_blight', 'late_blight', 'leaf_curl']
+  cotton: ['bacterial_blight', 'curl_virus', 'fusarium_wilt', 'healthy'],
+  maize: ['blight', 'gray_leaf_spot', 'healthy', 'rust'],
+  rice: ['bacterial_blight', 'brown_spot', 'healthy', 'leaf_blast'],
+  tomato: ['tomato_bacterial_spot', 'tomato_blight', 'tomato_healthy', 'tomato_leaf_curl', 'tomato_leaf_mold', 'tomato_septoria_leaf_spot']
 }
 
 export interface DiseaseRecommendation {

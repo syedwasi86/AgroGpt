@@ -6,8 +6,8 @@ import { ProtectedRoute } from './core/auth/ProtectedRoute'
 import { PublicRoute } from './components/PublicRoute'
 import { DashboardPage } from './features/dashboard/DashboardPage'
 import { FieldVisionPage } from './features/field-vision/FieldVisionPage'
-import { PrecisionPlanningPage } from './features/precision-planning/PrecisionPlanningPage'
-import { DigitalLedgerPage } from './features/digital-ledger/DigitalLedgerPage'
+import { PrecisionPlanningPage } from './features/crop-calendar/pages/PrecisionPlanningPage'
+import { DigitalLedgerPage } from './features/digital-khata/DigitalLedgerPage'
 import { MarketPostHarvestPage } from './features/market/MarketPostHarvestPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { Auth } from './pages/Auth'
@@ -54,8 +54,8 @@ export default function App() {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/field-vision" element={<FieldVisionPage />} />
-              <Route path="/precision-planning" element={<PrecisionPlanningPage />} />
-              <Route path="/digital-ledger" element={<DigitalLedgerPage />} />
+              <Route path="/crop-calendar" element={<PrecisionPlanningPage />} />
+              <Route path="/digital-khata" element={<DigitalLedgerPage />} />
               <Route path="/market" element={<MarketPostHarvestPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/settings" element={<SettingsPage />} />

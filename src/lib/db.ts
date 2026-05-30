@@ -163,6 +163,15 @@ export interface WeatherAdjustmentRecord {
   deleted_at?: string | null
 }
 
+export interface DashboardCacheRecord {
+  key: string
+  type: 'snapshot' | 'weather' | 'ai-insights' | 'market' | 'farm-status'
+  payload: unknown
+  created_at: string
+  updated_at: string
+  expires_at?: string
+}
+
 export class AgroGPTDatabase extends Dexie {
   profiles!: Table<ProfileRecord, string>
   crops!: Table<CropRecord, string>
@@ -174,6 +183,7 @@ export class AgroGPTDatabase extends Dexie {
   crop_stages!: Table<CropStageRecord, string>
   farm_tasks!: Table<FarmTaskRecord, string>
   weather_adjustments!: Table<WeatherAdjustmentRecord, string>
+  dashboard_cache!: Table<DashboardCacheRecord, string>
 
   constructor() {
     super('AgroGPT_v2')
@@ -196,6 +206,19 @@ export class AgroGPTDatabase extends Dexie {
       crop_stages: 'id, plan_id, status, start_date, end_date, deleted_at',
       farm_tasks: 'id, plan_id, stage_id, status, task_date, task_type, deleted_at',
       weather_adjustments: 'id, plan_id, task_id, adjustment_type, deleted_at'
+    })
+    this.version(3).stores({
+      profiles: 'id',
+      crops: 'id, user_id, status, planted_date, deleted_at',
+      transactions: 'id, user_id, crop_id, type, transaction_date, deleted_at',
+      scans: 'id, user_id, crop_id, scanned_at, deleted_at',
+      ai_queries: 'id, user_id, status, deleted_at',
+      user_settings: 'id, user_id',
+      crop_plans: 'id, user_id, status, sowing_date, deleted_at',
+      crop_stages: 'id, plan_id, status, start_date, end_date, deleted_at',
+      farm_tasks: 'id, plan_id, stage_id, status, task_date, task_type, deleted_at',
+      weather_adjustments: 'id, plan_id, task_id, adjustment_type, deleted_at',
+      dashboard_cache: 'key'
     })
   }
 }

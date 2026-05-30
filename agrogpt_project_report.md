@@ -16,6 +16,7 @@
 8. [Responsiveness & Mobile UX](#8-responsiveness--mobile-ux)
 9. [Performance & Scalability](#9-performance--scalability)
 10. [Final Implementation Status](#10-final-implementation-status)
+11. [AI Farm Command Center Dashboard Report](#11-ai-farm-command-center-dashboard-report)
 
 ---
 
@@ -398,3 +399,221 @@ By isolating planning logic within databases and repositories rather than coupli
 - **Mandi Price Sync:** Connect the Market page to live APMC feeds instead of mock rates.
 - **WebAuthn Integration:** Wire biometric toggles to actual device authentication APIs.
 - **Scan History Panel:** Build a history sidebar in Field Vision to view saved records.
+
+---
+
+## 11. AI Farm Command Center Dashboard Report
+
+### 1. Feature Overview
+
+#### Purpose of the Farm Command Center
+The **AI Farm Command Center Dashboard** is designed to provide farmers with a unified, high-level operational cockpit for their cultivation cycles. In typical farming apps, users are overwhelmed by detailed list grids and spreadsheets. The AgroGPT Command Center provides instant clarity on farm status in under 10 seconds.
+
+#### Difference between Dashboard and Precision Planning
+The dashboard does **NOT** replace the detailed worksheets:
+- **The Dashboard:** Exists purely for *situational awareness*, *prioritization*, *high-priority alerts*, and *navigation* into deeper subsystems. It answers the fundamental daily operational questions: "What is happening now?", "What needs immediate action?", and "What tools should I use next?"
+- **Precision Planning:** Remains the dedicated workspace containing complete crop lifecycle calendars, task rescheduling engines, detailed milestones list, and manual task updates.
+
+---
+
+### 2. Dashboard Architecture
+
+#### Repository Aggregation Layer (`dashboardRepository.ts`)
+The dashboard retrieves data through a centralized repository to prevent database query bloat. Rather than having individual components trigger independent Dexie and weather calls, the repository compiles everything into a single, cohesive **`DashboardSnapshot`** DTO (Data Transfer Object).
+
+#### Separation of Concerns
+1. **Database Layer (Dexie.js / Supabase):** Handles raw profile, plan, task, transaction, and scan records.
+2. **Repository Layer (`dashboardRepository.ts`):** Fetches, filters, calculates readiness, constructs the feed, orchestrates AI requests, and saves/retrieves cache records.
+3. **UI Presentational Layer (`DashboardPage.tsx`):** Consumes the unified DTO and styles it using Vercel/Linear visuals.
+
+#### Offline-First Data Flow Diagram
+
+```
+                                 +─────────────────────────+
+                                 |    DashboardPage.tsx    |
+                                 +────────────┬────────────+
+                                              │
+                                              ▼ (Consumes DashboardSnapshot DTO)
+                                 +─────────────────────────+
+                                 |  dashboardRepository.ts |
+                                 +────────────┬────────────+
+                                              │
+                    ┌─────────────────────────┼─────────────────────────┐
+                    ▼                         ▼                         ▼
+        +─────────────────────────+  +───────────────────+   +────────────────────+
+        |  Dexie.js (IndexedDB)   |  |  Weather Service  |   | AI Orchestrator    |
+        |  (Profiles, Crops,      |  |  (Open-Meteo)     |   | (Batched Gemini    |
+        |   Tasks, Scans, Tx)     |  +───────────────────+   |  2.5 Flash Call)   |
+        +─────────────────────────+                          +──────────┬─────────+
+                                                                        │
+                                                                        ▼ (Local cache fallbacks)
+                                                             +────────────────────+
+                                                             |  Local Agronomy    |
+                                                             |   Heuristics       |
+                                                             +────────────────────+
+```
+
+---
+
+### 3. Offline-First Dashboard System
+
+#### Dexie Cache Migration (Database Version 3)
+To support robust offline operations, the database configuration in `src/lib/db.ts` was upgraded to Version 3 to declare the `dashboard_cache` table:
+```ts
+export interface DashboardCacheRecord {
+  key: string;
+  type: 'snapshot' | 'weather' | 'ai-insights' | 'market' | 'farm-status';
+  payload: unknown;
+  created_at: string;
+  updated_at: string;
+  expires_at?: string;
+}
+```
+
+#### Cache Freshness & Expiration Logic
+- **Weather Cache:** Expires exactly 1 hour from creation.
+- **Snapshot DTO Cache:** Expires 15 minutes from creation.
+- **AI Insights Cache:** Event-driven invalidation. It stores a status fingerprint representing active crop stage, temperature, humidity, rain status, scan ID, and task count. It only updates if these parameters change significantly.
+
+#### Event-Driven Invalidation (Fingerprinting)
+To ensure the dashboard displays updated values immediately when a user makes edits in other tabs, the snapshot cache performs fingerprint comparison before returning:
+```ts
+const fingerprint = {
+  activePlanId: activePlan?.id || 'none',
+  plansCount,
+  taskCount,
+  completedCount,
+  scansCount,
+  txCount
+};
+```
+If a user adds a crop, checks a task, or uploads a leaf scan, the fingerprint fails to match, prompting an instant re-aggregation of snapshot data and bypassing the cached entry.
+
+#### Offline Fallback Behaviors
+- **Weather:** If offline, queries the last cached forecast under `weather` in Dexie cache, falling back to static Hyderabad parameters.
+- **AI Insights:** If offline or the API key is missing, invokes local rules that map current growth stage and weather adjustments into styled daily advice, storing it in the cache under `ai-insights`.
+
+---
+
+### 4. Farm Readiness Engine
+
+The primary dashboard KPI is the **Farm Readiness Score (0-100)**, which gauges overall crop safety and operational efficiency:
+
+$$\text{Readiness Score} = \text{Tasks (25\%)} + \text{Soil (20\%)} + \text{Irrigation (20\%)} + \text{Pest (15\%)} + \text{Weather (10\%)} + \text{Progress (10\%)}$$
+
+#### Metric Weighting Models
+1. **Task Status (25%):** Percentage of completed tasks with effective date <= today.
+2. **Soil Health (20%):** Measures presence of nitrogen, phosphorus, and potassium in user profiles relative to soil type standard baselines.
+3. **Irrigation Readiness (20%):** Ratio of completed irrigation tasks. Deducts points for unresolved weather adjustment delays.
+4. **Pest Risk (15%):** Starts at 15 points. Deducts points for positive leaf disease detections in recent scans and high risk weather codes.
+5. **Weather Risk (10%):** Assesses forecast risks (deducts 6 points for heavy rain/storms, 4 points for heat stress >38°C).
+6. **Crop Progress Health (10%):** Evaluates if the stage timeline matches sowing date (stagnation warning) and counts overdue high-priority tasks.
+
+#### Readiness Categories
+- **Excellent (90-100):** High task completion, balanced soil profile, no active pest risks.
+- **Good (70-89):** Normal operational state. Minor pending tasks.
+- **Attention Needed (50-69):** Overdue tasks or favorable weather disease risks detected.
+- **Critical (<50):** Highly delayed operations, severe diagnosed crop infection, or extreme storms.
+
+---
+
+### 5. AI Orchestration Layer
+
+#### Single Gemini Request Strategy
+Calling Gemini API on every dashboard element or chip is extremely expensive and causes lag. AgroGPT batches all dashboard AI prompts into a **single orchestrated request** to the Gemini 2.5 Flash model:
+- The system prompt compiles the complete snapshot status.
+- Gemini returns a single unified JSON payload containing the `dailyInsight` and the answers to the 4 quick prompt chips.
+- The 4 quick prompts (*What should I do today?*, *Water requirement?*, *Pest risk?*, *Fertilizer advice?*) simply reveal these cached answers instantly without making new network requests.
+
+#### Deterministic Offline Advisory
+When offline, a rules engine maps templates into structured guides:
+- **Cotton Squaring Stage:** Warns of thrips vector risks, recommends installing yellow sticky cards.
+- **High Humidity Code:** Warns of fungal blights, advises delay of unnecessary watering and prophylactic organic spraying.
+
+---
+
+### 6. Dashboard UI / UX Design
+
+The interface is styled like a premium software command center (Vercel/Linear), using large spacing, fewer borders, organic typography hierarchy, and glowing statuses.
+
+#### Layout ASCII Diagram
+```
++─────────────────────────────────────────────────────────────────────────────────+
+| 1. Telemetry Status Header (Online/Offline glowing indicator, manual Sync)      |
++─────────────────────────────────────────────────────────────────────────────────+
+| 2. Hero Command Center                                                          |
+|    - Greeting & Active Stage Info   |  - Farm Readiness Score circular SVG ring|
+|    - acreage, location, soil        |  - AI Daily Insight text summary card     |
++─────────────────────────────────────────────────────────────────────────────────+
+| 3. Farm Snapshot Grid (5 Cards: Active Crop, Soil, Water, Pest, Operational)   |
++─────────────────────────────────────────────────────────────────────────────────+
+| 4. Today's Focus operations feed (Prioritized vertical card feed, max 5 items)  |
++─────────────────────────────────────────────────────────────────────────────────+
+| 5. Farm Map Overview (Lazy-loaded, IntersectionObserver mount)                  |
++─────────────────────────────────────────────────────────────────────────────────+
+| 6. AI Action Center                 | 7. Farm Intelligence Grid                 |
+|    - Quick chips with local reveals |    - Weather Intelligence card            |
+|    - Ask AgroGPT bar                |    - Irrigation Analysis card             |
+|    - Inline Answer box              |    - Pest & Mandi Signal cards            |
++─────────────────────────────────────────────────────────────────────────────────+
+| 8. Explore AgroGPT Gateway (Crop Calendar, Field Vision, Market, Digital Khata) |
++─────────────────────────────────────────────────────────────────────────────────+
+```
+
+#### Dashboard UI Sections & Interactions
+1. **Status Header:** Displays online/offline indicators and a manual reload refresh action.
+2. **Hero Command Center:** Renders a circular SVG ring showing the readiness score and displays the overarching AI daily suggestion.
+3. **Farm Snapshot Grid:** Provides 5 high-level summary cards (Active Crop, Soil Health, Water, Pest Risk, Operations). Clicking Operations navigates to `/crop-calendar`.
+4. **Today's Focus Feed:** Shows a vertical feed of up to 5 prioritized cards. Clicking them navigates directly to the corresponding module.
+5. **Farm Map Overview:** Displays Leaflet maps with custom coordinates. Lazy-loaded via Scroll observer.
+6. **AI Action Center:** Displays chips that reveal advice inline, and a local ask form that queues questions if offline.
+7. **Farm Intelligence Grid:** Interprets Open-Meteo weather codes agronomically, provides soil moisture and next crop recommendations.
+8. **Explore AgroGPT Gateway:** Displays gateway cards linking to core features.
+
+---
+
+### 7. Operational Intelligence Feed
+
+The **Focus Operations Feed** ranks tasks and alerts dynamically using an operational priority queue rather than standard calendars:
+
+1. **Overdue Critical Tasks:** Unfinished tasks with `priority === 'high'` due before today.
+2. **Weather Adjusted Tasks:** Tasks delayed by weather adjustments.
+3. **Pest Risk Alerts:** Recent active infections from Field Vision scans.
+4. **Due Today Tasks:** Standard tasks scheduled for today.
+5. **Upcoming transitions:** Development stage transitions starting in next 3 days.
+
+This ensures the farmer is focused on risk mitigation and urgent operations first.
+
+---
+
+### 8. Explore AgroGPT Gateway
+
+The gateway cards are designed to communicate immediate system values:
+- **Crop Calendar:** Shows pending tasks count and current stage.
+- **Field Vision:** Shows last scan diagnosis and AI confidence %.
+- **Market & Mandi:** Recommends next crop based on NPK depletion and displays current Mandi pricing trends.
+- **Digital Ledger:** Shows current net profit and monthly cash flow changes.
+
+---
+
+### 9. Performance & Scalability
+
+#### Optimizations
+- **Lazy Loading & IntersectionObserver:** Leaflet code and CSS are lazy-loaded. The map component only mounts when the user scrolls near it (offset 100px), preventing high initialization load.
+- **Cache-First rendering:** Renders UI instant-on using the local cache, then updates once the fingerprint check finishes.
+- **ndvi / Drone Metrics Placeholders:** Database and repositories are pre-designed with empty metrics and structures for satellite NDVI, drone imagery overlays, and disease forecasts, allowing easy scale-up without database structural rewrites.
+
+---
+
+### 10. Final Implementation Status
+
+#### Completed Features
+- **Dexie Version 3 Upgrade:** Strongly-typed `dashboard_cache` table is functional.
+- **Readiness Scoring Engine:** Computes dynamic readiness score out of 100 points.
+- **Event-Driven Cache Invalidation:** Keeps dashboard synchronized with changes in all other modules.
+- **AI Orchestration & Chips:** Pre-fetches prompt advice in a single Gemini request and reveals them locally.
+- **Sleek UX Layout:** Clean Linear/Vercel styling, lazy map loading, and responsive gateway metrics.
+
+#### Known Limitations
+- **Offline Weather Forecasts:** Cannot pull new forecasts if offline; relies on 1-hour cache.
+- **Scan Image Size:** Base64 scanner data takes considerable IndexedDB space, which could trigger cleanup requirements.

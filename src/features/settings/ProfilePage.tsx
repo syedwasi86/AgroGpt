@@ -9,6 +9,7 @@ import { updateSoilProfile, initDatabase } from '@/lib/repository'
 import { cn } from '@/core/utils/cn'
 import Tesseract from 'tesseract.js'
 import * as pdfjsLib from 'pdfjs-dist'
+import { useCrop } from '@/core/context/CropContext'
 
 // Configure PDF.js Worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
@@ -18,6 +19,7 @@ type ExtractionStatus = 'idle' | 'processing' | 'success' | 'partial' | 'failed'
 export function ProfilePage() {
   const profile = useLiveQuery(() => db.profiles.toArray().then(a => a[0]))
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { updateActiveCrop, updateSowingDate } = useCrop()
   
   const [formData, setFormData] = useState({
     name: '',
@@ -25,6 +27,7 @@ export function ProfilePage() {
     phone: '',
     total_acreage: 0,
     primary_crop: 'Cotton',
+    sowing_date: '',
     soil_type: 'Red Sandy Loam',
     city: ''
   })
@@ -56,6 +59,7 @@ export function ProfilePage() {
               phone: isGoogle ? '' : user.phone || '',
               total_acreage: 0,
               primary_crop: 'Cotton',
+              sowing_date: '',
               soil_type: 'Red Sandy Loam',
               city: ''
             }
@@ -70,14 +74,25 @@ export function ProfilePage() {
     void setup()
   }, [])
 
+  const handleCropChange = (crop: string) => {
+    const savedSowingDate = localStorage.getItem(`sowing_date_${crop}`) || ''
+    setFormData(prev => ({
+      ...prev,
+      primary_crop: crop,
+      sowing_date: savedSowingDate
+    }))
+  }
+
   useEffect(() => {
     if (profile) {
+      const savedSowingDate = localStorage.getItem(`sowing_date_${profile.primary_crop || 'Cotton'}`) || ''
       setFormData({
         name: profile.name || '',
         email: profile.email || '',
         phone: profile.phone || '',
         total_acreage: profile.total_acreage || 0,
         primary_crop: profile.primary_crop || 'Cotton',
+        sowing_date: savedSowingDate,
         soil_type: profile.soil_type || 'Red Sandy Loam',
         city: profile.city || ''
       })
@@ -128,7 +143,7 @@ export function ProfilePage() {
         canvas.height = viewport.height
         canvas.width = viewport.width
         if (context) {
-          await page.render({ canvasContext: context, viewport } as any).promise
+          await page.render({ canvasContext: context, viewport } as unknown as Parameters<typeof page.render>[0]).promise
           imageData = canvas.toDataURL('image/png')
         }
       } else {
@@ -172,6 +187,8 @@ export function ProfilePage() {
     e.preventDefault()
     try {
       await saveProfile(formData)
+      updateActiveCrop(formData.primary_crop)
+      updateSowingDate(formData.sowing_date)
       alert('Profile updated successfully!')
     } catch {
       alert('Failed to save profile. Please check your connection.')
@@ -243,12 +260,22 @@ export function ProfilePage() {
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Primary Crop</label>
-                  <select className={inputClass} value={formData.primary_crop} onChange={e => setFormData({...formData, primary_crop: e.target.value})}>
+                  <select className={inputClass} value={formData.primary_crop} onChange={e => handleCropChange(e.target.value)}>
                     <option value="Cotton">Cotton</option>
                     <option value="Wheat">Wheat</option>
                     <option value="Rice">Rice</option>
                     <option value="Maize">Maize</option>
                   </select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Date of Sowing</label>
+                  <input 
+                    type="date" 
+                    className={inputClass} 
+                    value={formData.sowing_date} 
+                    onChange={e => setFormData({...formData, sowing_date: e.target.value})}
+                    style={{ colorScheme: 'dark' }}
+                  />
                 </div>
               </div>
               <button type="submit" className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 px-6 py-3.5 text-sm font-bold text-white shadow-glowPrimary hover:bg-primary-500 transition-all active:scale-[0.98]">

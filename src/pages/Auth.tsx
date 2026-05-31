@@ -45,7 +45,12 @@ export function Auth() {
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
-      const from = (location.state as any)?.from?.pathname || '/dashboard'
+      interface LocationState {
+        from?: {
+          pathname: string
+        }
+      }
+      const from = (location.state as LocationState)?.from?.pathname || '/dashboard'
       navigate(from, { replace: true })
     }
   }, [user, navigate, location])
@@ -54,7 +59,7 @@ export function Auth() {
     setError(null)
     const { error } = await signInWithGoogle()
     if (error) {
-      setError(error.message)
+      setError((error as any).message || String(error))
     }
   }
 
@@ -63,7 +68,7 @@ export function Auth() {
     setError(null)
     const { error } = await signInWithPhone(phone)
     if (error) {
-      setError(error.message)
+      setError((error as any).message || String(error))
     } else {
       setStep('otp')
     }
@@ -74,7 +79,7 @@ export function Auth() {
     setError(null)
     const { error } = await verifyOtp(phone, otp)
     if (error) {
-      setError(error.message)
+      setError((error as any).message || String(error))
     } else {
       // On success, the useEffect will trigger and navigate, 
       // but we can also navigate here explicitly for immediate feedback

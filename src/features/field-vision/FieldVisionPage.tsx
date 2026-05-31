@@ -52,6 +52,8 @@ export function FieldVisionPage() {
       const randomOutcome = MOCK_OUTCOMES[Math.floor(Math.random() * MOCK_OUTCOMES.length)]
       setResult(randomOutcome)
       setAnalyzing(false)
+      // Set active diagnosis in localStorage for market recommendations
+      localStorage.setItem('active_diagnosis', randomOutcome.diagnosis)
     }, 3000)
   }
 
@@ -217,6 +219,7 @@ export function FieldVisionPage() {
                   onClick={() => {
                     setSelectedImage(null)
                     setResult(null)
+                    localStorage.removeItem('active_diagnosis')
                   }}
                   className="mt-6 w-full rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-semibold text-white/80 transition-all hover:bg-white/10"
                 >

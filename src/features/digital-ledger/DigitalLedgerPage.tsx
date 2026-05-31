@@ -8,6 +8,7 @@ import { Trash2, Wallet, RefreshCw, Mic, MicOff, AlertCircle, TrendingUp, Trendi
 import { cn } from '@/core/utils/cn'
 import { addTransaction, initDatabase, deleteTransaction } from '@/lib/repository'
 import { syncData } from '@/core/api/syncEngine'
+import { useCrop } from '@/core/context/CropContext'
 
 function inr(n: number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(n)
@@ -20,6 +21,9 @@ function formatLedgerDate(iso: string): string {
 }
 
 export function DigitalLedgerPage() {
+  const { activeCrop } = useCrop()
+  const [filterByCrop, setFilterByCrop] = useState(true)
+
   const rawTransactions = useLiveQuery(() => db.transactions.orderBy('transaction_date').reverse().toArray())
   const transactions = useMemo(() => rawTransactions || [], [rawTransactions])
 
@@ -51,18 +55,24 @@ export function DigitalLedgerPage() {
     }
   }, [])
 
+  // Filter transactions dynamically by the active crop
+  const filteredTransactions = useMemo(() => {
+    if (!filterByCrop) return transactions
+    return transactions.filter(t => t.note?.toLowerCase() === activeCrop.toLowerCase())
+  }, [transactions, activeCrop, filterByCrop])
+
   const { income, expense, profit } = useMemo(() => {
     let inc = 0
     let exp = 0
-    for (const e of transactions) {
+    for (const e of filteredTransactions) {
       if (e.type === 'income') inc += e.amount
       else exp += e.amount
     }
     return { income: inc, expense: exp, profit: inc - exp }
-  }, [transactions])
+  }, [filteredTransactions])
 
   const chartData = useMemo(() => {
-    if (transactions.length === 0) return []
+    if (filteredTransactions.length === 0) return []
     const now = Date.now()
     const weekMs = 7 * 24 * 60 * 60 * 1000
     const weekBuckets: Record<number, { revenue: number, expense: number }> = {}
@@ -72,7 +82,7 @@ export function DigitalLedgerPage() {
       weekBuckets[i] = { revenue: 0, expense: 0 }
     }
 
-    transactions.forEach(row => {
+    filteredTransactions.forEach(row => {
       const age = now - new Date(row.transaction_date).getTime()
       const weekIdx = Math.max(0, Math.min(5, Math.floor(age / weekMs)))
 
@@ -88,7 +98,7 @@ export function DigitalLedgerPage() {
       revenue: weekBuckets[5 - i].revenue,
       expense: weekBuckets[5 - i].expense,
     }))
-  }, [transactions])
+  }, [filteredTransactions])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -110,7 +120,8 @@ export function DigitalLedgerPage() {
         amount: numAmount,
         category: category.trim(),
         type,
-        transaction_date: new Date(transactionDate).toISOString()
+        transaction_date: new Date(transactionDate).toISOString(),
+        note: activeCrop // Tag it with the active crop
       })
 
       // Reset form
@@ -289,21 +300,21 @@ export function DigitalLedgerPage() {
         <GlassCard className="p-6 border-l-4 border-green-500" variant="strong">
           <div className="flex items-center gap-3 text-white/50 mb-2">
             <TrendingUp size={16} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Total Income</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">Income ({filterByCrop ? activeCrop : 'All'})</span>
           </div>
           <div className="text-2xl font-black text-green-400">{inr(income)}</div>
         </GlassCard>
         <GlassCard className="p-6 border-l-4 border-red-500" variant="strong">
           <div className="flex items-center gap-3 text-white/50 mb-2">
             <TrendingDown size={16} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Total Expenses</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">Expenses ({filterByCrop ? activeCrop : 'All'})</span>
           </div>
           <div className="text-2xl font-black text-red-400">{inr(expense)}</div>
         </GlassCard>
         <GlassCard className={cn("p-6 border-l-4", profit >= 0 ? "border-secondary" : "border-amber-500")} variant="strong">
           <div className="flex items-center gap-3 text-white/50 mb-2">
             <Wallet size={16} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Net Profit</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">Net Profit ({filterByCrop ? activeCrop : 'All'})</span>
           </div>
           <div className={cn("text-2xl font-black", profit >= 0 ? "text-white" : "text-amber-500")}>
             {inr(profit)}
@@ -316,7 +327,7 @@ export function DigitalLedgerPage() {
         <div className="space-y-6">
           <GlassCard className="p-6" variant="strong">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="agro-h2">New Entry</h2>
+              <h2 className="agro-h2">New Entry ({activeCrop})</h2>
               <div className="flex flex-col items-end">
                 <button
                   type="button"
@@ -409,8 +420,23 @@ export function DigitalLedgerPage() {
         {/* Ledger View */}
         <div className="space-y-6">
           <GlassCard className="p-0 overflow-hidden" variant="strong">
-            <div className="p-6 border-b border-white/5">
+            <div className="p-6 border-b border-white/5 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
               <h2 className="agro-h2">Recent Transactions</h2>
+              
+              <button
+                onClick={() => setFilterByCrop(!filterByCrop)}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-2",
+                  filterByCrop
+                    ? "bg-[#1d3526]/40 border-[#223328] text-[#4ade80]"
+                    : "bg-white/5 border-white/10 text-white/60 hover:text-white"
+                )}
+              >
+                {filterByCrop ? `Crop Filter: ${activeCrop}` : 'Showing All Crops'}
+                <span className="text-[10px] text-white/40 font-normal">
+                  (Toggle)
+                </span>
+              </button>
             </div>
 
             <div className="max-h-[600px] overflow-y-auto">
@@ -418,7 +444,7 @@ export function DigitalLedgerPage() {
                 <div className="p-6 space-y-4">
                   <SkeletonRow /><SkeletonRow /><SkeletonRow />
                 </div>
-              ) : transactions.length === 0 ? (
+              ) : filteredTransactions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-12 text-center">
                   <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/5 text-white/20">
                     <Wallet size={32} />
@@ -436,11 +462,18 @@ export function DigitalLedgerPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {transactions.filter(t => !t.deleted_at).map((e) => (
+                    {filteredTransactions.filter(t => !t.deleted_at).map((e) => (
                       <tr key={e.id} className="group hover:bg-white/[0.02] transition-colors">
                         <td className="px-6 py-4">
                           <div className="text-sm font-bold text-white/90">{e.category}</div>
-                          <div className="text-[10px] font-bold text-white/30 uppercase">{e.type}</div>
+                          <div className="text-[10px] font-bold text-white/30 uppercase flex items-center gap-2">
+                            {e.type}
+                            {e.note && (
+                              <span className="text-[9px] font-black tracking-widest text-[#4ade80] bg-[#1d3526] px-2 py-0.5 rounded border border-[#223328] uppercase">
+                                {e.note}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-xs text-white/50">{formatLedgerDate(e.transaction_date)}</td>
                         <td className={cn(
@@ -476,7 +509,7 @@ export function DigitalLedgerPage() {
                   <XAxis dataKey="w" stroke="rgba(255,255,255,0.1)" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} axisLine={false} tickLine={false} />
                   <YAxis hide />
                   <Tooltip
-                    contentStyle={{ background: '#1A211E', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                    contentStyle={{ background: '#141e18', border: '1px solid #223328', borderRadius: '12px' }}
                     itemStyle={{ color: '#fff', fontSize: '12px' }}
                     cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 2 }}
                   />

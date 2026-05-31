@@ -37,11 +37,11 @@ async function seedDefaultsIfEmpty(): Promise<void> {
   if (txCount === 0) {
     const now = new Date().toISOString()
     const samples: Omit<TransactionRecord, 'id' | 'created_at' | 'updated_at'>[] = [
-      { type: 'income', category: 'Cotton sale (advance)', amount: 18000, transaction_date: now, note: '', deleted_at: null },
-      { type: 'expense', category: 'Fertilizer (DAP + urea)', amount: 5400, transaction_date: now, note: '', deleted_at: null },
-      { type: 'expense', category: 'Diesel', amount: 1900, transaction_date: now, note: '', deleted_at: null },
-      { type: 'income', category: 'Subsidy credit', amount: 2200, transaction_date: now, note: '', deleted_at: null },
-      { type: 'expense', category: 'Labor (weeding)', amount: 3200, transaction_date: now, note: '', deleted_at: null },
+      { type: 'income', category: 'Cotton sale (advance)', amount: 18000, transaction_date: now, note: 'Cotton', deleted_at: null },
+      { type: 'expense', category: 'Fertilizer (DAP + urea)', amount: 5400, transaction_date: now, note: 'Cotton', deleted_at: null },
+      { type: 'expense', category: 'Diesel', amount: 1900, transaction_date: now, note: 'Cotton', deleted_at: null },
+      { type: 'income', category: 'Subsidy credit', amount: 2200, transaction_date: now, note: 'Cotton', deleted_at: null },
+      { type: 'expense', category: 'Labor (weeding)', amount: 3200, transaction_date: now, note: 'Cotton', deleted_at: null },
     ]
     await db.transaction('rw', db.transactions, async () => {
       for (const row of samples) {
@@ -204,7 +204,7 @@ export async function clearAllScans(): Promise<void> {
   }
 }
 
-export async function addTransaction(data: { amount: number, category: string, type: 'income' | 'expense', transaction_date: string }): Promise<string> {
+export async function addTransaction(data: { amount: number, category: string, type: 'income' | 'expense', transaction_date: string, note?: string }): Promise<string> {
   await initDatabase()
   const now = new Date().toISOString()
   const id = crypto.randomUUID()
@@ -215,6 +215,7 @@ export async function addTransaction(data: { amount: number, category: string, t
     type: data.type,
     transaction_date: data.transaction_date,
     crop_id: null,
+    note: data.note ?? '',
     created_at: now,
     updated_at: now,
     deleted_at: null

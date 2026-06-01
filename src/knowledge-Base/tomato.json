@@ -1,0 +1,501 @@
+[
+  {
+    "id": "tomato_healthy",
+    "crop": "Tomato",
+    "disease": "Healthy",
+    "scientificName": null,
+    "dangerLevel": null,
+    "symptoms": [
+      "Robust, upright vegetative growth",
+      "Thick stems",
+      "Dark green, flat, non-curled foliage",
+      "Continuous flowering without blossom drop"
+    ],
+    "earlySymptoms": [],
+    "advancedSymptoms": [],
+    "causes": [],
+    "spreadConditions": {
+      "humidity": null,
+      "temperature": null,
+      "rainfall": null,
+      "season": null
+    },
+    "immediateActions": {
+      "low": [],
+      "medium": [],
+      "high": []
+    },
+    "organicTreatments": [],
+    "chemicalTreatments": [],
+    "prevention": [
+      "Ensure well-drained soil to avoid oomycete root rots",
+      "Mandatory staking or trellising to keep foliage off the soil and improve intra-canopy airflow",
+      "Strict crop rotation: never plant tomatoes in fields that cultivated potatoes, peppers, or eggplants in the past three years",
+      "Rotate with grasses or corn"
+    ],
+    "monitoringAdvice": [
+      "Monitor for continuous flowering without blossom drop",
+      "Inspect foliage to ensure it remains flat, dark green, and non-curled"
+    ],
+    "farmerFriendlyExplanation": "A healthy tomato plant has strong upright growth, thick stems, and flat, dark green leaves with no curling. It flowers continuously without dropping its blossoms. In Telugu, it is known as స్వస్థ టమాటా (Swastha tamata) and in Hindi as स्वस्थ टमाटर (Swasth tamatar).",
+    "sourceAttribution": [
+      "Tomato Diseases and Disorders in the Home Garden - Penn State Extension, accessed on May 24, 2026, https://extension.psu.edu/tomato-diseases-and-disorders-in-the-home-garden"
+    ],
+    "displayName": {
+      "en": "Healthy Tomato",
+      "hi": "स्वस्थ टमाटर",
+      "te": "స్వస్థ టమాటా"
+    },
+    "diseaseType": null
+  },
+  {
+    "id": "tomato_bacterial_spot",
+    "crop": "Tomato",
+    "disease": "Bacterial Spot",
+    "scientificName": "Xanthomonas campestris pv. vesicatoria",
+    "dangerLevel": "high",
+    "symptoms": [
+      "Small, water-soaked, dark spots on foliage",
+      "Spots on foliage becoming black, slightly raised, and superficial, measuring up to 0.3 inches in diameter (completely lacking concentric rings)",
+      "Severe disfigurement of the fruit rendering it unmarketable",
+      "Initial water-soaked spots on fruit enlarging, turning brown, and becoming raised, scab-like, and heavily textured"
+    ],
+    "earlySymptoms": [
+      "Small, water-soaked, dark spots on foliage",
+      "Initial water-soaked spots on the fruit"
+    ],
+    "advancedSymptoms": [
+      "Foliage spots becoming black, slightly raised, superficial, up to 0.3 inches in diameter, without concentric rings",
+      "Fruit spots enlarging, turning brown, raised, scab-like, and heavily textured"
+    ],
+    "causes": [
+      "Xanthomonas campestris pv. vesicatoria (bacterial pathogen)",
+      "Seed-borne inoculum",
+      "Spread via sprinkler irrigation or rain splash"
+    ],
+    "spreadConditions": {
+      "humidity": "Free moisture",
+      "temperature": "Above 20 C (68 F)",
+      "rainfall": "Sprinkler irrigation or rain splash",
+      "season": null
+    },
+    "immediateActions": {
+      "low": [
+        "Eradicate volunteer nightshade weeds",
+        "Strictly avoid overhead sprinkler irrigation"
+      ],
+      "medium": [
+        "Stop watering the plants from above (use drip irrigation if possible)",
+        "Remove badly infected plants"
+      ],
+      "high": [
+        "Immediately spray a mixture of Copper and Streptomycin to halt the spread"
+      ]
+    },
+    "organicTreatments": [
+      "Hot water seed treatment",
+      "Eradicate volunteer nightshade weeds",
+      "Remove badly infected plants"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Streptocycline",
+        "dosage": "40-100 ppm (20 g/acre)",
+        "sprayInterval": "Foliar spray",
+        "notes": "Curative (Combo) spray. Combined with Copper hydroxide or Copper octanoate."
+      },
+      {
+        "activeIngredient": "Copper hydroxide",
+        "dosage": "combined with Streptocycline",
+        "sprayInterval": "Foliar spray",
+        "notes": "Curative (Combo) spray."
+      },
+      {
+        "activeIngredient": "Copper octanoate",
+        "dosage": "combined with Streptocycline",
+        "sprayInterval": "Foliar spray",
+        "notes": "Curative (Combo) spray."
+      }
+    ],
+    "prevention": [
+      "Hot water seed treatment",
+      "Strictly avoid overhead sprinkler irrigation",
+      "Eradicate volunteer nightshade weeds",
+      "Integrate agricultural antibiotics due to copper tolerance in Xanthomonas"
+    ],
+    "monitoringAdvice": [
+      "Inspect foliage for small, water-soaked, dark spots lacking concentric rings",
+      "Check developing fruits for raised, brown, scab-like spots"
+    ],
+    "farmerFriendlyExplanation": "A bacterial infection spread by water splashing dirt onto the leaves. It creates small, raised, black, scabby spots on both the leaves and the green tomatoes, completely ruining the fruit for sale. The farmer must stop watering from above, pull out infected plants, and spray a mixture of copper and streptomycin. Locally called జీవాణు ధబ్బా (Jiwanu dhabba) in Hindi and బాక్టీరియా మచ్చ (Bacteria macha) in Telugu.",
+    "sourceAttribution": [
+      "Bacterial Spot / Tomato / Agriculture - UC IPM, accessed on May 24, 2026, https://ipm.ucanr.edu/agriculture/tomato/bacterial-spot/",
+      "Integrated Management of Bacterial Spot on Tomato in Florida - Ask IFAS, accessed on May 24, 2026, https://ask.ifas.ufl.edu/publication/PP353",
+      "Bacterial leaf spot : Xanthomonas axonopodis pv. vesicatoria - TNAU Agritech Portal, accessed on May 24, 2026, https://agritech.tnau.ac.in/crop_protection/tomato_diseases_11.html",
+      "Protect greenhouse tomato transplants from bacterial spot - Vegetables - MSU College of Agriculture and Natural Resources, accessed on May 24, 2026, https://www.canr.msu.edu/news/protect_greenhouse_tomato_transplants_from_bacterial_spot",
+      "Bacterial Spot of Pepper and Tomato | NC State Extension Publications, accessed on May 24, 2026, https://content.ces.ncsu.edu/bacterial-spot-of-pepper-and-tomato"
+    ],
+    "displayName": {
+      "en": "Bacterial Spot",
+      "hi": "जीवाणु धब्बा",
+      "te": "బాక్టీరియా మచ్చ"
+    },
+    "diseaseType": "bacterial"
+  },
+  {
+    "id": "tomato_leaf_curl",
+    "crop": "Tomato",
+    "disease": "Tomato Leaf Curl Virus (ToLCV)",
+    "scientificName": "Tomato Leaf Curl Virus (ToLCV)",
+    "dangerLevel": "high",
+    "symptoms": [
+      "Severe, irreversible stunting of the plant",
+      "Sharp downward rolling and crinkling of the leaves",
+      "Pale yellow, chlorotic coloration of newly emerging apical leaves",
+      "Drastic reduction of nodes and internodes",
+      "Abnormal amount of lateral branches resulting in a stunted, highly bushy appearance",
+      "Complete cessation of fruit production"
+    ],
+    "earlySymptoms": [
+      "Sharp downward rolling and crinkling of leaves",
+      "Newly emerging apical leaves display a pale yellow, chlorotic coloration"
+    ],
+    "advancedSymptoms": [
+      "Severe, irreversible stunting of the plant",
+      "Abnormal amount of lateral branches resulting in a highly bushy appearance",
+      "Complete cessation of fruit production"
+    ],
+    "causes": [
+      "Tomato Leaf Curl Virus (ToLCV)",
+      "Transmission by the whitefly vector (Bemisia tabaci)"
+    ],
+    "spreadConditions": {
+      "humidity": "Dry conditions",
+      "temperature": "Warm temperatures",
+      "rainfall": null,
+      "season": null
+    },
+    "immediateActions": {
+      "low": [
+        "Remove all collateral weed hosts surrounding the field"
+      ],
+      "medium": [
+        "Spray Imidacloprid 17.8 SL to kill the whiteflies hiding under the leaves"
+      ],
+      "high": [
+        "Uproot and burn virally infected plants immediately to protect the remaining crop"
+      ]
+    },
+    "organicTreatments": [
+      "Uproot and burn virally infected plants immediately",
+      "Remove all collateral weed hosts surrounding the field"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Imidacloprid 17.8 SL",
+        "dosage": "100 ml/ha",
+        "sprayInterval": "Repeat after 15 days if vector persists",
+        "notes": "Chemical (Vector) control. Targets whiteflies."
+      },
+      {
+        "activeIngredient": "Dimethoate 30 EC",
+        "dosage": "500 ml/ha",
+        "sprayInterval": "Repeat after 15 days if vector persists",
+        "notes": "Chemical (Vector) control. Targets whiteflies."
+      }
+    ],
+    "prevention": [
+      "Integrated vector management (insecticide sprays)",
+      "Immediate rogueing of infected plants",
+      "Removal of collateral weed hosts surrounding the field"
+    ],
+    "monitoringAdvice": [
+      "Check newly emerging apical leaves for pale yellow color and downward rolling",
+      "Scout for whitefly presence under the leaves"
+    ],
+    "farmerFriendlyExplanation": "A virus injected by tiny white flies that severely stunts the plant, making it look bushy and causing the leaves to roll downward and turn pale. The plant will not yield any tomatoes. The farmer must immediately pull out and burn stunted, curly plants, and spray Imidacloprid to kill the whiteflies. Known as పత్తీ మోరోడ్ (Patti morod) in Hindi and ఆకు ముడత (Aaku mudatha) in Telugu.",
+    "sourceAttribution": [
+      "Tomato Diseases and Disorders in the Home Garden - Penn State Extension, accessed on May 24, 2026, https://extension.psu.edu/tomato-diseases-and-disorders-in-the-home-garden"
+    ],
+    "displayName": {
+      "en": "Tomato Leaf Curl",
+      "hi": "पत्ती मरोड़",
+      "te": "ఆకు ముడత"
+    },
+    "diseaseType": "viral"
+  },
+  {
+    "id": "tomato_blight",
+    "crop": "tomato",
+    "disease": "blight",
+    "displayName": {
+      "en": "Tomato Blight",
+      "hi": "टमाटर झुलसा रोग",
+      "te": "టమాట ముడత తెగులు"
+    },
+    "scientificName": "Alternaria solani / Phytophthora infestans",
+    "diseaseType": "fungal",
+    "dangerLevel": "high",
+    "symptoms": [
+      "Brown or dark lesions on leaves",
+      "Target-like concentric rings on older leaves",
+      "Water-soaked greasy lesions during humid weather",
+      "Yellowing and drying of leaves",
+      "Leaf drop and defoliation",
+      "Dark lesions on stems",
+      "Brown leathery fruit rot",
+      "White fungal fuzz under humid conditions"
+    ],
+    "earlySymptoms": [
+      "Small brown spots on lower leaves",
+      "Yellowing around leaf spots",
+      "Water-soaked lesions on leaves",
+      "Target-like circular lesions"
+    ],
+    "advancedSymptoms": [
+      "Rapid spread across the plant canopy",
+      "Large necrotic leaf areas",
+      "Severe defoliation",
+      "Stem lesions",
+      "Fruit rot and leathery patches",
+      "White mold-like growth under leaves",
+      "Complete plant collapse during cool wet weather"
+    ],
+    "causes": [
+      "Fungal pathogens affecting tomato foliage",
+      "Infected crop debris remaining in soil",
+      "Cool and humid environmental conditions",
+      "Extended leaf wetness"
+    ],
+    "spreadConditions": {
+      "humidity": "High humidity above 85%",
+      "temperature": "18°C to 30°C",
+      "rainfall": "Frequent rainfall and prolonged leaf wetness",
+      "season": "Cool and wet weather periods"
+    },
+    "immediateActions": {
+      "low": [
+        "Remove infected lower leaves",
+        "Improve airflow around plants",
+        "Avoid overhead irrigation",
+        "Stake plants properly"
+      ],
+      "medium": [
+        "Apply protective fungicide immediately",
+        "Monitor neighboring plants closely",
+        "Remove severely infected foliage"
+      ],
+      "high": [
+        "Apply systemic fungicide containing Metalaxyl + Mancozeb",
+        "Destroy heavily infected plants away from the field",
+        "Seek agricultural expert guidance if spread is rapid"
+      ]
+    },
+    "organicTreatments": [
+      "Prune lower infected leaves",
+      "Use mulch to reduce soil splash",
+      "Maintain proper plant spacing",
+      "Apply Trichoderma-based bio-control agents"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Mancozeb 75% WP",
+        "dosage": "2 g/L",
+        "sprayInterval": "7-10 days",
+        "notes": "Useful during early disease stages and preventive management."
+      },
+      {
+        "activeIngredient": "Copper Oxychloride",
+        "dosage": "2 g/L",
+        "sprayInterval": "Before heavy rain events",
+        "notes": "Protective spray during humid weather."
+      },
+      {
+        "activeIngredient": "Metalaxyl 8% + Mancozeb 64% WP",
+        "dosage": "2 g/L",
+        "sprayInterval": "As recommended by local agricultural advisor",
+        "notes": "Critical for aggressive blight symptoms with rapid spread or white fungal growth."
+      }
+    ],
+    "prevention": [
+      "Rotate crops regularly",
+      "Remove infected crop debris",
+      "Avoid prolonged leaf wetness",
+      "Use proper plant spacing",
+      "Use mulch to reduce fungal splash from soil"
+    ],
+    "monitoringAdvice": [
+      "Inspect lower leaves regularly for brown lesions",
+      "Watch for greasy water-soaked spots after rainfall",
+      "Check underside of leaves for white fungal growth",
+      "Monitor fruit for leathery brown patches"
+    ],
+    "farmerFriendlyExplanation": "Blight is a serious fungal disease that damages tomato leaves, stems, and fruits. It spreads rapidly during cool and wet weather. Early signs include brown spots and yellowing leaves. Severe infections may cause greasy black patches, white fungal growth under leaves, and fruit rot. Immediate removal of infected leaves and timely fungicide spraying are critical to prevent major crop loss.",
+    "sourceAttribution": [
+      "TNAU Agritech Portal",
+      "PlantVillage",
+      "Penn State Extension",
+      "NC State Extension"
+    ]
+  },
+  {
+    "id": "tomato_leaf_mold",
+    "crop": "tomato",
+    "disease": "leaf_mold",
+    "displayName": {
+      "en": "Tomato Leaf Mold",
+      "hi": "टमाटर का लीफ मोल्ड",
+      "te": "టమాటా ఆకు బూజు"
+    },
+    "scientificName": "Passalora fulva (syn. Fulvia fulva)",
+    "diseaseType": "fungal",
+    "dangerLevel": "medium to high",
+    "symptoms": [
+      "Pale green to yellowish spots appearing on the upper surfaces of the older, lower leaves",
+      "Olive-green to grayish velvety mold on the corresponding lower (abaxial) leaf surfaces",
+      "Lesions rapidly coalescing, causing the foliage to undergo severe chlorosis, necrosis, and premature defoliation",
+      "Significantly reduced plant photosynthetic capacity"
+    ],
+    "earlySymptoms": [
+      "Pale green to yellowish spots appearing on the upper surfaces of the older, lower leaves"
+    ],
+    "advancedSymptoms": [
+      "Olive-green to grayish velvety mold developing on the corresponding lower (abaxial) leaf surfaces",
+      "Lesions rapidly coalescing",
+      "Severe chlorosis, necrosis, and premature defoliation"
+    ],
+    "causes": [
+      "Passalora fulva (syn. Fulvia fulva) fungal pathogen",
+      "Pathogen overwintering in infected crop debris"
+    ],
+    "spreadConditions": {
+      "humidity": "Relative humidity exceeds 85%",
+      "temperature": "Warm temperatures",
+      "rainfall": "Wind-blown rain and prolonged leaf wetness",
+      "season": "Prevalent in environments with elevated humidity, especially protected cultivation systems like greenhouses and polyhouses"
+    },
+    "immediateActions": {
+      "low": [
+        "Prune lower foliage to increase airflow",
+        "Avoid overhead watering",
+        "Practice strict crop rotation"
+      ],
+      "medium": [
+        "Foliar spray of Carbendazim 12% + Mancozeb 63% WP @ 2.0 g/L upon first appearance of yellow spots"
+      ],
+      "high": [
+        "Seek agricultural expert guidance if disease spread is rapid inside greenhouses"
+      ]
+    },
+    "organicTreatments": [
+      "Prune lower foliage to increase airflow",
+      "Avoid overhead watering",
+      "Practice strict crop rotation"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Carbendazim 12% + Mancozeb 63% WP",
+        "dosage": "2.0 g/L",
+        "sprayInterval": "Upon first appearance of yellow spots",
+        "notes": "Foliar spray."
+      }
+    ],
+    "prevention": [
+      "Prune lower branches to lower intra-canopy humidity",
+      "Strictly avoid overhead irrigation",
+      "Maintain a minimum 3-year crop rotation",
+      "Ensure proper ventilation in greenhouses or polyhouses"
+    ],
+    "monitoringAdvice": [
+      "Inspect upper surfaces of older, lower leaves for pale green to yellowish spots",
+      "Check lower (abaxial) leaf surfaces for olive-green to grayish velvety mold"
+    ],
+    "farmerFriendlyExplanation": "Tomato leaf mold is a fungus that thrives in very humid, sticky weather, especially inside greenhouses. It creates yellow spots on top of the leaves and an olive-green fuzzy mold underneath. Prune the bottom leaves to let the wind blow through, stop watering from above, and spray a recommended fungicide directly onto the undersides of the leaves. In local languages, it is called टमाटर का लीफ मोल्ड (Tamatar ka leaf mold) in Hindi and టమాటా ఆకు బూజు (Tamata aaku booju) in Telugu.",
+    "sourceAttribution": [
+      "TNAU Agritech Portal"
+    ]
+  },
+  {
+    "id": "tomato_septoria_leaf_spot",
+    "crop": "tomato",
+    "disease": "septoria_leaf_spot",
+    "displayName": {
+      "en": "Septoria Leaf Spot",
+      "hi": "सेप्टोरिया पत्ती धब्बा",
+      "te": "సెప్టోరియా ఆకు మచ్చ"
+    },
+    "scientificName": "Septoria lycopersici",
+    "diseaseType": "fungal",
+    "dangerLevel": "high",
+    "symptoms": [
+      "Numerous small, circular spots (usually 1/16 to 1/8 inch in diameter) appearing on the oldest, lowest leaves",
+      "Spots with light grey to tan centers surrounded by prominent dark brown margins (lacking concentric rings)",
+      "Tiny black specks (pycnidia) in the grey centers of the lesions",
+      "Affected leaves turning entirely yellow, withering, and dropping",
+      "Fruit exposed to severe sunscald due to defoliation"
+    ],
+    "earlySymptoms": [
+      "Numerous small, circular spots (usually 1/16 to 1/8 inch in diameter) on the oldest, lowest leaves"
+    ],
+    "advancedSymptoms": [
+      "Spots developing light grey to tan centers surrounded by prominent dark brown margins",
+      "Tiny black specks (pycnidia) visible in the grey centers of lesions",
+      "Affected leaves turning entirely yellow, withering, and dropping",
+      "Severe defoliation exposing fruit to sunscald"
+    ],
+    "causes": [
+      "Septoria lycopersici (fungal pathogen)",
+      "Fungus overwintering on infected plant debris and solanaceous weeds"
+    ],
+    "spreadConditions": {
+      "humidity": "High humidity",
+      "temperature": "Moderate temperatures",
+      "rainfall": "Rain splash or overhead irrigation splashing contaminated soil onto lower foliage",
+      "season": null
+    },
+    "immediateActions": {
+      "low": [
+        "Physically remove the diseased bottom leaves",
+        "Apply mulch to prevent soil splashing onto lower leaves"
+      ],
+      "medium": [
+        "Foliar spray of Mancozeb 75% WP (Dithane M-45) @ 2.0 g/L or Chlorothalonil"
+      ],
+      "high": [
+        "Aggressive chemical spraying to prevent defoliation and sunscald"
+      ]
+    },
+    "organicTreatments": [
+      "Physically remove the diseased bottom leaves",
+      "Apply mulch to prevent mud splashing"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Mancozeb 75% WP (Dithane M-45)",
+        "dosage": "2.0 g/L",
+        "sprayInterval": "Upon symptom appearance",
+        "notes": "Foliar spray."
+      },
+      {
+        "activeIngredient": "Chlorothalonil",
+        "dosage": "as recommended on label",
+        "sprayInterval": "Upon symptom appearance",
+        "notes": "Foliar spray."
+      }
+    ],
+    "prevention": [
+      "Apply mulch to prevent soil splashing onto lower leaves",
+      "Procure disease-free seeds",
+      "Control solanaceous weeds",
+      "Remove and destroy infected crop debris"
+    ],
+    "monitoringAdvice": [
+      "Inspect oldest, lowest leaves regularly for small circular spots with grey centers and dark margins",
+      "Check grey centers of lesions for tiny black specks (pycnidia)"
+    ],
+    "farmerFriendlyExplanation": "Tomato Septoria Leaf Spot is a fungus that causes many tiny, round grey spots with dark borders on the lowest tomato leaves. It spreads upward when rain or irrigation splashes dirt onto the plant. It will cause all the leaves to turn yellow and fall off. The immediate action is to physically remove the diseased bottom leaves, mulch the soil to prevent mud splashing, and spray a protectant fungicide. It is known as सेप्टोरिया पत्ती धब्बा (Septoria patti dhabba) in Hindi and సెప్టోరియా ఆకు మచ్చ (Septoria aaku macha) in Telugu.",
+    "sourceAttribution": [
+      "TNAU Agritech Portal"
+    ]
+  }
+]

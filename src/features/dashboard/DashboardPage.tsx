@@ -1,21 +1,15 @@
-import { useEffect, useState, useMemo, lazy, Suspense, useRef } from 'react'
+import { useEffect, useState, lazy, Suspense, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
 import {
   Activity,
   AlertTriangle,
   ArrowUpRight,
-  Coins,
   Compass,
-  Droplets,
-  Info,
   LayoutDashboard,
   Loader2,
-  MapPin,
   RefreshCw,
   Sparkles,
   Sprout,
-  TrendingUp,
   Wifi,
   WifiOff
 } from 'lucide-react'
@@ -67,7 +61,6 @@ function LazyVisible({ children, placeholderHeight = 280 }: { children: React.Re
 // ─── Main Dashboard Page ───────────────────────────────────────────────────────
 
 export function DashboardPage() {
-  const { t } = useTranslation()
   const navigate = useNavigate()
 
   // State Management
@@ -107,7 +100,6 @@ export function DashboardPage() {
 
   useEffect(() => {
     loadSnapshot()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Manual Trigger to re-fetch weather/AI insights
@@ -270,9 +262,14 @@ export function DashboardPage() {
                     <Sprout size={13} className="text-primary-300" />
                     {snapshot?.crop?.name} ({snapshot?.crop?.variety})
                   </span>
-                  <span className="glass-chip">
+                  <span className="glass-chip flex items-center gap-1">
                     <Compass size={13} className="text-white/60" />
-                    {snapshot?.crop?.currentStage} stage
+                    <span>{snapshot?.crop?.currentStage} stage</span>
+                    {snapshot?.crop?.isFarmerSelectedStage && (
+                      <span className="text-[9px] text-[#87A96B] font-bold bg-[#87A96B]/10 px-1.5 py-0.5 rounded-full border border-[#87A96B]/20">
+                        Farmer Selected
+                      </span>
+                    )}
                   </span>
                   <span className="glass-chip">
                     <Activity size={13} className="text-white/60" />
@@ -372,9 +369,23 @@ export function DashboardPage() {
               <div className="mt-1 text-[11px] text-white/60">
                 Variety: {snapshot?.crop?.variety}
               </div>
-              <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/50">
-                <span className="h-1 w-1 rounded-full bg-primary-400" />
-                {snapshot?.crop?.currentStage}
+              <div className="mt-2 flex flex-col gap-1.5">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/50 w-fit">
+                  <span className="h-1 w-1 rounded-full bg-primary-400" />
+                  {snapshot?.crop?.currentStage}
+                </div>
+                {snapshot?.crop?.condition && (
+                  <div className="text-[10px] text-white/40 font-bold uppercase flex items-center gap-1">
+                    Condition: <span className={cn(
+                      "font-black text-[11px]",
+                      snapshot.crop.condition === 'Healthy' && "text-green-400",
+                      snapshot.crop.condition === 'Average' && "text-yellow-400",
+                      snapshot.crop.condition === 'Not Growing Well' && "text-orange-400",
+                      snapshot.crop.condition === 'Pest/Disease Problem' && "text-red-400",
+                      snapshot.crop.condition === 'Not Sure' && "text-white/60"
+                    )}>{snapshot.crop.condition}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -393,14 +404,16 @@ export function DashboardPage() {
               </div>
             </div>
 
-            {/* Card 3: Water Status */}
+            {/* Card 3: Water Source */}
             <div className="rounded-3xl border border-white/5 bg-black/20 p-4 transition hover:bg-black/30">
-              <div className="text-xs font-semibold text-white/40">Water Status</div>
-              <div className="mt-2 text-base font-semibold text-white">
-                ~4,200 L/ac
+              <div className="text-xs font-semibold text-white/40">Water Source</div>
+              <div className="mt-2 text-sm font-bold text-white truncate" title={snapshot?.farm?.irrigationSources?.join(', ') || 'Rainfed'}>
+                {snapshot?.farm?.irrigationSources && snapshot.farm.irrigationSources.length > 0 
+                  ? snapshot.farm.irrigationSources.join(', ') 
+                  : 'Rainfed'}
               </div>
               <div className="mt-1 text-[11px] text-white/60">
-                ET rate: Steady
+                ~4,200 L/ac ET rate
               </div>
               <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/50">
                 <span className="h-1 w-1 rounded-full bg-primary-400" />

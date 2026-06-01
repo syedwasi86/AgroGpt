@@ -10,6 +10,7 @@ interface StageTimelineProps {
   progress: number
   daysInStage: number
   nextStageEstimate: { name: string; days: number } | null
+  isFarmerSelectedStage?: boolean
 }
 
 const iconMap = {
@@ -25,7 +26,8 @@ export function StageTimeline({
   currentStage,
   progress,
   daysInStage,
-  nextStageEstimate
+  nextStageEstimate,
+  isFarmerSelectedStage
 }: StageTimelineProps) {
   if (stages.length === 0) return null
 
@@ -51,8 +53,13 @@ export function StageTimeline({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 border-b border-white/5 pb-4">
           <div>
             <span className="text-[10px] font-bold text-[#87A96B] tracking-[0.2em] uppercase">Crop Journey</span>
-            <h2 className="text-xl md:text-2xl font-black text-white leading-tight mt-0.5">
-              {currentStage ? currentStage.name : 'Crop Lifecycle'} Stage
+            <h2 className="text-xl md:text-2xl font-black text-white leading-tight mt-0.5 flex items-center flex-wrap gap-2">
+              <span>{currentStage ? currentStage.name : 'Crop Lifecycle'} Stage</span>
+              {isFarmerSelectedStage && (
+                <span className="text-[9px] text-[#87A96B] font-bold bg-[#87A96B]/10 px-2 py-0.5 rounded-full border border-[#87A96B]/20">
+                  Farmer Selected
+                </span>
+              )}
             </h2>
           </div>
 

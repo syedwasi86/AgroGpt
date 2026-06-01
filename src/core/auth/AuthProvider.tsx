@@ -4,6 +4,7 @@ import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from './supabaseClient'
 import { db } from '../../lib/db'
 import { syncData } from '../api/syncEngine'
+import i18n from '../i18n'
 
 const MOCK_USER = {
   id: 'dev-bypass-user',
@@ -97,12 +98,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           full_name: user.user_metadata?.full_name || ''
         })
       } else {
+        // Cloud profile exists, write it to Dexie to restore onboarding state
+        await db.profiles.put({
+          ...data,
+          name: data.name || data.full_name || user.user_metadata?.full_name || '',
+          sync_status: 'synced'
+        })
+
+        // Change active i18n language if preference exists in Supabase profile
+        if (data.preferred_language) {
+          void i18n.changeLanguage(data.preferred_language)
+          const settings = await db.user_settings.toArray().then(a => a[0])
+          if (settings) {
+            await db.user_settings.update(settings.id, {
+              language: data.preferred_language,
+              updated_at: new Date().toISOString()
+            })
+          }
+        }
+
         const updates: Record<string, string> = {}
         if (!data.email && user.email) updates.email = user.email
         if (!data.phone && user.phone) updates.phone = user.phone
         
         if (Object.keys(updates).length > 0) {
           await supabase.from('profiles').update(updates).eq('id', user.id)
+          await db.profiles.update(user.id, updates)
         }
       }
     } catch (e) {

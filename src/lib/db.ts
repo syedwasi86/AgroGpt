@@ -7,6 +7,8 @@ export type TransactionType = 'income' | 'expense'
 export interface ProfileRecord {
   id: string // UUID from Supabase auth
   name?: string
+  display_name?: string
+  preferred_language?: string
   email?: string
   phone: string
   city: string
@@ -18,6 +20,22 @@ export interface ProfileRecord {
   potassium?: number
   created_at: string
   updated_at: string
+  farm_name?: string
+  farm_area_value?: number
+  farm_area_unit?: string
+  farm_area_acres?: number
+  irrigation_sources?: string[]
+  state?: string
+  district?: string
+  village?: string
+  latitude?: number
+  longitude?: number
+  location_label?: string
+  onboarding_completed?: boolean
+  profile_completed_at?: string
+  active_crop_plan_id?: string
+  sync_status?: 'pending' | 'synced' | 'failed'
+  version?: number
 }
 
 export interface CropRecord {
@@ -103,6 +121,12 @@ export interface CropPlanRecord {
   created_at: string
   updated_at: string
   deleted_at?: string | null
+  crop_area_value?: number
+  crop_area_unit?: string
+  crop_area_acres?: number
+  farmer_selected_stage?: string
+  crop_condition?: string
+  created_by_onboarding?: boolean
 }
 
 export interface CropStageRecord {
@@ -208,6 +232,19 @@ export class AgroGPTDatabase extends Dexie {
       weather_adjustments: 'id, plan_id, task_id, adjustment_type, deleted_at'
     })
     this.version(3).stores({
+      profiles: 'id',
+      crops: 'id, user_id, status, planted_date, deleted_at',
+      transactions: 'id, user_id, crop_id, type, transaction_date, deleted_at',
+      scans: 'id, user_id, crop_id, scanned_at, deleted_at',
+      ai_queries: 'id, user_id, status, deleted_at',
+      user_settings: 'id, user_id',
+      crop_plans: 'id, user_id, status, sowing_date, deleted_at',
+      crop_stages: 'id, plan_id, status, start_date, end_date, deleted_at',
+      farm_tasks: 'id, plan_id, stage_id, status, task_date, task_type, deleted_at',
+      weather_adjustments: 'id, plan_id, task_id, adjustment_type, deleted_at',
+      dashboard_cache: 'key'
+    })
+    this.version(4).stores({
       profiles: 'id',
       crops: 'id, user_id, status, planted_date, deleted_at',
       transactions: 'id, user_id, crop_id, type, transaction_date, deleted_at',

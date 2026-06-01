@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { cn } from '../../../core/utils/cn'
+import { db } from '../../../lib/db'
 import { cropCalendarRepository } from '../repositories/cropCalendarRepository'
 import { cropCalendarService } from '../services/cropCalendarService'
 import { cropTemplates } from '../templates/cropTemplates'
@@ -18,7 +19,7 @@ import { UpcomingMilestones } from '../components/UpcomingMilestones'
 import { SectionContainer } from '../shared/ui/SectionContainer'
 import { GlassCard } from '../../../components/GlassCard'
 import { SkeletonCard } from '../../../components/Skeleton'
-import { Trash2, Sprout, Plus, Loader2, Sparkles, AlertTriangle } from 'lucide-react'
+import { Trash2, Sprout, Plus, Loader2 } from 'lucide-react'
 import {
   getTodayTasks,
   getOverdueTasks,
@@ -36,7 +37,6 @@ export function PrecisionPlanningPage() {
   const [activeTab, setActiveTab] = useState<'today' | 'week' | 'calendar'>('today')
   const [selectedDate, setSelectedDate] = useState(getTodayUtcString())
   const [weatherAlerts, setWeatherAlerts] = useState<WeatherAlert[]>([])
-  const [fetchingWeather, setFetchingWeather] = useState(false)
   const [formSubmitting, setFormSubmitting] = useState(false)
 
   // Sowing setup form fields
@@ -47,8 +47,9 @@ export function PrecisionPlanningPage() {
 
   // Automatically update variety when selected crop changes
   useEffect(() => {
-    if (cropTemplates[selectedCrop]) {
-      setVariety(cropTemplates[selectedCrop].variety)
+    const template = cropTemplates[selectedCrop]
+    if (template) {
+      setVariety(template.variety)
     }
   }, [selectedCrop])
 
@@ -62,9 +63,11 @@ export function PrecisionPlanningPage() {
     if (!activePlan) return
 
     const checkWeatherAndAdjust = async () => {
-      setFetchingWeather(true)
       try {
-        const coords = await getUserLocation().catch(() => ({ latitude: 20.5937, longitude: 78.9629 })) // Fallback to center of India
+        const profile = await db.profiles.toArray().then(a => a[0])
+        const coords = profile?.latitude !== undefined && profile?.longitude !== undefined
+          ? { latitude: profile.latitude, longitude: profile.longitude }
+          : await getUserLocation().catch(() => ({ latitude: 20.5937, longitude: 78.9629 }))
         const forecast = await fetchDailyWeather(coords.latitude, coords.longitude)
         const template = cropTemplates[activePlan.crop_type]
 
@@ -78,8 +81,6 @@ export function PrecisionPlanningPage() {
         }
       } catch (err) {
         console.error('Weather sync adjustment failed offline:', err)
-      } finally {
-        setFetchingWeather(false)
       }
     }
 
@@ -116,6 +117,10 @@ export function PrecisionPlanningPage() {
 
   const currentStage = useMemo(() => {
     if (!stages || !activePlan) return undefined
+    if (activePlan.farmer_selected_stage) {
+      const matched = stages.find(s => s.name.toLowerCase().includes(activePlan.farmer_selected_stage!.toLowerCase()))
+      if (matched) return matched
+    }
     return selectCurrentStage(stages, activePlan.sowing_date, todayStr)
   }, [stages, activePlan, todayStr])
 
@@ -325,6 +330,7 @@ export function PrecisionPlanningPage() {
                 progress={lifecycleProgress}
                 daysInStage={daysInStage}
                 nextStageEstimate={nextStageEstimate}
+                isFarmerSelectedStage={!!activePlan.farmer_selected_stage}
               />
             </SectionContainer>
 

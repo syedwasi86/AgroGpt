@@ -24,6 +24,7 @@ export interface DashboardSnapshot {
     city: string
     soilType: string
     totalAcreage: number
+    irrigationSources?: string[]
   }
   crop: {
     active: boolean
@@ -32,6 +33,8 @@ export interface DashboardSnapshot {
     sowingDate?: string
     currentStage?: string
     lifecycleProgress?: number
+    condition?: string
+    isFarmerSelectedStage?: boolean
   } | null
   readiness: {
     score: number
@@ -225,10 +228,10 @@ export const dashboardRepository = {
       profile = await db.profiles.get(fallbackId)
     }
 
-    const farmName = profile?.name ? `${profile.name}'s Farm` : 'My Farm'
-    const farmCity = profile?.city || 'Hyderabad'
+    const farmName = profile?.farm_name || (profile?.name ? `${profile.name}'s Farm` : 'My Farm')
+    const farmCity = profile?.location_label || profile?.city || 'Hyderabad'
     const farmSoilType = profile?.soil_type || 'Red Sandy Loam'
-    const farmAcreage = profile?.total_acreage || 2.0
+    const farmAcreage = profile?.farm_area_acres || profile?.total_acreage || 2.0
 
     // We already queried activePlan above. Let's fetch stages, tasks, adjustments
     let stages: CropStageRecord[] = []
@@ -254,7 +257,11 @@ export const dashboardRepository = {
     let weatherData: WeatherData | null = null
     let weatherIsCached = false
     let weatherUpdatedAt = new Date().toISOString()
-    const coords = await getUserLocation().catch(() => ({ latitude: HYDERABAD_LAT_LON[0], longitude: HYDERABAD_LAT_LON[1] }))
+    
+    // Prioritize profile coordinates
+    const coords = profile?.latitude !== undefined && profile?.longitude !== undefined
+      ? { latitude: profile.latitude, longitude: profile.longitude }
+      : await getUserLocation().catch(() => ({ latitude: HYDERABAD_LAT_LON[0], longitude: HYDERABAD_LAT_LON[1] }))
 
     const cachedWeather = await this.getCacheRecord(CACHE_WEATHER_KEY)
     if (!forceRefresh && cachedWeather && cachedWeather.expires_at && new Date(cachedWeather.expires_at) > new Date()) {
@@ -306,7 +313,8 @@ export const dashboardRepository = {
     let cropDto: DashboardSnapshot['crop'] = null
     if (activePlan) {
       const template = cropTemplates[activePlan.crop_type]
-      const currentStage = stages.find(s => s.status === 'current')?.name || 'Germination'
+      const calculatedStage = stages.find(s => s.status === 'current')?.name || 'Germination'
+      const currentStage = activePlan.farmer_selected_stage || calculatedStage
       
       let progress = 0
       if (template) {
@@ -322,7 +330,9 @@ export const dashboardRepository = {
         variety: activePlan.variety,
         sowingDate: activePlan.sowing_date,
         currentStage,
-        lifecycleProgress: progress
+        lifecycleProgress: progress,
+        condition: activePlan.crop_condition,
+        isFarmerSelectedStage: !!activePlan.farmer_selected_stage
       }
     }
 
@@ -343,7 +353,8 @@ export const dashboardRepository = {
         name: farmName,
         city: farmCity,
         soilType: farmSoilType,
-        totalAcreage: farmAcreage
+        totalAcreage: farmAcreage,
+        irrigationSources: profile?.irrigation_sources || []
       },
       crop: cropDto,
       readiness,
@@ -892,7 +903,7 @@ Return EXACTLY a JSON object matching this schema (do NOT wrap in markdown backt
     }
 
     // Local Agronomic Fallback (Offline or error fallback)
-    const localAdvice = this.generateLocalAgronomicFallback(cropDto, weather, todayTasks, lastScan, profile)
+    const localAdvice = this.generateLocalAgronomicFallback(cropDto, weather, todayTasks, lastScan)
     
     // Store fingerprint and fallback insights
     await db.dashboard_cache.put({
@@ -918,8 +929,7 @@ Return EXACTLY a JSON object matching this schema (do NOT wrap in markdown backt
     cropDto: DashboardSnapshot['crop'],
     weather: WeatherData,
     todayTasks: FarmTaskRecord[],
-    lastScan: ScanRecord | null,
-    profile: any
+    lastScan: ScanRecord | null
   ) {
     const cropName = cropDto?.name || 'Cotton'
     const stage = cropDto?.currentStage || 'Seedling'

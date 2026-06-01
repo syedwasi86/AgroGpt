@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { db } from '../../lib/db'
 import { initDatabase } from '../../lib/repository'
 import { supabase } from '../auth/supabaseClient'
@@ -80,7 +80,8 @@ export async function pushChanges(providedSession?: Session | null): Promise<{ s
       // 2. Cast numeric fields from strings to numbers
       const numericFields = [
         'amount', 'area', 'total_acreage', 'nitrogen', 'phosphorus', 'potassium',
-        'version', 'start_day', 'end_day', 'recurrence_interval_days'
+        'version', 'start_day', 'end_day', 'recurrence_interval_days',
+        'farm_area_value', 'farm_area_acres', 'latitude', 'longitude', 'crop_area_value', 'crop_area_acres'
       ]
       for (const field of numericFields) {
         if (cleanRecord[field] !== undefined && cleanRecord[field] !== null) {
@@ -90,7 +91,7 @@ export async function pushChanges(providedSession?: Session | null): Promise<{ s
       }
 
       // 3. Prevent empty strings in optional UUIDs
-      const uuidFields = ['crop_id', 'stage_id', 'plan_id', 'task_id']
+      const uuidFields = ['crop_id', 'stage_id', 'plan_id', 'task_id', 'active_crop_plan_id']
       for (const field of uuidFields) {
         if (cleanRecord[field] === '') {
           cleanRecord[field] = null
@@ -101,7 +102,7 @@ export async function pushChanges(providedSession?: Session | null): Promise<{ s
       const dateFields = [
         'created_at', 'updated_at', 'deleted_at', 'transaction_date', 'planted_date', 'scanned_at',
         'sowing_date', 'start_date', 'end_date', 'task_date', 'scheduled_date', 'effective_date',
-        'original_date', 'adjusted_date', 'applied_at'
+        'original_date', 'adjusted_date', 'applied_at', 'profile_completed_at'
       ]
       for (const field of dateFields) {
         if (cleanRecord[field] === '') {

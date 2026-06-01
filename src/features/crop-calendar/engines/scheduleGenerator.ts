@@ -9,6 +9,12 @@ export interface GenerationInput {
   sowingDate: string // YYYY-MM-DD
   area: number
   userId?: string
+  crop_area_value?: number
+  crop_area_unit?: string
+  crop_area_acres?: number
+  farmer_selected_stage?: string
+  crop_condition?: string
+  created_by_onboarding?: boolean
 }
 
 export interface GenerationOutput {
@@ -46,7 +52,13 @@ export function generateCropSchedule(input: GenerationInput): GenerationOutput {
     sync_status: 'pending',
     created_at: now,
     updated_at: now,
-    deleted_at: null
+    deleted_at: null,
+    crop_area_value: input.crop_area_value,
+    crop_area_unit: input.crop_area_unit,
+    crop_area_acres: input.crop_area_acres,
+    farmer_selected_stage: input.farmer_selected_stage,
+    crop_condition: input.crop_condition,
+    created_by_onboarding: input.created_by_onboarding
   }
 
   // 2. Generate CropStageRecords

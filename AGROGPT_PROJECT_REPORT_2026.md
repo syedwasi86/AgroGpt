@@ -17,6 +17,9 @@
 9. [Performance & Scalability](#9-performance--scalability)
 10. [Final Implementation Status](#10-final-implementation-status)
 11. [AI Farm Command Center Dashboard Report](#11-ai-farm-command-center-dashboard-report)
+12. [Farmer Onboarding System](#12-farmer-onboarding-system)
+13. [Profile Page Architecture](#13-profile-page-architecture)
+14. [Future Extensibility](#14-future-extensibility)
 
 ---
 
@@ -86,7 +89,7 @@ When a farmer creates a crop cycle, marks a task as complete, or adds custom not
 ## 3. Database & Sync System
 
 ### Local IndexedDB Schemas
-The client-side database is defined in `src/lib/db.ts` (Database Version 2) with the following structures:
+The client-side database is defined in `src/lib/db.ts` (Database Version 4) with the following structures:
 
 #### 1. `crop_plans`
 Stores the metadata of active and completed crop cycles.
@@ -101,6 +104,12 @@ Stores the metadata of active and completed crop cycles.
 - `sync_status` (String - `'pending' | 'synced' | 'failed'`)
 - `created_at` / `updated_at` (ISO strings)
 - `deleted_at` (Indexed, ISO string - Nullable)
+- `crop_area_value` (Number - Area of crop cycle as entered by farmer)
+- `crop_area_unit` (String - Chosen area unit e.g., Acre, Hectare, Bigha, etc.)
+- `crop_area_acres` (Number - Area normalized to acres)
+- `farmer_selected_stage` (String - Growth stage declared directly by the farmer)
+- `crop_condition` (String - General crop condition state)
+- `created_by_onboarding` (Boolean - Flags if this plan was generated during initial onboarding)
 
 #### 2. `crop_stages`
 Stores the generated growth stage boundaries for each plan.
@@ -150,6 +159,42 @@ Stores the historical log of weather-induced task delays.
 - `sync_status` (String)
 - `created_at` / `updated_at` / `deleted_at` (Indexed, ISO strings)
 
+#### 5. `profiles`
+Stores farmer profiles, farm details, location labels, and NPK metrics.
+- `id` (Primary Key, String - Supabase User UUID)
+- `name` (String - User name)
+- `display_name` (String - Farmer greeting name)
+- `preferred_language` (String - Chosen language code for UI and AI localization)
+- `email` (String - Optional email address)
+- `phone` (String - Primary contact number)
+- `city` (String - Geolocation-detected city)
+- `soil_type` (String - Local soil classification)
+- `primary_crop` (String - Main crop type)
+- `total_acreage` (Number - Total acreage calculated in acres)
+- `nitrogen` / `phosphorus` / `potassium` (Number - Active soil N-P-K nutrient parameters)
+- `farm_name` (String - Optional custom farm name)
+- `farm_area_value` (Number - Total farm size value)
+- `farm_area_unit` (String - Farm size unit e.g., Acre, Hectare, Guntha, Cent, Bigha, Square Meter)
+- `farm_area_acres` (Number - Farm size normalized to acres)
+- `irrigation_sources` (Array of Strings - Configured water/irrigation sources)
+- `state` / `district` / `village` (String - Geocoded or manually input location data)
+- `latitude` / `longitude` (Number - Geolocation coordinates)
+- `location_label` (String - User-friendly display location)
+- `onboarding_completed` (Boolean - Onboarding wizard completion status)
+- `profile_completed_at` (String - Onboarding completion UTC timestamp)
+- `active_crop_plan_id` (String - Pointer to the active plan in `crop_plans`)
+- `sync_status` (String - `'pending' | 'synced' | 'failed'`)
+- `version` (Number - Conflict tracking version)
+- `created_at` / `updated_at` (ISO strings)
+
+#### 6. `dashboard_cache`
+Stores aggregations and transient dashboard calculations.
+- `key` (Primary Key, String - Cache identifier)
+- `type` (String - `'snapshot' | 'weather' | 'ai-insights' | 'market' | 'farm-status'`)
+- `payload` (JSONB Object - Cached data representation)
+- `created_at` / `updated_at` (ISO strings)
+- `expires_at` (ISO string - Expiration boundary, optional)
+
 ---
 
 ### Sync Engine Mechanics (`syncEngine.ts`)
@@ -178,7 +223,9 @@ Stores the historical log of weather-induced task delays.
 
 ---
 
-### Supabase Migration Updates (`0003_crop_calendar_local_first.sql`)
+### Supabase Migration Updates
+
+#### 1. Crop Calendar Core Migration (`0003_crop_calendar_local_first.sql`)
 - Creates parallel PostgreSQL tables (`crop_plans`, `crop_stages`, `farm_tasks`, `weather_adjustments`) matching the Dexie schema.
 - Uses `UUID PRIMARY KEY DEFAULT gen_random_uuid()` to prevent ID collisions between offline clients.
 - Configures cascade deletes (`ON DELETE CASCADE`) to clean up stages, tasks, and adjustments if a plan is removed.
@@ -187,6 +234,10 @@ Stores the historical log of weather-induced task delays.
   CREATE POLICY "Users can manage their own crop_plans" ON crop_plans
     FOR ALL USING (auth.uid() = user_id);
   ```
+
+#### 2. Farmer Onboarding & Profile Schema Migration (`0004_farmer_onboarding.sql`)
+- Alters the remote `profiles` table to introduce onboarding and location attributes: `display_name`, `preferred_language`, `farm_name`, `farm_area_value`, `farm_area_unit`, `farm_area_acres`, `soil_type`, `irrigation_sources` (text array), `state`, `district`, `village`, `latitude`, `longitude`, `location_label`, `onboarding_completed`, `profile_completed_at`, and `active_crop_plan_id`.
+- Alters the remote `crop_plans` table to add crop-specific metadata: `crop_area_value`, `crop_area_unit`, `crop_area_acres`, `farmer_selected_stage`, `crop_condition`, and `created_by_onboarding`.
 
 ---
 
@@ -421,6 +472,16 @@ The dashboard does **NOT** replace the detailed worksheets:
 #### Repository Aggregation Layer (`dashboardRepository.ts`)
 The dashboard retrieves data through a centralized repository to prevent database query bloat. Rather than having individual components trigger independent Dexie and weather calls, the repository compiles everything into a single, cohesive **`DashboardSnapshot`** DTO (Data Transfer Object).
 
+#### Dynamic Personalization & Custom Metadata
+To deliver a tailored user experience, the dashboard repository dynamically aggregates and surfaces farmer onboarding information:
+- **`display_name`**: Populates custom greeting banners (e.g., *"Good Morning, Ramesh"*).
+- **`location_label`**: Integrates district and village metadata into weather cards and diagnostic queries, grounding forecasts with spatial relevance.
+- **`soil_type`**: Injects soil classification values into the NPK widget to calculate local nutrition targets.
+- **`irrigation_sources`**: Displays available farm watering chips, informing irrigation task checklists.
+- **`active_crop_plan_id`**: Serves as the key pointer to resolve the active cultivation cycle data.
+- **`farmer_selected_stage`**: Priority overlay showing farmer-reported stage annotations (e.g. *"Cotton - Flowering (Farmer Selected)"*).
+- **`crop_condition`**: Tracks crop condition status tags directly in the active crop dashboard header.
+
 #### Separation of Concerns
 1. **Database Layer (Dexie.js / Supabase):** Handles raw profile, plan, task, transaction, and scan records.
 2. **Repository Layer (`dashboardRepository.ts`):** Fetches, filters, calculates readiness, constructs the feed, orchestrates AI requests, and saves/retrieves cache records.
@@ -608,8 +669,8 @@ The gateway cards are designed to communicate immediate system values:
 ### 10. Final Implementation Status
 
 #### Completed Features
-- **Dexie Version 3 Upgrade:** Strongly-typed `dashboard_cache` table is functional.
-- **Readiness Scoring Engine:** Computes dynamic readiness score out of 100 points.
+- **Dexie Version 4 Upgrade:** Strongly-typed schema containing onboarding, profile, and `dashboard_cache` tables.
+- **Readiness Scoring Engine:** Computes dynamic readiness score out of 100 points based on tasks, soil NPK, weather, and pest statuses.
 - **Event-Driven Cache Invalidation:** Keeps dashboard synchronized with changes in all other modules.
 - **AI Orchestration & Chips:** Pre-fetches prompt advice in a single Gemini request and reveals them locally.
 - **Sleek UX Layout:** Clean Linear/Vercel styling, lazy map loading, and responsive gateway metrics.
@@ -617,3 +678,196 @@ The gateway cards are designed to communicate immediate system values:
 #### Known Limitations
 - **Offline Weather Forecasts:** Cannot pull new forecasts if offline; relies on 1-hour cache.
 - **Scan Image Size:** Base64 scanner data takes considerable IndexedDB space, which could trigger cleanup requirements.
+
+---
+
+## 12. Farmer Onboarding System
+
+### Purpose of Onboarding
+The **Farmer Onboarding System** in AgroGPT is built to collect key farmer, farm, and crop configuration metadata during first-time execution. Collecting this information allows the system to initialize custom crop calendar schedules, localize weather recommendations, personalize dashboard notifications, and set baseline parameters for AI diagnostics. 
+
+The onboarding system is designed with four fundamental principles:
+1. **Farmer-Friendly UI:** Uses simple language, large layouts, and intuitive visuals.
+2. **Mobile-First UX:** Tailored for small mobile screens with large touch targets.
+3. **Offline-First Resilience:** Zero reliance on remote network calls. Every wizard step is operational offline.
+4. **Low-Literacy Friendly:** Minimizes text input, relying on single-tap option grids, visual icons, and automated defaults.
+
+### Onboarding Flow Sequence
+The onboarding wizard guides farmers through a 12-step structured progression:
+
+```
+    [ Login ]
+        │
+        ▼
+[ Language Selection ] ──► Stores preferred_language (en, hi, te)
+        │
+        ▼
+  [ Farmer Name ]      ──► Stores display_name
+        │
+        ▼
+ [ Farm Location ]     ──► Captures latitude, longitude, state, district, village, location_label
+        │
+        ▼
+[ Farm Name (Opt) ]    ──► Stores farm_name
+        │
+        ▼
+   [ Farm Size ]       ──► Captures farm_area_value, unit (Acre, Hectare, Guntha, etc.)
+        │
+        ▼
+   [ Soil Type ]       ──► Selects soil_type (Black, Red, Clayey, Sandy, Alluvial)
+        │
+        ▼
+  [ Water Source ]     ──► Selects irrigation_sources (Borewell, Canal, Rainfed, Open Well)
+        │
+        ▼
+[ Profile Completion ] ──► Writes profiles table; sets onboarding_completed = true
+        │
+        ▼
+ [ First Crop Setup ]  ──► Steps 8-12: Captures crop_type, variety, sowing_date, stage, condition
+        │
+        ▼
+   [ Dashboard ]       ──► Resolves active_crop_plan_id; displays custom operational cockpit
+```
+
+### Detailed Wizard Step Operations
+
+#### 1. Language Selection
+- **Question:** Selected language option buttons (English, हिन्दी, తెలుగు).
+- **Stored Field:** `preferred_language`
+- **Behavior:** Triggers active i18next language switches immediately. Ensures all subsequent steps, local calendar instructions, and system warnings are rendered in the chosen language.
+
+#### 2. Farmer Name
+- **Question:** *"What should we call you?"*
+- **Stored Field:** `display_name`
+- **Behavior:** Greets the farmer on the main dashboard Command Center and sets up future conversational notifications. (e.g., *"Good Morning, Ramesh"*).
+
+#### 3. Farm Location
+- **Stored Fields:** `state`, `district`, `village`, `latitude`, `longitude`, `location_label`
+- **Behavior:** Geolocation coordinate gathering acts as the primary agronomical source of truth. The user can fetch location using their device's GPS chip. Reverse geocoding is performed in the background if online. If offline, the geocoder fails gracefully without blocking the wizard, and the farmer can enter state, district, and village details manually.
+
+#### 4. Farm Details
+- **Stored Fields:** `farm_name` (optional), `farm_area_value`, `farm_area_unit`, `farm_area_acres`, `soil_type`, `irrigation_sources`
+- **Behavior:** 
+  - **Farm Size Conversion:** The wizard preserves the farmer's preferred regional unit (`farm_area_value`, `farm_area_unit`). AgroGPT translates the input into a normalized acreage value (`farm_area_acres`) for system calculations using standard conversion constants:
+    - **Acre:** 1.0
+    - **Hectare:** 2.471
+    - **Guntha:** 0.025
+    - **Cent:** 0.01
+    - **Bigha:** 0.62
+    - **Square Meter:** 0.000247
+  - **Soil Type Selection:** Enforces selection of Black Soil, Red Soil, Clayey Soil, Sandy Soil, or Alluvial Soil. Informs baseline NPK profiles and water retention parameters.
+  - **Water Sources Selection:** Captures available irrigation methods (Borewell, Canal, Rainfed, Open Well) to guide agricultural task templates (such as irrigation delay triggers).
+
+#### 5. Profile Completion Status
+- **Stored Fields:** `onboarding_completed = true`, `profile_completed_at = timestamp`
+- **Behavior:** Upon completing Step 7, a local transaction writes the profile configuration record to Dexie. Completing onboarding triggers state updates to block redirect loops.
+
+#### 6. First Crop Setup (Steps 8-12)
+- **Stored Fields:** `crop_type`, `variety` (variety input), `crop_area_value`, `crop_area_unit`, `crop_area_acres`, `sowing_date`, `farmer_selected_stage`, `crop_condition`, `created_by_onboarding = true`
+- **Behavior:** Initializes the first cultivation cycle. The crop area is validated to ensure it does not exceed the total farm area.
+
+#### 7. Farmer Selected Stage vs. Calculated Stage
+AgroGPT manages two concurrent representations of crop development stages:
+1. **Calculated Stage (`calculatedStage`):** Computed dynamically based on the sowing date and standard template crop stage duration boundaries.
+2. **Farmer Selected Stage (`farmer_selected_stage`):** Inputted directly by the farmer.
+- **UI Logic:** The dashboard and Precision Planning pages prioritize the farmer's reporting to build user trust:
+  ```ts
+  displayStage = farmer_selected_stage ?? calculatedStage
+  ```
+  If `farmer_selected_stage` is active, it is rendered on screen with a `(Farmer Selected)` suffix. Internally, the calculated stage is retained to evaluate weather warning sensitivities and diagnostic check boundaries.
+
+#### 8. Crop Condition Assessment
+- **Values:** Healthy, Average, Not Growing Well, Pest/Disease Problem, Not Sure.
+- **Stored Field:** `crop_condition`
+- **Behavior:** Set in Step 12. Contextualizes the initial risk scores on the dashboard, prioritizes calendar guidelines, and adjusts AI diagnostic sensitivity.
+
+#### 9. Active Crop Plan Tracking
+- **Stored Field:** `active_crop_plan_id` in the `profiles` table.
+- **Behavior:** Points to the main crop schedule rendered on the dashboard operations panel. The first plan created in the onboarding wizard automatically populates this ID.
+
+### Onboarding Offline-First Architecture
+The onboarding wizard uses local-first transactions. There are no blocking network calls.
+```
+ [ User Input ] ──► [ Local Write to Dexie ] ──► [ Reactive UI Update ] 
+                                                          │
+                                                          ▼
+                                              [ sync_status = 'pending' ]
+                                                          │
+                                                          ▼
+                                              [ Background Sync Manager ]
+                                                          │
+                                                          ▼
+                                               [ Supabase Cloud Sync ]
+```
+Every form submission writes to Dexie immediately. If online, the sync engine fires background push sequences to Supabase; if offline, data remains cached in Dexie until connectivity is restored.
+
+---
+
+## 13. Profile Page Architecture
+
+### Farmer Identity & Farm Information Hub
+The **Profile Page** (`ProfilePage.tsx`) acts as the farmer's central identity, farm profile, and current crop cockpit. Rather than split settings across multiple screens, the page gathers all operational parameters in a unified view, styled as an 8-card interactive command center.
+
+### The 8-Card Profile Layout
+1. **Farmer Information:** Renders profile details (`display_name`, `preferred_language`, `email`, `phone`).
+2. **Farm Location:** Displays localized labels (`village`, `district`, `state`), coordinates (`latitude`, `longitude`), and a "Fetch Location" GPS override tool.
+3. **Farm Details:** Renders total farm size (preserved original unit alongside normalized acreage) and the active `soil_type`.
+4. **Water Sources:** Displays active irrigation methods as responsive status chips.
+5. **Soil Health & NPK Nutrients:** Displays current Nitrogen (N), Phosphorus (P), and Potassium (K) levels in mg/kg. Hosts the soil report auto-extractor button.
+6. **Active Crop Summary:** Summarizes the current crop cycle (`crop_type`, `sowing_date`, `displayStage`, and `crop_condition`).
+7. **Account Status:** Renders account creation time, `sync_status` (Synced, Pending, Failed), and `last_sync_time`.
+8. **Quick Actions:** Responsive buttons linking to inline editing modals (Edit Farmer Info, Edit Location, Edit Farm Details, Edit Water Sources, Edit Active Crop, Edit Soil NPK).
+
+### Profile Editing Workflows
+- Editing follows the local-first pattern:
+  1. The user opens an edit modal and updates fields (e.g., changing soil type or adding a water source).
+  2. Submitting triggers an immediate update to the local Dexie `profiles` table.
+  3. The `useLiveQuery` hook detects database changes and triggers an instant UI re-render (latency < 16ms).
+  4. The record is flagged with `sync_status = 'pending'` and has its `version` incremented.
+  5. The background `syncEngine.ts` automatically pushes updates to Supabase without blocking user navigation.
+- If the sowing date or crop type is edited in the Active Crop modal, the calendar engine regenerates the schedule, calculating new milestones while soft-deleting the previous tasks.
+
+### Soil NPK Auto-Extraction OCR Pipeline
+To simplify nutrient data input, the profile page includes an automated lab report parsing tool:
+
+```
+[ Upload Report (PDF/Image) ]
+             │
+             ▼
+[ PDF Check: If PDF, PDF.js renders Page 1 to Canvas at 2.0 scale ]
+             │
+             ▼
+    [ PNG Data URL output ]
+             │
+             ▼
+[ OCR Processing: Tesseract.js eng text recognition ]
+             │
+             ▼
+    [ Raw extracted text ]
+             │
+             ▼
+[ Regex parsing for N-P-K patterns ]
+             │
+             ▼
+[ Update state & display extraction status (success / partial / failed) ]
+```
+
+- **OCR Engine:** Uses `Tesseract.js` for on-device optical character recognition.
+- **PDF Parser:** Uses `pdfjs-dist` to convert document files. It accesses the first page, renders the vector text onto a client-side `<canvas>` element at a high-fidelity 2.0 scale, and generates a PNG data URL for Tesseract.
+- **Pattern Match Parser:** Evaluates raw OCR text using regular expressions to capture target nutrient counts:
+  - **Nitrogen:** `/(?:Nitrogen|N)[:\s]+(\d+(?:\.\d+)?)/i`
+  - **Phosphorus:** `/(?:Phosphorus|P)[:\s]+(\d+(?:\.\d+)?)/i`
+  - **Potassium:** `/(?:Potassium|K)[:\s]+(\d+(?:\.\d+)?)/i`
+- **Fallback Options:** If the OCR fail threshold is triggered (e.g., hand-written reports or low contrast), the app updates its status to `'failed'` and prompts the user to input N-P-K nutrient values manually in the input fields.
+
+---
+
+## 14. Future Extensibility
+
+The onboarding and profile architectures are designed to support future core enhancements:
+
+- **Multi-Farm Support:** The `profiles` schema isolates location and farm size in individual fields. A future upgrade can map profiles to a separate `farms` table with a one-to-many user relationship, without breaking existing dashboard repositories.
+- **Multi-Crop Support:** The dashboard utilizes `active_crop_plan_id` to resolve current calendar views. Supporting multiple concurrent crops simply requires mapping `active_crop_plan_ids` to an array of pointers, allowing the farmer to toggle between active schedules in the command cockpit.
+- **Additional Indian Languages:** The onboarding `preferred_language` field is stored as standard ISO codes (e.g., `'en'`, `'hi'`, `'te'`). New languages (such as Marathi, Kannada, or Bengali) can be introduced by adding localization translation packages, without changing database schemas.
+- **Advanced Advisories & Analytics:** On-device soil NPK nutrients allow Gemini models to tailor precise fertilizer recommendation formulas (e.g. urea, DAP, potash dosages).
+- **Historical Crop Tracking:** By utilizing soft deletes (`deleted_at`) and status fields in `crop_plans`, the database retains historical data. This lets the system compile multi-season yield reports and soil depletion charts to help farmers plan crop rotations.

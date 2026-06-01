@@ -15,8 +15,32 @@ import { ProfilePage } from './features/settings/ProfilePage'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { useEffect } from 'react'
 import { syncData } from './core/api/syncEngine'
+import { useAuth } from './core/auth/AuthProvider'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from './lib/db'
+import { Loader2 } from 'lucide-react'
+import { OnboardingPage } from './features/onboarding/OnboardingPage'
 
 function ProtectedShell() {
+  const { user } = useAuth()
+  const profile = useLiveQuery(async () => {
+    if (!user?.id) return null
+    return (await db.profiles.get(user.id)) || null
+  }, [user])
+
+  if (profile === undefined) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black/90">
+        <Loader2 className="animate-spin text-primary-500" size={32} />
+      </div>
+    )
+  }
+
+  // If onboarding is not completed, redirect to /onboarding
+  if (!profile || !profile.onboarding_completed) {
+    return <Navigate to="/onboarding" replace />
+  }
+
   return (
     <>
       <AppShell>
@@ -50,6 +74,7 @@ export default function App() {
           </Route>
           
           <Route element={<ProtectedRoute />}>
+            <Route path="/onboarding" element={<OnboardingPage />} />
             <Route element={<ProtectedShell />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />

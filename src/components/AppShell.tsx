@@ -29,11 +29,11 @@ function useNavItems(): NavItem[] {
       { to: '/dashboard', label: t('nav.dashboard'), icon: <LayoutDashboard size={18} /> },
       { to: '/field-vision', label: t('nav.fieldVision'), icon: <ScanLine size={18} /> },
       {
-        to: '/precision-planning',
+        to: '/crop-calendar',
         label: t('nav.precisionPlanning'),
         icon: <Calculator size={18} />,
       },
-      { to: '/digital-ledger', label: t('nav.digitalLedger', 'Digital Ledger'), icon: <BookOpenCheck size={18} /> },
+      { to: '/digital-khata', label: t('nav.digitalLedger', 'Digital Ledger'), icon: <BookOpenCheck size={18} /> },
       { to: '/market', label: t('nav.market', 'Market'), icon: <BarChart3 size={18} /> },
       { to: '/settings', label: t('nav.settings', 'Settings'), icon: <Settings size={18} /> },
     ],

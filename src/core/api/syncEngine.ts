@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { db } from '../../lib/db'
 import { initDatabase } from '../../lib/repository'
 import { supabase } from '../auth/supabaseClient'
@@ -32,12 +32,22 @@ export async function pushChanges(providedSession?: Session | null): Promise<{ s
 
   const lastSync = await getLastSyncTimestamp()
   console.log('[SyncEngine] pushChanges - LAST SYNC TIMESTAMP:', lastSync)
-  const tables = ['profiles', 'crops', 'transactions', 'scans', 'ai_queries'] as const
+  const tables = [
+    'profiles',
+    'crops',
+    'transactions',
+    'scans',
+    'ai_queries',
+    'crop_plans',
+    'crop_stages',
+    'farm_tasks',
+    'weather_adjustments'
+  ] as const
 
   for (const tableName of tables) {
     const table = db[tableName] as any
-    // Fetch all records modified since last sync
-    const pending = await table.filter((record: any) => record.updated_at > lastSync).toArray()
+    // Fetch all records modified since last sync or marked pending
+    const pending = await table.filter((record: any) => record.sync_status === 'pending' || record.updated_at > lastSync).toArray()
     console.log(`[SyncEngine] pushChanges - TABLE: ${tableName} | PENDING: ${pending.length}`)
 
     // Filter out scans with local base64/blob URLs (Option A: skip pushing to prevent DB bloat)
@@ -68,7 +78,11 @@ export async function pushChanges(providedSession?: Session | null): Promise<{ s
       }
 
       // 2. Cast numeric fields from strings to numbers
-      const numericFields = ['amount', 'area', 'total_acreage', 'nitrogen', 'phosphorus', 'potassium']
+      const numericFields = [
+        'amount', 'area', 'total_acreage', 'nitrogen', 'phosphorus', 'potassium',
+        'version', 'start_day', 'end_day', 'recurrence_interval_days',
+        'farm_area_value', 'farm_area_acres', 'latitude', 'longitude', 'crop_area_value', 'crop_area_acres'
+      ]
       for (const field of numericFields) {
         if (cleanRecord[field] !== undefined && cleanRecord[field] !== null) {
           const parsed = Number(cleanRecord[field])
@@ -77,7 +91,7 @@ export async function pushChanges(providedSession?: Session | null): Promise<{ s
       }
 
       // 3. Prevent empty strings in optional UUIDs
-      const uuidFields = ['crop_id']
+      const uuidFields = ['crop_id', 'stage_id', 'plan_id', 'task_id', 'active_crop_plan_id']
       for (const field of uuidFields) {
         if (cleanRecord[field] === '') {
           cleanRecord[field] = null
@@ -85,7 +99,11 @@ export async function pushChanges(providedSession?: Session | null): Promise<{ s
       }
 
       // 4. Ensure valid ISO strings for dates
-      const dateFields = ['created_at', 'updated_at', 'deleted_at', 'transaction_date', 'planted_date', 'scanned_at']
+      const dateFields = [
+        'created_at', 'updated_at', 'deleted_at', 'transaction_date', 'planted_date', 'scanned_at',
+        'sowing_date', 'start_date', 'end_date', 'task_date', 'scheduled_date', 'effective_date',
+        'original_date', 'adjusted_date', 'applied_at', 'profile_completed_at'
+      ]
       for (const field of dateFields) {
         if (cleanRecord[field] === '') {
           cleanRecord[field] = null
@@ -117,8 +135,20 @@ export async function pushChanges(providedSession?: Session | null): Promise<{ s
     if (error) {
       console.error(`[SyncEngine] Failed to push ${tableName} to Supabase:`, error)
       failed += pending.length
+      // Mark as failed in Dexie so it retries
+      for (const record of payload) {
+        if (table.update) {
+          await table.update(record.id, { sync_status: 'failed' })
+        }
+      }
     } else {
       synced += pending.length
+      // Mark as successfully synced in Dexie
+      for (const record of payload) {
+        if (table.update) {
+          await table.update(record.id, { sync_status: 'synced' })
+        }
+      }
     }
   }
 
@@ -135,7 +165,18 @@ export async function pullUpdates(providedSession?: Session | null): Promise<voi
   if (!session) return
 
   const lastSync = await getLastSyncTimestamp()
-  const tables = ['profiles', 'crops', 'transactions', 'scans', 'ai_queries', 'user_settings'] as const
+  const tables = [
+    'profiles',
+    'crops',
+    'transactions',
+    'scans',
+    'ai_queries',
+    'user_settings',
+    'crop_plans',
+    'crop_stages',
+    'farm_tasks',
+    'weather_adjustments'
+  ] as const
 
   for (const tableName of tables) {
     const { data: cloudRecords, error } = await supabase
@@ -152,10 +193,20 @@ export async function pullUpdates(providedSession?: Session | null): Promise<voi
       const table = db[tableName] as any
 
       for (const record of cloudRecords) {
-        // Conflict Resolution:
-        // By pulling from the cloud using table.put(), Dexie overwrites any existing local
-        // record with the same primary key (id).
-        await table.put(record)
+        // Conflict Resolution using version-first comparison:
+        const local = await table.get(record.id)
+        if (!local) {
+          await table.put({ ...record, sync_status: 'synced' })
+        } else {
+          const hasVersion = record.version !== undefined && local.version !== undefined
+          const remoteIsNewerVersion = hasVersion && record.version > local.version
+          const sameVersionRemoteNewerTimestamp = hasVersion && record.version === local.version && new Date(record.updated_at) > new Date(local.updated_at)
+          const fallbackRemoteNewerTimestamp = !hasVersion && new Date(record.updated_at) > new Date(local.updated_at)
+
+          if (remoteIsNewerVersion || sameVersionRemoteNewerTimestamp || fallbackRemoteNewerTimestamp) {
+            await table.put({ ...record, sync_status: 'synced' })
+          }
+        }
       }
     }
   }

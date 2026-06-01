@@ -93,3 +93,22 @@ export function calculateFertilizer(acreage: number, cropStage: CropStage): Fert
     notes: `Split NPK applications; totals are for ${acreage} acre(s) at ${cropStage} stage (reference ranges).`,
   }
 }
+
+/** Supported area units conversion factors relative to 1 Acre */
+export const AREA_CONVERSION_FACTORS: Record<string, number> = {
+  Acre: 1.0,
+  Hectare: 2.47105,
+  Guntha: 0.025,
+  Cent: 0.01,
+  Bigha: 0.62,
+  'Square Meter': 0.000247105
+}
+
+/** Centralized area converter to normalized Acres */
+export function convertToAcres(value: number, unit: string): number {
+  const factor = AREA_CONVERSION_FACTORS[unit] || 1.0
+  const result = value * factor
+  // Round to 4 decimal places for precision without floating point bloat
+  return Math.round(result * 10000) / 10000
+}
+

@@ -1,0 +1,310 @@
+[
+  {
+    "id": "rice_healthy",
+    "crop": "Rice",
+    "disease": "Healthy",
+    "scientificName": null,
+    "dangerLevel": null,
+    "symptoms": [
+      "Vigorous, uniform tillering",
+      "Erect and deep green leaf blades without lesions",
+      "Clean, unblemished leaf sheaths at the water line",
+      "Panicles emerging uniformly, filling out completely without chaffiness or grain discoloration"
+    ],
+    "earlySymptoms": [],
+    "advancedSymptoms": [],
+    "causes": [],
+    "spreadConditions": {
+      "humidity": null,
+      "temperature": null,
+      "rainfall": null,
+      "season": null
+    },
+    "immediateActions": {
+      "low": [],
+      "medium": [],
+      "high": []
+    },
+    "organicTreatments": [],
+    "chemicalTreatments": [],
+    "prevention": [
+      "Basal nutrient management including split doses of Nitrogen, total Phosphorus and Potassium applied before planting",
+      "Essential micronutrient additions, specifically Zinc and Calcium Silicate to physically fortify cell walls",
+      "Use of biofertilizers like Azospirillum and Phosphobacteria to enhance seedling vigor and root mass"
+    ],
+    "monitoringAdvice": [
+      "Regular checks of the water level",
+      "Regular checks of leaf coloration"
+    ],
+    "farmerFriendlyExplanation": "A healthy rice crop has lots of strong stems (tillers), erect green leaves with no spots, clean stems near the water line, and rice heads that fill out fully without empty grains or discoloration. In Telugu, it is called స్వస్థ వరి (Swastha vari) and in Hindi as स्वस्थ धान (Swasth dhaan).",
+    "sourceAttribution": [
+      "Nutrient Management - TNAU Agritech Portal, accessed on May 24, 2026, http://www.agritech.tnau.ac.in/expert_system/ragi/nutrientmanagement.html"
+    ],
+    "displayName": {
+      "en": "Healthy Rice",
+      "hi": "स्वस्थ धान",
+      "te": "స్వస్థ వరి"
+    },
+    "diseaseType": null
+  },
+  {
+    "id": "rice_bacterial_blight",
+    "crop": "Rice",
+    "disease": "Bacterial Leaf Blight",
+    "scientificName": "Xanthomonas oryzae pv. oryzae",
+    "dangerLevel": "extreme",
+    "symptoms": [
+      "Entire seedlings wilt, roll up, turn a grayish-green, and die completely (Kresek Phase / Seedling Wilt)",
+      "Water-soaked streaks near leaf tips and margins (Leaf Blight Phase)",
+      "Streaks enlarging, coalescing, and turning a distinctive yellow-white with highly characteristic wavy margins",
+      "Entire leaf drying up and dying",
+      "Milky bacterial ooze drops on young lesions early in the morning",
+      "Crusty, amber-colored beads on the leaf surface (dried ooze)"
+    ],
+    "earlySymptoms": [
+      "Seedling wilting and rolling up, turning grayish-green (Kresek phase)",
+      "Water-soaked streaks near leaf tips and margins in mature plants"
+    ],
+    "advancedSymptoms": [
+      "Seedlings dying completely",
+      "Streaks enlarging, coalescing, and turning yellow-white with wavy margins, leading to the entire leaf drying and dying",
+      "Milky bacterial ooze drops drying into crusty, amber-colored beads on leaf surfaces"
+    ],
+    "causes": [
+      "Xanthomonas oryzae pv. oryzae (bacterial pathogen)",
+      "Pathogen entry through hydathodes (natural pores) or microscopic wounds"
+    ],
+    "spreadConditions": {
+      "humidity": "Hyper-humid microclimates (flooded systems)",
+      "temperature": null,
+      "rainfall": "Heavy rains and strong winds",
+      "season": "Excessive nitrogen fertilization, deep flooding"
+    },
+    "immediateActions": {
+      "low": [
+        "Stop applying Urea immediately (as nitrogen feeds the bacteria)"
+      ],
+      "medium": [
+        "Temporarily drain the field to stop water-borne spread"
+      ],
+      "high": [
+        "Foliar spray of Copper Hydroxide to halt bacterial entry"
+      ]
+    },
+    "organicTreatments": [
+      "Use Pseudomonas fluorescens seed treatment @ 10g/kg seed",
+      "Use seedling root dip @ 2.5 kg/ha in 100 L water prior to transplanting"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Copper Hydroxide 77 WP",
+        "dosage": "500g/acre (or 2.5 g/L)",
+        "sprayInterval": "Administered at 30 and 45 days after planting",
+        "notes": "Curative (Bactericide) foliar spray."
+      }
+    ],
+    "prevention": [
+      "Seed treatment and seedling root dip with Pseudomonas fluorescens",
+      "Strictly avoid excessive or late nitrogen top-dressing",
+      "Maintain proper field water levels and drain temporarily if symptoms appear"
+    ],
+    "monitoringAdvice": [
+      "Check seedlings 1-3 weeks after transplanting for wilting/rolling leaves",
+      "Inspect mature leaves for early morning milky ooze drops or dried amber beads",
+      "Check leaf tips and margins for yellow-white streaks with wavy margins"
+    ],
+    "farmerFriendlyExplanation": "A severe bacterial infection that enters through cuts in the leaves. It starts at the tips, turning leaf edges yellow and wavy, eventually killing the whole leaf. It spreads rapidly through irrigation water and rain. The farmer must immediately stop applying Urea, drain the field temporarily, and spray Copper Hydroxide. Known as జీవాణు పత్తీ జులసా (Jiwanu patti jhulasa) in Hindi and బాక్టీరియా ఆకు ఎండు తెగులు (Bacteria aaku endu tegulu) in Telugu.",
+    "sourceAttribution": [
+      "Disease - Crop Protection, accessed on May 24, 2026, http://www.agritech.tnau.ac.in/expert_system/paddy/cpdiseases.html",
+      "Bacterial leaf blight (Xanthomonas oryzae pv. Oryzae) - TNAU Agritech Portal, accessed on May 24, 2026, http://www.agritech.tnau.ac.in/expert_system/paddy/cpdisblb.html",
+      "Rice bacterial leaf blight management - YouTube, accessed on May 24, 2026, https://www.youtube.com/watch?v=wPpZwflDUgo"
+    ],
+    "displayName": {
+      "en": "Bacterial Leaf Blight",
+      "hi": "जीवाणु पत्ती झुलसा",
+      "te": "బ్యాక్టీరియా ఆకు ఎండు తెగులు"
+    },
+    "diseaseType": "bacterial"
+  },
+  {
+    "id": "rice_brown_spot",
+    "crop": "Rice",
+    "disease": "Brown Spot",
+    "scientificName": "Helminthosporium oryzae",
+    "dangerLevel": "medium to high",
+    "symptoms": [
+      "Small, numerous, cylindrical or oval spots on leaves",
+      "Advanced lesions that are dark brown with a highly distinct, bright yellow halo (resembling sesame seeds)",
+      "Spots coalescing, drying up the leaf entirely",
+      "Scorched, burned appearance of the nursery or field from a distance",
+      "Black spots on the glumes (grains)",
+      "Failure of seed germination",
+      "Reduced weight and quality of the harvest"
+    ],
+    "earlySymptoms": [
+      "Small, numerous, cylindrical or oval spots on the leaves"
+    ],
+    "advancedSymptoms": [
+      "Dark brown spots with bright yellow halos, resembling sesame seeds scattered across leaves",
+      "Spots coalescing, causing leaves to dry up completely and giving the field a scorched appearance",
+      "Black spots on grains"
+    ],
+    "causes": [
+      "Helminthosporium oryzae (seed-borne fungal pathogen)",
+      "Poor soil fertility and nutrient deficiencies",
+      "Moisture stress"
+    ],
+    "spreadConditions": {
+      "humidity": null,
+      "temperature": null,
+      "rainfall": null,
+      "season": "Associated with poor soil fertility (potassium/nutrient deficiency) and moisture stress"
+    },
+    "immediateActions": {
+      "low": [
+        "Ensure the field has adequate fertilizer, especially potassium",
+        "Correct any water shortages to relieve moisture stress"
+      ],
+      "medium": [
+        "Foliar spray of undiluted cow urine as an organic alternative"
+      ],
+      "high": [
+        "Foliar spray of Mancozeb upon symptom appearance to stop spot progression"
+      ]
+    },
+    "organicTreatments": [
+      "100% cow urine foliar spray to suppress the pathogen"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Captan",
+        "dosage": "2.0g/kg",
+        "sprayInterval": "Seed soak prior to sowing",
+        "notes": "Preventative seed treatment."
+      },
+      {
+        "activeIngredient": "Thiram",
+        "dosage": "2.0g/kg",
+        "sprayInterval": "Seed soak prior to sowing",
+        "notes": "Preventative seed treatment."
+      },
+      {
+        "activeIngredient": "Mancozeb 75% WP",
+        "dosage": "2.0 g/L",
+        "sprayInterval": "upon symptom appearance",
+        "notes": "Chemical/Curative contact fungicide spray."
+      }
+    ],
+    "prevention": [
+      "Integrate nutrient management with seed treatment",
+      "Hot water treatment (53 C) of seeds for 10-12 mins",
+      "Seed soak with Captan or Thiram",
+      "Ensure adequate soil fertility and moisture management"
+    ],
+    "monitoringAdvice": [
+      "Check leaves from seedling to milky grain stage for cylindrical spots",
+      "Check glumes/grains for black spots"
+    ],
+    "farmerFriendlyExplanation": "A fungus that creates small, dark brown, sesame-seed-like spots with yellow rings around them. It thrives when the soil is poor in nutrients or water-stressed, making the field look scorched and turning the rice grains black. The immediate action is to ensure the field has adequate fertilizer (especially potassium) and water, and spray Mancozeb or undiluted cow urine. Known as భూరా ధబ్బా (Bhura dhabba) in Hindi and ఆకుపై గోధుమ రంగు మచ్చల తెగులు (Aakupai godhuma rangu machala tegulu) in Telugu.",
+    "sourceAttribution": [
+      "Brown Spot (Helminthosporium oryzae) - TNAU Agritech Portal, accessed on May 24, 2026, http://www.agritech.tnau.ac.in/expert_system/paddy/cpdisbrownspot.html",
+      "Brown Spot - TNAU Agritech Portal :: Crop Protection, accessed on May 24, 2026, https://agritech.tnau.ac.in/crop_protection/rice_diseases/rice_2.html",
+      "Management of brown spot disease in rice (Helminthosporium oryzae) by spraying of cow urine - Gujarat Natural Farming Science University, Government of Gujarat, accessed on May 24, 2026, https://goau.gujarat.gov.in/writereaddata/Portal/Images/pdf/17.pdf"
+    ],
+    "displayName": {
+      "en": "Brown Spot",
+      "hi": "भूरा धब्बा",
+      "te": "ఆకుపై గోధుమ రంగు మచ్చల తెగులు"
+    },
+    "diseaseType": "fungal"
+  },
+  {
+    "id": "rice_leaf_blast",
+    "crop": "Rice",
+    "disease": "Leaf and Neck Blast",
+    "scientificName": "Pyricularia oryzae",
+    "dangerLevel": "high",
+    "symptoms": [
+      "Spindle-shaped (eye-shaped) lesions with grey centers and dark brown margins on foliage (Leaf Blast)",
+      "Black lesions on the stem nodes (Nodal Blast)",
+      "Girdling of stem nodes, causing stems to break easily",
+      "Rotting and blackening of the peduncle/neck (Neck Blast)",
+      "Blanking (empty, white, erect panicles) (early neck infection)",
+      "Partial, chalky grain filling (late neck infection)",
+      "Complete blockage of nutrient and water flow to the grain"
+    ],
+    "earlySymptoms": [
+      "Highly distinctive spindle-shaped (eye-shaped) lesions with grey centers and dark brown margins on the leaves"
+    ],
+    "advancedSymptoms": [
+      "Black lesions on stem nodes, girdling them and causing breakage",
+      "Infected neck rots, turns black, leading to empty white panicles (blanking) or partial chalky grains"
+    ],
+    "causes": [
+      "Pyricularia oryzae (fungal pathogen)"
+    ],
+    "spreadConditions": {
+      "humidity": "High humidity, heavy morning dew",
+      "temperature": "Cooler night temperatures",
+      "rainfall": null,
+      "season": null
+    },
+    "immediateActions": {
+      "low": [
+        "Avoid excessive nitrogen fertilization"
+      ],
+      "medium": [
+        "Foliar spray of Carbendazim or Edifenphos if 2-5% of leaf area shows spindle spots"
+      ],
+      "high": [
+        "Spray Tricyclazole immediately upon seeing eye-shaped spots on leaves",
+        "Apply a mandatory preventative spray of Tricyclazole right before grain heads emerge to save yield from neck blast"
+      ]
+    },
+    "organicTreatments": [
+      "Wet: Soak seeds in Tricyclazole @ 2g/L for 10 hrs. Dry: Mix with Captan/Thiram @ 4g/kg 24 hrs prior to sowing"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Carbendazim",
+        "dosage": "1.0 g/L",
+        "sprayInterval": "when 2-5% of leaf area shows spindle spots",
+        "notes": "Chemical (Early) foliar spray during vegetative phase."
+      },
+      {
+        "activeIngredient": "Edifenphos",
+        "dosage": "1.0 g/L",
+        "sprayInterval": "when 2-5% of leaf area shows spindle spots",
+        "notes": "Chemical (Early) foliar spray during vegetative phase."
+      },
+      {
+        "activeIngredient": "Tricyclazole 75% WP",
+        "dosage": "1.0 g/L (0.1%)",
+        "sprayInterval": "applied at the booting/panicle emergence stage",
+        "notes": "Chemical (Critical) spray to prevent neck blast. Acts systemically by inhibiting melanin biosynthesis."
+      }
+    ],
+    "prevention": [
+      "Preventative seed treatment (soaking and dry mixing)",
+      "Avoid excessive nitrogen applications",
+      "Systemic fungicide spray right before panicle emergence"
+    ],
+    "monitoringAdvice": [
+      "Monitor leaves for distinctive spindle-shaped spots",
+      "Check stem nodes for black lesions",
+      "Monitor peduncle (neck) as grain head emerges for rot/blackening"
+    ],
+    "farmerFriendlyExplanation": "A devastating fungus that first creates eye-shaped spots on the leaves. Its most dangerous form attacks the neck of the stalk just below the grain head, rotting it completely so the grains end up empty and white. Spray Tricyclazole immediately upon seeing leaf spots, and apply a mandatory preventative spray just before grain heads emerge to protect the crop. Locally known as జొంకా రోగ్ / అగ్గి తెగులు (Jhonka rog) in Hindi and అగ్గి తెగులు (Aggi tegulu) in Telugu.",
+    "sourceAttribution": [
+      "Diseases of Rice - Development of e-Course for B.Sc (Agriculture), accessed on May 24, 2026, http://eagri.org/eagri50/PATH272/lecture01/lec07.pdf",
+      "Nursery Management - TNAU Agritech Portal, accessed on May 24, 2026, https://agritech.tnau.ac.in/expert_system/paddy/nurserymgmt.html",
+      "Blast (Pyricularia oryzae) - Crop Protection, accessed on May 24, 2026, http://www.agritech.tnau.ac.in/expert_system/paddy/cpdisblast.html"
+    ],
+    "displayName": {
+      "en": "Leaf and Neck Blast",
+      "hi": "झोंका रोग / अग्नि रोग",
+      "te": "అగ్గి తెగులు"
+    },
+    "diseaseType": "fungal"
+  }
+]

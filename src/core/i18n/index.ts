@@ -212,6 +212,36 @@ const en: Dict = {
   'data.crop.maize': 'Maize',
   'data.soil.redsandyloam': 'Red Sandy Loam',
   'data.error.loadFailed': 'Load failed',
+
+  // Onboarding Strings
+  'onboarding.title': 'Choose Your Language',
+  'onboarding.welcome': 'Welcome to AgroGPT',
+  'onboarding.farmerName': 'What is your name?',
+  'onboarding.namePlaceholder': 'Enter your full name',
+  'onboarding.farmLocation': 'Where is your farm located?',
+  'onboarding.useLocation': 'Use Current Location',
+  'onboarding.gpsSuccess': 'Location found!',
+  'onboarding.gpsDenied': 'Location permission denied. Please enter manually.',
+  'onboarding.state': 'State',
+  'onboarding.district': 'District',
+  'onboarding.village': 'Village / Town',
+  'onboarding.farmName': 'What should we call your farm?',
+  'onboarding.farmNamePlaceholder': 'e.g. Ramesh Farm, Home Farm',
+  'onboarding.farmSize': 'How much land do you farm?',
+  'onboarding.soilType': 'What type of soil do you have?',
+  'onboarding.waterSource': 'How do you irrigate your farm?',
+  'onboarding.cropSelection': 'Which crop are you growing?',
+  'onboarding.cropArea': 'How much area is under this crop?',
+  'onboarding.sowingDate': 'When did you sow this crop?',
+  'onboarding.cropStage': 'What stage is your crop currently in?',
+  'onboarding.cropCondition': 'How is the crop condition?',
+  'onboarding.selectLanguage': 'Please select your preferred language',
+  'onboarding.completeLater': 'Complete Later',
+  'onboarding.finish': 'Finish Setup',
+  'onboarding.skip': 'Skip',
+  'onboarding.next': 'Next',
+  'onboarding.back': 'Back',
+  'onboarding.continue': 'Continue',
 }
 
 // For non-English locales we keep strings concise and professional.
@@ -241,6 +271,36 @@ const hi: Dict = {
   'market.title': 'बाज़ार व पोस्ट‑हार्वेस्ट',
   'assistant.pillTitle': 'AgroGPT से पूछें',
   'assistant.pillSubtitle': 'वॉइस / टेक्स्ट · ग्लोबल असिस्टेंट',
+
+  // Onboarding Hindi
+  'onboarding.title': 'अपनी भाषा चुनें',
+  'onboarding.welcome': 'AgroGPT में आपका स्वागत है',
+  'onboarding.farmerName': 'आपका नाम क्या है?',
+  'onboarding.namePlaceholder': 'अपना पूरा नाम दर्ज करें',
+  'onboarding.farmLocation': 'आपका खेत कहाँ स्थित है?',
+  'onboarding.useLocation': 'वर्तमान स्थान का उपयोग करें',
+  'onboarding.gpsSuccess': 'स्थान मिल गया!',
+  'onboarding.gpsDenied': 'स्थान की अनुमति नहीं दी गई। कृपया मैन्युअल रूप से दर्ज करें।',
+  'onboarding.state': 'राज्य',
+  'onboarding.district': 'जिला',
+  'onboarding.village': 'गाँव / शहर',
+  'onboarding.farmName': 'हम आपके खेत को क्या कहें?',
+  'onboarding.farmNamePlaceholder': 'जैसे: रमेश का खेत, घर का खेत',
+  'onboarding.farmSize': 'आप कितनी भूमि पर खेती करते हैं?',
+  'onboarding.soilType': 'आपके पास किस प्रकार की मिट्टी है?',
+  'onboarding.waterSource': 'आप अपने खेत की सिंचाई कैसे करते हैं?',
+  'onboarding.cropSelection': 'आप कौन सी फसल उगा रहे हैं?',
+  'onboarding.cropArea': 'इस फसल के तहत कितना क्षेत्र है?',
+  'onboarding.sowingDate': 'आपने यह फसल कब बोई थी?',
+  'onboarding.cropStage': 'आपकी फसल वर्तमान में किस चरण में है?',
+  'onboarding.cropCondition': 'फसल की स्थिति कैसी है?',
+  'onboarding.selectLanguage': 'कृपया अपनी पसंदीदा भाषा चुनें',
+  'onboarding.completeLater': 'बाद में पूरा करें',
+  'onboarding.finish': 'सेटअप समाप्त करें',
+  'onboarding.skip': 'छोड़ें',
+  'onboarding.next': 'आगे',
+  'onboarding.back': 'पीछे',
+  'onboarding.continue': 'जारी रखें',
 }
 
 const te: Dict = {
@@ -268,6 +328,36 @@ const te: Dict = {
   'market.title': 'మార్కెట్ & పోస్ట్‑హార్వెస్ట్',
   'assistant.pillTitle': 'AgroGPT ని అడగండి',
   'assistant.pillSubtitle': 'వాయిస్ / టెక్స్ట్ · గ్లోబల్ అసిస్టెంట్',
+
+  // Onboarding Telugu
+  'onboarding.title': 'మీ భాషను ఎంచుకోండి',
+  'onboarding.welcome': 'AgroGPT కి స్వాగతం',
+  'onboarding.farmerName': 'మీ పేరు ఏమిటి?',
+  'onboarding.namePlaceholder': 'మీ పూర్తి పేరును నమోదు చేయండి',
+  'onboarding.farmLocation': 'మీ పొలం ఎక్కడ ఉంది?',
+  'onboarding.useLocation': 'ప్రస్తుత స్థానాన్ని ఉపయోగించండి',
+  'onboarding.gpsSuccess': 'స్థానం కనుగొనబడింది!',
+  'onboarding.gpsDenied': 'స్థానం అనుమతి నిరాకరించబడింది. దయచేసి మాన్యువల్‌గా నమోదు చేయండి.',
+  'onboarding.state': 'రాష్ట్రం',
+  'onboarding.district': 'జిల్లా',
+  'onboarding.village': 'గ్రామం / పట్టణం',
+  'onboarding.farmName': 'మీ పొలాన్ని ఏమని పిలవాలి?',
+  'onboarding.farmNamePlaceholder': 'ఉదా: రమేష్ పొలం, ఇంటి పొలం',
+  'onboarding.farmSize': 'మీరు ఎంత భూమిలో వ్యవసాయం చేస్తున్నారు?',
+  'onboarding.soilType': 'మీది ఏ రకమైన నేల?',
+  'onboarding.waterSource': 'మీరు మీ పొలానికి ఎలా నీరు పెడతారు?',
+  'onboarding.cropSelection': 'మీరు ఏ పంట పండిస్తున్నారు?',
+  'onboarding.cropArea': 'ఈ పంట కింద ఎంత వైశాల్యం ఉంది?',
+  'onboarding.sowingDate': 'మీరు ఈ పంటను ఎప్పుడు విత్తారు?',
+  'onboarding.cropStage': 'మీ పంట ప్రస్తుతం ఏ దశలో ఉంది?',
+  'onboarding.cropCondition': 'పంట పరిస్థితి ఎలా ఉంది?',
+  'onboarding.selectLanguage': 'దయచేసి మీకు నచ్చిన భాషను ఎంచుకోండి',
+  'onboarding.completeLater': 'తరువాత పూర్తి చేయి',
+  'onboarding.finish': 'సెటప్ పూర్తి చేయి',
+  'onboarding.skip': 'వదిలేయి',
+  'onboarding.next': 'తరువాత',
+  'onboarding.back': 'వెనుకకు',
+  'onboarding.continue': 'కొనసాగించు',
 }
 
 const ta: Dict = {
@@ -564,6 +654,7 @@ i18n.use(initReactI18next).init({
   lng: defaultLng,
   fallbackLng: 'en',
   interpolation: { escapeValue: false },
+  react: { useSuspense: false }
 })
 
 i18n.on('languageChanged', (lng) => {

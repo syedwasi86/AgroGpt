@@ -38,9 +38,9 @@ Contains the essential setup and utilities that are used across the entire appli
 ### `features/` (Domain-Specific Modules)
 Each folder encapsulates all components, pages, and specific logic relevant to a single domain of the application.
 - **`dashboard/`**: Contains the `DashboardPage.tsx` and its specific widgets (`WeatherCard.tsx`, `FarmMap.tsx`).
-- **`digital-ledger/`**: Contains the `DigitalLedgerPage.tsx` for financial tracking logic.
+- **`digital-khata/`**: Contains the `DigitalLedgerPage.tsx` for financial tracking logic. (Renamed from `digital-ledger`).
 - **`field-vision/`**: Contains the `FieldVisionPage.tsx` handling camera uploads and disease detection UI.
-- **`precision-planning/`**: Contains `PrecisionPlanningPage.tsx` and the heuristic logic file `planningLogic.ts` for crop rotation.
+- **`crop-calendar/`**: Contains `PrecisionPlanningPage.tsx` and the heuristic logic file `planningLogic.ts` for crop rotation. (Renamed from `precision-planning`).
 - **`market/`**: Contains `MarketPostHarvestPage.tsx` for post-harvest advice.
 - **`settings/`**: Contains user profile and settings views (`ProfilePage.tsx`, `SettingsPage.tsx`) and the associated `accountService.ts`.
 - **`agronomy/`**: Contains agronomic core logic such as `irrigationCalculator.ts`.
@@ -69,6 +69,7 @@ Contains generic, reusable UI components that are domain-agnostic.
 
 ### `ai/` (AI Assistant)
 - **`provider.ts`**: Contains the logic for the floating AI Assistant pill, handling online inference and offline mock fallbacks.
+- **`geminiRecommendationService.ts`**: Personalizes crop disease advice by connecting to the Gemini 2.5 Flash API when online.
 
 ### `hooks/` (Custom React Hooks)
 - **`useAuth.ts`**: A custom hook for accessing the current user's authentication context globally.

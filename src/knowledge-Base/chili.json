@@ -1,0 +1,408 @@
+[
+  {
+    "id": "chili_healthy",
+    "crop": "Chilli",
+    "disease": "Healthy",
+    "scientificName": null,
+    "dangerLevel": null,
+    "symptoms": [
+      "Vigorous vegetative growth",
+      "Deep green foliage without chlorosis, necrosis, or curling",
+      "Prolific, well-distributed branching",
+      "Broad and turgid leaves",
+      "Flowers and subsequent fruit sets are retained without premature abscission",
+      "Strong stem girth",
+      "Uniform canopy closure",
+      "Absence of pest vectors such as thrips or whiteflies on the abaxial leaf surfaces"
+    ],
+    "earlySymptoms": [],
+    "advancedSymptoms": [],
+    "causes": [],
+    "spreadConditions": {
+      "humidity": null,
+      "temperature": null,
+      "rainfall": null,
+      "season": null
+    },
+    "immediateActions": {
+      "low": [],
+      "medium": [],
+      "high": []
+    },
+    "organicTreatments": [],
+    "chemicalTreatments": [],
+    "prevention": [
+      "Balanced basal dose of 25 to 30 tonnes per hectare of well-decomposed Farm Yard Manure (FYM) combined with a primary NPK ratio of 30:60:30 kg/ha for standard varieties, or 30:80:80 kg/ha for high-yielding hybrids",
+      "Top dressing with 30 kg N/ha applied in equal splits at 30, 60, and 90 days post-planting",
+      "For advanced setups, fertigation schedule of 120:80:80 kg/ha NPK delivered chronologically through vegetative, flowering, and fruiting stages",
+      "Application of potassium in the form of potassium sulphate (K2SO4)",
+      "Weekly scouting for early vector presence",
+      "Soil moisture assessments to prevent waterlogging"
+    ],
+    "monitoringAdvice": [
+      "Weekly scouting for early vector presence on abaxial leaf surfaces",
+      "Perform soil moisture assessments to prevent waterlogging"
+    ],
+    "farmerFriendlyExplanation": "A healthy chili plant has flat, dark green leaves, holds onto its flowers, and has strong stems. It grows vigorously and does not have curled or yellow leaves. In localized terms, healthy chili is referred to as స్వస్థ మిరప (Swastha mirapa) in Telugu and स्वस्थ मिर्च (Swasth mirch) in Hindi.",
+    "sourceAttribution": [
+      "Horticulture :: Vegetables:: Chilli - TNAU Agritech Portal, accessed on May 24, 2026, https://agritech.tnau.ac.in/horticulture/horti_vegetables_chilli_Manuring.html"
+    ],
+    "displayName": {
+      "en": "Healthy Chilli",
+      "hi": "स्वस्थ मिर्च",
+      "te": "స్వస్థ మిరప"
+    },
+    "diseaseType": null
+  },
+  {
+    "id": "chili_cercospora_leaf_spot",
+    "crop": "Chilli",
+    "disease": "Chilli Cercospora Leaf Spot",
+    "scientificName": "Cercospora capsici",
+    "dangerLevel": "medium to high",
+    "symptoms": [
+      "Small, circular brown lesions scattered across the leaf laminae",
+      "Lesions with light grey centers and distinct dark brown margins (frog's eye spots)",
+      "Elliptical lesions with grey centers and dark borders on stems, petioles, and developing pods",
+      "Severe chlorosis of surrounding healthy leaf tissue",
+      "Premature abscission (leaf drop)",
+      "Widespread defoliation",
+      "Sunscald damage to exposed fruit"
+    ],
+    "earlySymptoms": [
+      "Small, circular brown lesions scattered across the leaf laminae"
+    ],
+    "advancedSymptoms": [
+      "Lesions with light grey centers and distinct dark brown margins resembling a frog's eye",
+      "Lesions enlarging to 1 cm or more in diameter and coalescing into massive necrotic areas",
+      "Elliptical lesions with grey centers and dark borders on stems, petioles, and developing pods",
+      "Severe chlorosis of the surrounding healthy leaf tissue",
+      "Premature abscission (leaf drop)",
+      "Defoliation leaving fruit exposed to sunscald"
+    ],
+    "causes": [
+      "Cercospora capsici (fungal pathogen)",
+      "Pathogen overwintering in the soil on undecomposed infected plant debris"
+    ],
+    "spreadConditions": {
+      "humidity": "Exceeds 85%",
+      "temperature": "20 C to 30 C",
+      "rainfall": "Intermittent showers leaving foliage wet for extended periods",
+      "season": null
+    },
+    "immediateActions": {
+      "low": [
+        "Immediate mechanical removal of the affected foliage",
+        "Pick off the affected leaves and remove them from the field"
+      ],
+      "medium": [
+        "Immediate prophylactic fungicidal sprays",
+        "Apply recommended protective fungicide before the next rain"
+      ],
+      "high": [
+        "Aggressive curative chemical intervention",
+        "Seek expert verification to ensure the active ingredient is effective against the specific local fungal strain"
+      ]
+    },
+    "organicTreatments": [
+      "Prune and destroy early infected lower leaves",
+      "Ensure adequate plant spacing to facilitate airflow"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Chlorothalonil 75% WP",
+        "dosage": "0.1% concentration (1.0 g/L)",
+        "sprayInterval": null,
+        "notes": "Protectant. Requires thorough canopy coverage."
+      },
+      {
+        "activeIngredient": "Mancozeb 75% WP",
+        "dosage": "0.25% concentration (2.5 g/L)",
+        "sprayInterval": "10-15 day intervals",
+        "notes": "Curative. Administer two sprays."
+      }
+    ],
+    "prevention": [
+      "Proper crop rotation",
+      "Ensure adequate plant spacing to facilitate airflow"
+    ],
+    "monitoringAdvice": [
+      "Check the lowest leaves for isolated brown spots (early outbreak sign)",
+      "Monitor for lesions beginning to develop light grey centers with dark margins"
+    ],
+    "farmerFriendlyExplanation": "A fungal infection often called 'Frog-eye spot' that eats away at the leaves, causing them to dry up and fall off, which starves the plant and exposes the chilies to sunburn. It spreads rapidly when the weather is warm and wet. In local vernacular, it is known as పత్తీ ధబ్బా రోగ్ (Patti dhabba rog) in Hindi and ఆకు మచ్చ తెగులు (Aaku macha tegulu) in Telugu.",
+    "sourceAttribution": [
+      "Cercospora leaf spot - TNAU Agritech Portal :: Crop Protection, accessed on May 24, 2026, https://agritech.tnau.ac.in/crop_protection/chilli_diseases_5.html"
+    ],
+    "displayName": {
+      "en": "Chilli Cercospora Leaf Spot",
+      "hi": "पत्ती धब्बा रोग",
+      "te": "ఆకు మచ్చ తెగులు"
+    },
+    "diseaseType": "fungal"
+  },
+  {
+    "id": "chili_murda_complex",
+    "crop": "Chilli",
+    "disease": "Murda Complex",
+    "scientificName": "Tomato Leaf Curl Virus (ToLCV)",
+    "dangerLevel": "high",
+    "symptoms": [
+      "Severe malformation of the foliage",
+      "Upward curling of the leaf margins (associated with thrips feeding)",
+      "Downward curling and severe crinkling of leaves (associated with mite infestations and viral pathogen)",
+      "Reduction in size of nodes and internodes",
+      "Extreme stunting",
+      "Bushy, 'witch's broom' appearance of plants",
+      "Foliage becomes leathery and brittle",
+      "Complete failure to produce viable flowers or fruit"
+    ],
+    "earlySymptoms": [
+      "Slight yellowing of the young, newly emerging leaves followed by a distinctive curling",
+      "Slight curling on apical leaves of scattered plants"
+    ],
+    "advancedSymptoms": [
+      "Nodes and internodes significantly reduced in size, leading to extreme stunting",
+      "Plants take on a bushy, 'witch's broom' appearance",
+      "Foliage becomes leathery and brittle",
+      "Complete failure to produce viable flowers or fruit",
+      "Field-wide severe stunting, leathery leaves, and total cessation of flowering"
+    ],
+    "causes": [
+      "Tomato Leaf Curl Virus (ToLCV) transmitted by whiteflies (Bemisia tabaci)",
+      "Feeding damage from thrips (Scirtothrips dorsalis)",
+      "Feeding damage from broad mites (Polyphagotarsonemus latus)"
+    ],
+    "spreadConditions": {
+      "humidity": "Low humidity",
+      "temperature": "High temperatures",
+      "rainfall": "Inversely related to rainfall (favored by prolonged dry spells)",
+      "season": null
+    },
+    "immediateActions": {
+      "low": [
+        "Deploy yellow and blue sticky traps",
+        "Organic border cropping"
+      ],
+      "medium": [
+        "Begin spraying alternating insecticides to kill vectors"
+      ],
+      "high": [
+        "Immediate uprooting and burning of infected plants to remove the viral reservoir",
+        "Aggressive chemical vector control"
+      ]
+    },
+    "organicTreatments": [
+      "Plant 2-3 rows of tall sorghum or maize as barrier crops",
+      "Deploy yellow and blue sticky traps"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Imidacloprid 17.8% SL",
+        "dosage": "3.0 ml per 10 Liters of water",
+        "sprayInterval": "Apply at the first sign of vector presence",
+        "notes": "Foliar application. Targets whiteflies & thrips."
+      },
+      {
+        "activeIngredient": "Fipronil 5% SC",
+        "dosage": "1.5 ml per Liter of water",
+        "sprayInterval": null,
+        "notes": "Acaricide application. Highly effective against heavy mite populations."
+      },
+      {
+        "activeIngredient": "Dimethoate 30% EC",
+        "dosage": "1.0 ml per Liter of water",
+        "sprayInterval": null,
+        "notes": "Rotation chemical to prevent target site resistance buildup."
+      }
+    ],
+    "prevention": [
+      "Plant 2-3 rows of tall sorghum or maize as barrier crops",
+      "Deploy yellow and blue sticky traps",
+      "Chronological rotation of diverse active ingredients to prevent insecticide resistance in vectors"
+    ],
+    "monitoringAdvice": [
+      "Monitor for slight curling on apical leaves of scattered plants",
+      "Monitor vector populations (whiteflies, thrips, and mites) on leaves"
+    ],
+    "farmerFriendlyExplanation": "A combined, deadly attack by tiny sucking insects (thrips, mites, and whiteflies) acting in tandem with an invisible virus. These pests suck the vital sap and inject a poison that causes the leaves to curl, permanently stunting growth. Uproot and burn stunted plants, and spray alternating insecticides. Universally recognized as మూర్దా రోగ్ / పత్తీ మారోడ్ (Murda rog / Patti marod) in Hindi and ముర్దా కాంప్లెక్స్ / ఆకు ముడత (Murda complex / Aaku mudatha) in Telugu.",
+    "sourceAttribution": [
+      "Management of Chilli Leaf Curl Disease by Vector Control using New and Novel Insecticides - ijcmas, accessed on May 24, 2026, https://www.ijcmas.com/10-2-2021/Mallikharjun%20Chirumella,%20et%20al.pdf",
+      "INTEGRATED MANAGEMENT OF CHILLI LEAF CURL COMPLEX DISEASE IN NORTHERN KARNATAKA - Connect Journals, accessed on May 24, 2026, https://connectjournals.com/file_full_text/2950801H_417-419.pdf",
+      "SURVEY ON INSECT PESTS OF CAPSICUM (Capsicum annuum L. var. grossum Sendt.) AND MANAGEMENT OF THRIPS UNDER POLYHOUSE CONDITIONS, accessed on May 24, 2026, https://www.cabidigitallibrary.org/doi/pdf/10.5555/20183271535",
+      "Comprehensive Management of Chilli Leaf Curl and Murda Complex Disease | PPTX - Slideshare, accessed on May 24, 2026, https://www.slideshare.net/slideshow/comprehensive-management-of-chilli-leaf-curl-and-murda-complex-disease/287077441",
+      "Whitefly: Bemisia tabaci - TNAU Agritech Portal :: Crop Protection, accessed on May 24, 2026, https://agritech.tnau.ac.in/ta/crop_protection/cotton/crop_prot_crop_insectpest%20_cotton_13.html"
+    ],
+    "displayName": {
+      "en": "Murda Complex",
+      "hi": "मूर्दा रोग / पत्ती मरोड़",
+      "te": "ముర్దా కాంప్లెక్స్ / ఆకు ముడత"
+    },
+    "diseaseType": "viral"
+  },
+  {
+    "id": "chili_nutritional",
+    "crop": "Chilli",
+    "disease": "Chilli Nutritional Deficiency",
+    "scientificName": null,
+    "dangerLevel": "medium",
+    "symptoms": [
+      "Generalized chlorosis (yellowing of leaves)"
+    ],
+    "earlySymptoms": [
+      "Generalized chlorosis"
+    ],
+    "advancedSymptoms": [
+      "Generalized chlorosis within fourteen days if NPK and sulphur are not corrected"
+    ],
+    "causes": [
+      "Lack of nitrogen or sulphur",
+      "Imbalance in basal NPK application"
+    ],
+    "spreadConditions": {
+      "humidity": null,
+      "temperature": null,
+      "rainfall": null,
+      "season": null
+    },
+    "immediateActions": {
+      "low": [
+        "Ensure the field is not flooded, as chili roots need air to breathe"
+      ],
+      "medium": [
+        "Apply the recommended doses of urea (nitrogen) and potassium",
+        "Correct basal NPK and sulphur applications"
+      ],
+      "high": [
+        "Seek expert escalation if generalized chlorosis is not resolved within fourteen days"
+      ]
+    },
+    "organicTreatments": [
+      "Apply 25 to 30 tonnes per hectare of well-decomposed Farm Yard Manure (FYM)"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Nitrogen (Urea)",
+        "dosage": "30 kg N/ha",
+        "sprayInterval": "applied at 30, 60, and 90 days post-planting",
+        "notes": "Top dressing in equal splits."
+      },
+      {
+        "activeIngredient": "Potassium sulphate (K2SO4)",
+        "dosage": "30:80:80 kg/ha NPK integrated prior to transplanting (hybrids)",
+        "sprayInterval": null,
+        "notes": "Primary potassium source to improve capsaicin retention."
+      },
+      {
+        "activeIngredient": "Cosavit Fertis-WG",
+        "dosage": "10 to 15 kg/ha",
+        "sprayInterval": "applied during early vegetative phase",
+        "notes": "Sulphur formulation to boost yield attributes and capsaicin content."
+      }
+    ],
+    "prevention": [
+      "Apply a balanced basal dose of FYM combined with a primary NPK ratio of 30:60:30 kg/ha for standard varieties, or 30:80:80 kg/ha for hybrids",
+      "Apply sulphur formulations like Cosavit Fertis-WG at 10-15 kg/ha during the early vegetative phase"
+    ],
+    "monitoringAdvice": [
+      "Check for generalized chlorosis (leaves turning pale green or yellow evenly across the field)",
+      "Monitor soil moisture to prevent waterlogging"
+    ],
+    "farmerFriendlyExplanation": "If the leaves turn pale green or yellow evenly across the field, it is often a lack of food (nitrogen or sulphur), not a disease. Apply the recommended doses of urea and potassium, and make sure the field is not flooded since chili roots need air to breathe.",
+    "sourceAttribution": [
+      "Horticulture :: Vegetables:: Chilli - TNAU Agritech Portal, accessed on May 24, 2026, https://agritech.tnau.ac.in/horticulture/horti_vegetables_chilli_Manuring.html",
+      "EFFICACY OF LEVELS AND SOURCES OF SULPHUR ON YIELD ATTRIBUTES, YIELD AND CAPSAICIN CONTENT OF HOT PEPPER (Capsicum annumL. ) - CABI Digital Library, accessed on May 24, 2026, https://www.cabidigitallibrary.org/doi/pdf/10.5555/20183271544"
+    ],
+    "displayName": {
+      "en": "Chilli Nutritional Deficiency",
+      "hi": "पोषक तत्वों की कमी",
+      "te": "పోషకాహార లోపం"
+    },
+    "diseaseType": "nutritional"
+  },
+  {
+    "id": "chili_powdery_mildew",
+    "crop": "Chilli",
+    "disease": "Powdery Mildew",
+    "scientificName": "Leveillula taurica",
+    "dangerLevel": "high",
+    "symptoms": [
+      "White, powdery fungal growth on the lower (abaxial) side of the chili leaves",
+      "Diffuse, irregular yellowish or chlorotic patches on the upper surface of the leaf",
+      "Leaves become completely chlorotic, dry up, and undergo severe premature shedding",
+      "Massive loss of photosynthetic area"
+    ],
+    "earlySymptoms": [
+      "Diffuse, irregular yellowish or chlorotic patches on the corresponding upper surface of the leaf",
+      "Faint yellowing on the upper sides of older leaves with sparse white powder underneath"
+    ],
+    "advancedSymptoms": [
+      "Leaves become completely chlorotic, dry up, and undergo severe premature shedding",
+      "Heavy white coating on the abaxial surfaces of most leaves, accompanied by active leaf drop"
+    ],
+    "causes": [
+      "Leveillula taurica (endophytic fungal pathogen)"
+    ],
+    "spreadConditions": {
+      "humidity": "High humidity microclimates (such as heavy morning dew)",
+      "temperature": "Moderate temperatures",
+      "rainfall": "Relatively dry weather punctuated by high humidity microclimates",
+      "season": null
+    },
+    "immediateActions": {
+      "low": [
+        "Inspect the underside of lower leaves frequently",
+        "Spray a sulphur-based or specific systemic fungicide at the first sight of white powder"
+      ],
+      "medium": [
+        "Apply protective systemic fungicides to stop the spread"
+      ],
+      "high": [
+        "Aggressive combination chemical intervention to prevent defoliation"
+      ]
+    },
+    "organicTreatments": [
+      "Destroy infected plant debris"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Wettable Sulphur 80% WP",
+        "dosage": "3.0 g per Liter of water",
+        "sprayInterval": "Three sprays at 15-day intervals",
+        "notes": "Chemical (Contact). Applied for low severity."
+      },
+      {
+        "activeIngredient": "Myclobutanil 10% WP",
+        "dosage": "1.0 g per Liter of water",
+        "sprayInterval": null,
+        "notes": "Chemical (Systemic). Identified as a highly cost-effective triazole for medium severity."
+      },
+      {
+        "activeIngredient": "Tebuconazole + Trifloxystrobin",
+        "dosage": "0.5 g per Liter (0.05%)",
+        "sprayInterval": null,
+        "notes": "Chemical (Combination). Provides potent curative and protectant action. High efficacy and benefit-to-cost ratio."
+      }
+    ],
+    "prevention": [
+      "Proactive monitoring of underside of lower leaves",
+      "Avoid conditions of high humidity microclimates"
+    ],
+    "monitoringAdvice": [
+      "Check underside of the lower leaves frequently for fine white powder",
+      "Monitor upper leaf surfaces for diffuse, irregular yellowish or chlorotic patches"
+    ],
+    "farmerFriendlyExplanation": "A fungus that looks like fine white talcum powder dusted on the underside of the leaves. It silently sucks the nutrients out, turning the top side yellow until the leaves die and fall off. It spreads very fast in dry weather with wet mornings. Known as భభూతియా రోగ్ (Bhabhutiya rog) in Hindi and బూడిద తెగులు (Boodida tegulu) in Telugu.",
+    "sourceAttribution": [
+      "Powdery mildew - TNAU Agritech Portal :: Crop Protection, accessed on May 24, 2026, http://www.agritech.tnau.ac.in/crop_protection/chilli_diseases_3.html",
+      "Management of powdery mildew on chilli through newer fungicides, accessed on May 24, 2026, https://www.biochemjournal.com/special-issue/2024.v8.i2S.D.559/management-of-powdery-mildew-on-chilli-through-newer-fungicides",
+      "MANAGEMENT OF CHILLI POWDERY MILDEW CAUSED BY LEVEILLULA TAURICA (LEV.) ARN. USING FUNGICIDES AND BIOPESTICIDES | Journal of Plant Disease Sciences - ACS Publisher, accessed on May 24, 2026, https://acspublisher.com/journals/index.php/jpds/article/view/23527"
+    ],
+    "displayName": {
+      "en": "Powdery Mildew",
+      "hi": "भभूतिया रोग",
+      "te": "బూడిద తెగులు"
+    },
+    "diseaseType": "fungal"
+  }
+]

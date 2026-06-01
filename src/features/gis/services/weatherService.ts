@@ -37,17 +37,19 @@ export interface DailyWeatherData {
   precipitation_sum: number[];
   temperature_2m_max: number[];
   temperature_2m_min: number[];
+  wind_speed_10m_max?: number[];
+  relative_humidity_2m_max?: number[];
 }
 
 export async function fetchDailyWeather(lat: number, lon: number): Promise<DailyWeatherData | null> {
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum,temperature_2m_max,temperature_2m_min&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=precipitation_sum,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,relative_humidity_2m_max&timezone=auto`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('Weather API failed');
     const data = await res.json();
     return data.daily;
   } catch (error) {
-    console.error('Daily weather fetch failed:', error);
+    console.error('Daily weather fetch failed, using fallback:', error);
     return null;
   }
 }

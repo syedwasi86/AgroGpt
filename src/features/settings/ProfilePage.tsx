@@ -96,7 +96,7 @@ export function ProfilePage() {
   const [formName, setFormName] = useState('')
   const [formPhone, setFormPhone] = useState('')
   const [formEmail, setFormEmail] = useState('')
-  
+
   const [formVillage, setFormVillage] = useState('')
   const [formDistrict, setFormDistrict] = useState('')
   const [formState, setFormState] = useState('')
@@ -559,7 +559,7 @@ export function ProfilePage() {
       setRawOcrText(text)
 
       const extracted = parseNpkFromText(text)
-      
+
       if (extracted.nitrogen !== null || extracted.phosphorus !== null || extracted.potassium !== null) {
         if (extracted.nitrogen !== null) setFormNitrogen(String(extracted.nitrogen))
         if (extracted.phosphorus !== null) setFormPhosphorus(String(extracted.phosphorus))
@@ -634,7 +634,7 @@ export function ProfilePage() {
   }
 
   const inputClass = "w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-stroke-2 transition"
-  
+
   // Format Date cleanly
   const formatDate = (isoStr?: string) => {
     if (!isoStr) return ''
@@ -645,7 +645,7 @@ export function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 pb-16 px-4">
-      
+
       {/* Header Bar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -776,8 +776,8 @@ export function ProfilePage() {
               <div className="flex justify-between border-b border-white/5 pb-2">
                 <span className="text-white/50">Farm Size</span>
                 <span className="font-semibold text-white">
-                  {profile?.farm_area_value !== undefined 
-                    ? `${profile.farm_area_value} ${profile.farm_area_unit}s` 
+                  {profile?.farm_area_value !== undefined
+                    ? `${profile.farm_area_value} ${profile.farm_area_unit}s`
                     : 'Not Configured'}
                 </span>
               </div>
@@ -878,8 +878,8 @@ export function ProfilePage() {
                     <Layers size={13} /> Crop Area
                   </div>
                   <div className="text-base font-bold text-white">
-                    {activeCropPlan.crop_area_value !== undefined 
-                      ? `${activeCropPlan.crop_area_value} ${activeCropPlan.crop_area_unit}s` 
+                    {activeCropPlan.crop_area_value !== undefined
+                      ? `${activeCropPlan.crop_area_value} ${activeCropPlan.crop_area_unit}s`
                       : `${activeCropPlan.area} Acres`}
                   </div>
                   {activeCropPlan.crop_area_acres !== undefined && (
@@ -952,7 +952,7 @@ export function ProfilePage() {
             Account Status
           </h2>
           <div className="grid gap-6 sm:grid-cols-3 text-sm">
-            
+
             <div className="rounded-2xl bg-black/20 border border-white/5 p-4 flex flex-col justify-center">
               <div className="text-xs text-white/40 mb-1">Profile Completion Date</div>
               <div className="text-base font-bold text-white">
@@ -963,8 +963,8 @@ export function ProfilePage() {
             <div className="rounded-2xl bg-black/20 border border-white/5 p-4 flex flex-col justify-center">
               <div className="text-xs text-white/40 mb-1">Last Sync Time</div>
               <div className="text-base font-bold text-white">
-                {settings?.last_sync && new Date(settings.last_sync).getTime() > 0 
-                  ? formatDate(settings.last_sync) 
+                {settings?.last_sync && new Date(settings.last_sync).getTime() > 0
+                  ? formatDate(settings.last_sync)
                   : 'Never Synced'}
               </div>
             </div>
@@ -998,7 +998,7 @@ export function ProfilePage() {
             Quick Actions
           </h2>
           <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
-            
+
             <button onClick={openFarmerInfo} className="group rounded-2xl bg-black/20 border border-white/5 p-4 flex flex-col items-center justify-center text-center transition hover:bg-black/30 hover:border-white/10 active:scale-[0.97]">
               <User size={20} className="text-[#87A96B] mb-2 group-hover:scale-110 transition-transform" />
               <div className="text-xs font-bold text-white">Edit Profile</div>
@@ -1030,7 +1030,7 @@ export function ProfilePage() {
       </div>
 
       {/* ─── MODALS DIALOG LAYERS ─────────────────────────────────────────────── */}
-      
+
       {/* 1. Farmer Info Modal */}
       {farmerInfoModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
@@ -1083,7 +1083,7 @@ export function ProfilePage() {
                 <span>{validationError}</span>
               </div>
             )}
-            
+
             <button
               onClick={handleGPSRetrieve}
               disabled={gpsLoading}
@@ -1222,7 +1222,7 @@ export function ProfilePage() {
                 <span>{validationError}</span>
               </div>
             )}
-            
+
             <div className="grid grid-cols-2 gap-3">
               {WATER_SOURCES.map(source => {
                 const selected = formWaterSources.includes(source)
@@ -1236,8 +1236,8 @@ export function ProfilePage() {
                     }}
                     className={cn(
                       "flex items-center gap-2 rounded-2xl border p-4 text-sm font-semibold transition text-left",
-                      selected 
-                        ? "bg-[#87A96B]/15 border-[#87A96B]/50 text-white" 
+                      selected
+                        ? "bg-[#87A96B]/15 border-[#87A96B]/50 text-white"
                         : "bg-black/20 border-white/5 text-white/50 hover:bg-black/35 hover:text-white/80"
                     )}
                   >
@@ -1267,7 +1267,7 @@ export function ProfilePage() {
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
               <FlaskConical size={18} className="text-[#87A96B]" /> Update Soil N-P-K Nutrients
             </h3>
-            
+
             {validationError && (
               <div className="mb-4 flex items-center gap-2 rounded-2xl bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-400">
                 <AlertCircle size={14} className="shrink-0" />
@@ -1277,13 +1277,13 @@ export function ProfilePage() {
 
             {/* Tab Switcher */}
             <div className="mb-6 flex rounded-2xl bg-white/5 p-1">
-              <button 
+              <button
                 onClick={() => setSoilTab('upload')}
                 className={cn("flex-1 rounded-xl py-2 text-xs font-bold transition-all", soilTab === 'upload' ? "bg-white/10 text-white shadow-lg" : "text-white/40 hover:text-white/70")}
               >
                 Auto-Extract (Lab PDF/Image)
               </button>
-              <button 
+              <button
                 onClick={() => setSoilTab('manual')}
                 className={cn("flex-1 rounded-xl py-2 text-xs font-bold transition-all", soilTab === 'manual' ? "bg-white/10 text-white shadow-lg" : "text-white/40 hover:text-white/70")}
               >
@@ -1293,7 +1293,7 @@ export function ProfilePage() {
 
             {soilTab === 'upload' ? (
               <div className="space-y-4">
-                <div 
+                <div
                   onClick={() => fileInputRef.current?.click()}
                   className={cn(
                     "relative flex h-44 cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed transition-all",
@@ -1301,7 +1301,7 @@ export function ProfilePage() {
                   )}
                 >
                   <input ref={fileInputRef} type="file" accept="image/*, application/pdf" onChange={handleFileUpload} className="hidden" />
-                  
+
                   {extractionStatus === 'processing' ? (
                     <div className="text-center">
                       <Loader2 size={32} className="mx-auto mb-3 animate-spin text-[#87A96B]" />
@@ -1331,7 +1331,7 @@ export function ProfilePage() {
                 )}
                 {extractionStatus === 'failed' && (
                   <div className="flex items-start gap-2 rounded-2xl bg-red-500/10 p-3 text-xs text-red-400 border border-red-500/20">
-                    <XCircle size={16} className="mt-0.5 shrink-0" /> 
+                    <XCircle size={16} className="mt-0.5 shrink-0" />
                     <div>
                       <p className="font-bold">Extraction Failed</p>
                       <p className="opacity-80 mt-0.5">{ocrErrorMsg}</p>
@@ -1385,7 +1385,7 @@ export function ProfilePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Sprout size={18} className="text-[#87A96B]" /> 
+              <Sprout size={18} className="text-[#87A96B]" />
               {activeCropPlan ? 'Edit Active Crop Details' : 'Add Active Crop'}
             </h3>
             {validationError && (
@@ -1394,7 +1394,7 @@ export function ProfilePage() {
                 <span>{validationError}</span>
               </div>
             )}
-            
+
             <div className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Crop</label>
@@ -1407,7 +1407,7 @@ export function ProfilePage() {
                   <ChevronDown size={14} className="absolute right-4 top-4 text-white/50 pointer-events-none" />
                 </div>
               </div>
-              
+
               <div>
                 <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Variety</label>
                 <input type="text" className={inputClass} value={formVariety} onChange={e => setFormVariety(e.target.value)} />
@@ -1490,7 +1490,7 @@ export function ProfilePage() {
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
               <Languages size={18} className="text-[#87A96B]" /> Language Settings
             </h3>
-            
+
             <div className="space-y-2">
               <button
                 onClick={() => changeLanguageDirect('en')}

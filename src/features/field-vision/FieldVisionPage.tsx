@@ -18,7 +18,7 @@ const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 
 function WebcamModal({ onClose, onCapture }: { onClose: () => void, onCapture: (dataUrl: string) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  
+
   useEffect(() => {
     let stream: MediaStream | null = null
 
@@ -43,23 +43,23 @@ function WebcamModal({ onClose, onCapture }: { onClose: () => void, onCapture: (
     }
 
     startCamera()
-      
+
     return () => {
       if (stream) stream.getTracks().forEach(t => t.stop())
     }
   }, [onClose])
-  
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
       <div className="bg-black border border-white/20 rounded-2xl overflow-hidden max-w-lg w-full flex flex-col">
         <div className="relative w-full aspect-video bg-black flex items-center justify-center">
-           <video ref={videoRef} autoPlay playsInline className="w-full h-auto max-h-[60vh] object-contain" />
-           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-             <div className="w-48 h-64 border-2 border-primary-500/50 rounded-full opacity-60 flex flex-col items-center justify-center relative shadow-[0_0_20px_rgba(76,175,80,0.3)]">
-                <div className="w-1 h-full bg-primary-500/30 absolute left-1/2 -translate-x-1/2"></div>
-                <span className="text-primary-300 text-xs font-bold bg-black/40 px-2 py-1 rounded absolute bottom-4">Align leaf here</span>
-             </div>
-           </div>
+          <video ref={videoRef} autoPlay playsInline className="w-full h-auto max-h-[60vh] object-contain" />
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+            <div className="w-48 h-64 border-2 border-primary-500/50 rounded-full opacity-60 flex flex-col items-center justify-center relative shadow-[0_0_20px_rgba(76,175,80,0.3)]">
+              <div className="w-1 h-full bg-primary-500/30 absolute left-1/2 -translate-x-1/2"></div>
+              <span className="text-primary-300 text-xs font-bold bg-black/40 px-2 py-1 rounded absolute bottom-4">Align leaf here</span>
+            </div>
+          </div>
         </div>
         <div className="p-4 flex gap-4 justify-center bg-black/50">
           <button onClick={onClose} className="px-6 py-2 rounded-xl bg-white/10 text-white font-semibold transition-all hover:bg-white/20">Cancel</button>
@@ -76,7 +76,7 @@ function WebcamModal({ onClose, onCapture }: { onClose: () => void, onCapture: (
               }
             }
           }} className="px-6 py-2 rounded-xl bg-primary-600 text-white font-semibold flex items-center gap-2 transition-all hover:bg-primary-500">
-             <Camera size={18} /> Capture
+            <Camera size={18} /> Capture
           </button>
         </div>
       </div>
@@ -109,7 +109,7 @@ export function FieldVisionPage() {
     setCachedWeather(null)
     setEnvironmentalRisk(null)
     setAssessedSeverity('low')
-    
+
     const img = new Image()
     img.onload = () => {
       setImageElement(img)
@@ -127,7 +127,7 @@ export function FieldVisionPage() {
       if (profiles[0] && profiles[0].primary_crop) {
         setSelectedCrop(profiles[0].primary_crop)
       }
-    }).catch(() => {})
+    }).catch(() => { })
 
     return () => {
       window.removeEventListener('online', handleOnline)
@@ -146,7 +146,7 @@ export function FieldVisionPage() {
         setCachedWeather(null)
         setEnvironmentalRisk(null)
         setAssessedSeverity('low')
-        
+
         const img = new Image()
         img.onload = () => {
           setImageElement(img)
@@ -202,7 +202,7 @@ export function FieldVisionPage() {
       getUserLocation().then(async (coords) => {
         const weather = await fetchWeather(coords.latitude, coords.longitude)
         setCachedWeather(weather)
-        
+
         const kbData = await getDiseaseKnowledge(prediction.crop, prediction.disease)
         const risk = calculateEnvironmentalRisk(weather, kbData?.spreadConditions)
         setEnvironmentalRisk(risk)
@@ -235,11 +235,11 @@ export function FieldVisionPage() {
     try {
       const profile = await db.profiles.toArray().then(a => a[0])
       const soilType = profile?.soil_type || 'N/A'
-      
+
       // Use cached weather if available, else fetch it on demand
       let tempC = 'N/A'
       let humidity = 'N/A'
-      
+
       if (cachedWeather) {
         tempC = String(cachedWeather.temperature)
         humidity = String(cachedWeather.humidity)
@@ -250,14 +250,14 @@ export function FieldVisionPage() {
           setCachedWeather(weather)
           tempC = String(weather.temperature)
           humidity = String(weather.humidity)
-          
+
           const risk = calculateEnvironmentalRisk(weather, kbData?.spreadConditions)
           setEnvironmentalRisk(risk)
         } catch (wErr) {
           console.warn('On-demand weather fetch failed:', wErr)
         }
       }
-      
+
       const reply = await getAIEnhancedRecommendations(
         result.crop,
         result.disease,
@@ -273,7 +273,7 @@ export function FieldVisionPage() {
         const scans = await db.scans.orderBy('created_at').reverse().toArray()
         if (scans.length > 0) {
           const lastScan = scans[0]
-          await db.scans.update(lastScan.id, { 
+          await db.scans.update(lastScan.id, {
             ai_enhanced: true,
             aiEnhanced: true,
             updated_at: new Date().toISOString()
@@ -321,7 +321,7 @@ export function FieldVisionPage() {
             <p className="subtle mb-6 max-w-sm">
               Take a clear photo of the affected leaf or crop area. Good lighting yields better AI results.
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
               <div className="relative overflow-hidden flex-1 max-w-[200px]">
                 {isMobile && (
@@ -366,12 +366,12 @@ export function FieldVisionPage() {
         ) : (
           <div className="w-full flex flex-col h-full">
             <div className="relative flex-1 overflow-hidden rounded-2xl border border-white/10 bg-black/40 flex items-center justify-center">
-              <img 
-                src={selectedImage} 
-                alt="Crop Scan" 
+              <img
+                src={selectedImage}
+                alt="Crop Scan"
                 className={cn("max-h-[300px] object-contain rounded-xl", analyzing && "opacity-50")}
               />
-              
+
               {/* Simulated Scanning Animation */}
               {analyzing && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -393,7 +393,7 @@ export function FieldVisionPage() {
                 </div>
               )}
             </div>
-            
+
             <div className="mt-4 flex gap-3 flex-wrap sm:flex-nowrap">
               <div className="relative overflow-hidden flex-1 min-w-[120px]">
                 {isMobile && (
@@ -448,7 +448,7 @@ export function FieldVisionPage() {
       {result && (
         <div className="space-y-6">
           <GlassCard className="p-6">
-            <PredictionResults 
+            <PredictionResults
               crop={result.crop}
               disease={result.disease}
               confidence={result.confidence}
@@ -481,7 +481,7 @@ export function FieldVisionPage() {
                   </div>
 
                   <div className="space-y-6 text-sm text-white/90">
-                    
+
                     {/* Concept Badges / Metrics Row (Three Separate Concepts) */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
                       {/* 1. Model Confidence */}
@@ -489,15 +489,15 @@ export function FieldVisionPage() {
                         <span className="text-[10px] text-white/40 uppercase tracking-wider font-semibold mb-1">AI Confidence</span>
                         <span className="text-base font-bold text-primary-300">{result.confidence}%</span>
                       </div>
-                      
+
                       {/* 2. Assessed Field Severity */}
                       <div className="flex flex-col items-center text-center p-2.5 rounded-lg bg-black/20 border border-white/5">
                         <span className="text-[10px] text-white/40 uppercase tracking-wider font-semibold mb-1">Field Severity</span>
                         <span className={cn(
                           "text-base font-bold capitalize",
                           assessedSeverity === 'high' ? "text-red-400" :
-                          assessedSeverity === 'medium' ? "text-yellow-400" :
-                          "text-green-400"
+                            assessedSeverity === 'medium' ? "text-yellow-400" :
+                              "text-green-400"
                         )}>
                           {assessedSeverity}
                         </span>
@@ -509,8 +509,8 @@ export function FieldVisionPage() {
                         <span className={cn(
                           "text-base font-bold capitalize",
                           environmentalRisk === 'high' ? "text-red-400" :
-                          environmentalRisk === 'medium' ? "text-yellow-400" :
-                          "text-green-400"
+                            environmentalRisk === 'medium' ? "text-yellow-400" :
+                              "text-green-400"
                         )}>
                           {environmentalRisk || 'Calculating...'}
                         </span>
@@ -614,7 +614,7 @@ export function FieldVisionPage() {
           )}
         </div>
       )}
-      
+
       {showWebcam && (
         <WebcamModal onClose={() => setShowWebcam(false)} onCapture={handleWebcamCapture} />
       )}

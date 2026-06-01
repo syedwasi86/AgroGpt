@@ -60,7 +60,7 @@ export default function App() {
         console.error('Auto-sync on reconnect failed:', err)
       }
     }
-    
+
     window.addEventListener('online', handleOnline)
     return () => window.removeEventListener('online', handleOnline)
   }, [])
@@ -72,7 +72,7 @@ export default function App() {
           <Route element={<PublicRoute />}>
             <Route path="/auth" element={<Auth />} />
           </Route>
-          
+
           <Route element={<ProtectedRoute />}>
             <Route path="/onboarding" element={<OnboardingPage />} />
             <Route element={<ProtectedShell />}>

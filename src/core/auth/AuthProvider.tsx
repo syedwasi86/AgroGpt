@@ -29,10 +29,10 @@ type AuthContextType = {
   user: User | null
   loading: boolean
   busy: boolean
-  signInWithGoogle: () => Promise<{ error: any }>
-  signInWithPhone: (phone: string) => Promise<{ error: any }>
-  verifyOtp: (phone: string, token: string) => Promise<{ error: any }>
-  signOut: () => Promise<{ error: any }>
+  signInWithGoogle: () => Promise<{ error: unknown }>
+  signInWithPhone: (phone: string) => Promise<{ error: unknown }>
+  verifyOtp: (phone: string, token: string) => Promise<{ error: unknown }>
+  signOut: () => Promise<{ error: unknown }>
   devLogin: () => void
 }
 
@@ -205,7 +205,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       if (error) throw error
       return { data, error: null }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setBusy(false)
       return { error }
     }
@@ -274,7 +274,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       return { error: null }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Logout cleanup error:', error)
       return { error }
     } finally {

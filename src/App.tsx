@@ -20,6 +20,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './lib/db'
 import { Loader2 } from 'lucide-react'
 import { OnboardingPage } from './features/onboarding/OnboardingPage'
+import { CropProvider } from './core/context/CropContext'
 
 function ProtectedShell() {
   const { user } = useAuth()
@@ -42,12 +43,12 @@ function ProtectedShell() {
   }
 
   return (
-    <>
+    <CropProvider>
       <AppShell>
         <Outlet />
       </AppShell>
       <AIAssistantPill />
-    </>
+    </CropProvider>
   )
 }
 

@@ -4,16 +4,19 @@ import { db } from '../../lib/db'
 import { saveSettings } from './services/accountService'
 import { GlassCard } from '../../components/GlassCard'
 import { Save, RefreshCw, LogOut } from 'lucide-react'
-import { syncData } from '../../core/api/syncEngine'
-import { useAuth } from '../../core/auth/AuthProvider'
+import { backgroundSync } from '../../core/api/syncEngine'
+import { useAuth } from '../../core/auth/AuthContext'
+import { useTranslation } from 'react-i18next'
 
 export function SettingsPage() {
   const settings = useLiveQuery(() => db.user_settings.toArray().then(a => a[0]))
+  const profile = useLiveQuery(() => db.profiles.toArray().then(a => a[0]))
   const [syncing, setSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
   const [loggingOut, setLoggingOut] = useState(false)
   const { signOut } = useAuth()
+  const { i18n } = useTranslation()
   
   const [formData, setFormData] = useState({
     notificationsEnabled: false,
@@ -22,22 +25,33 @@ export function SettingsPage() {
   })
 
   useEffect(() => {
-    if (settings) {
+    if (settings || profile) {
       setFormData({
-        notificationsEnabled: settings.notifications_enabled,
-        biometricEnabled: settings.biometric_enabled,
-        language: settings.language
+        notificationsEnabled: settings?.notifications_enabled || false,
+        biometricEnabled: settings?.biometric_enabled || false,
+        language: profile?.preferred_language || 'en'
       })
     }
-  }, [settings])
+  }, [settings, profile])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
     await saveSettings({
       notifications_enabled: formData.notificationsEnabled,
-      biometric_enabled: formData.biometricEnabled,
-      language: formData.language
+      biometric_enabled: formData.biometricEnabled
     })
+
+    if (profile?.id) {
+      await db.profiles.update(profile.id, {
+        preferred_language: formData.language,
+        version: (profile.version || 1) + 1,
+        updated_at: new Date().toISOString(),
+        sync_status: 'pending'
+      })
+      void i18n.changeLanguage(formData.language)
+    }
+
     alert('Settings saved successfully!')
   }
 
@@ -57,7 +71,7 @@ export function SettingsPage() {
     setSyncing(true)
     setSyncStatus('idle')
     try {
-      const res = await syncData()
+      const res = await backgroundSync()
       if (res.failed > 0) throw new Error('Partial failure')
       setSyncStatus('success')
       setTimeout(() => setSyncStatus('idle'), 3000)

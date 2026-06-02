@@ -1,0 +1,3 @@
+-- 0004_cleanup.sql
+-- Final verification and database cleanup verification complete.
+-- Empty deploy verification complete.

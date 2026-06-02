@@ -1,0 +1,316 @@
+[
+  {
+    "id": "cotton_healthy",
+    "crop": "Cotton",
+    "disease": "Healthy",
+    "scientificName": null,
+    "dangerLevel": null,
+    "symptoms": [
+      "Uniform seed emergence",
+      "Robust taproot development",
+      "Main stems completely free from dark lesions, cracking, or vascular discoloration",
+      "Expansive, deep green, and unblemished foliage",
+      "High square (flower bud) and boll retention without signs of premature shedding, necrosis, or bacterial rot"
+    ],
+    "earlySymptoms": [],
+    "advancedSymptoms": [],
+    "causes": [],
+    "spreadConditions": {
+      "humidity": null,
+      "temperature": null,
+      "rainfall": null,
+      "season": null
+    },
+    "immediateActions": {
+      "low": [],
+      "medium": [],
+      "high": []
+    },
+    "organicTreatments": [],
+    "chemicalTreatments": [],
+    "prevention": [
+      "Ensure soil temperature at planting depth (4 inches) exceeds 18 C (65 F) to prevent damping-off fungi",
+      "Delint cotton seeds with concentrated sulphuric acid (H2SO4) to remove surface-borne pathogens",
+      "Early thinning of the plant stand to ensure adequate airflow",
+      "Early earthing up combined with potash application to strengthen the stem and optimize vascular health",
+      "Ensure crop rotation with non-host crops like sorghum or maize"
+    ],
+    "monitoringAdvice": [
+      "Monitor soil moisture closely",
+      "Ensure crop rotation is planned and executed"
+    ],
+    "farmerFriendlyExplanation": "A healthy cotton field has seedlings that come up evenly, deep green leaves without any spots, strong clean stems, and keeps its flower buds and bolls without dropping them. In local terminology, a healthy cotton crop is referred to as స్వస్థ పత్తి (Swastha pathi) in Telugu and स्वस्थ कपास (Swasth kapas) in Hindi.",
+    "sourceAttribution": [
+      "Early-Season Diseases in Cotton - Bayer Crop Science, accessed on May 24, 2026, https://www.cropscience.bayer.us/articles/dad/causes-and-management-of-early-season-cotton-diseases",
+      "Bacterial blight - TNAU Agritech Portal :: Crop Protection, accessed on May 24, 2026, https://www.agritech.tnau.ac.in/crop_protection/cotton_diseases/cotton_d9.html"
+    ],
+    "displayName": {
+      "en": "Healthy Cotton",
+      "hi": "स्वस्थ कपास",
+      "te": "స్వస్థ పత్తి"
+    },
+    "diseaseType": null
+  },
+  {
+    "id": "cotton_bacterial_blight",
+    "crop": "Cotton",
+    "disease": "Bacterial Blight",
+    "scientificName": "Xanthomonas axonopodis pv. malvacearum",
+    "dangerLevel": "high",
+    "symptoms": [
+      "Water-soaked lesions on the cotyledons that turn brown (Seedling Blight)",
+      "Girdling of the hypocotyl, potentially killing the young seedling",
+      "Scattered, small, dark-green, water-soaked spots on the lower leaf surface (Angular Leaf Spot)",
+      "Highly angular brown to black spots on leaves (constrained by veins)",
+      "Vein Necrosis (veins turning completely black)",
+      "Dark brown to black elongated necrotic lesions on the main stem and petioles (Black Arm)",
+      "Deep structural cracks, gummosis (oozing), and girdling of the stem",
+      "Stem becomes highly brittle and snaps easily under wind pressure",
+      "Water-soaked, sunken spots on bolls (Boll Rot)",
+      "Premature bursting of bolls",
+      "Bright yellow bacterial ooze staining developing lint",
+      "Destruction of seed viability"
+    ],
+    "earlySymptoms": [
+      "Water-soaked lesions on the cotyledons that turn brown",
+      "Scattered, small, dark-green, water-soaked spots on the lower leaf surface (Angular Leaf Spot)"
+    ],
+    "advancedSymptoms": [
+      "Vein Necrosis, with leaf veins turning completely black",
+      "Dark brown to black elongated necrotic lesions (Black Arm) on stems/petioles, causing cracking, gummosis, and stem girdling",
+      "Sunken spots on bolls (Boll Rot) causing premature bursting and yellow staining of lint"
+    ],
+    "causes": [
+      "Xanthomonas axonopodis pv. malvacearum (gram-negative, motile bacterium)",
+      "Seed-borne inoculum (surviving in seed fuzz)",
+      "Pathogen persistence in dried plant debris in the soil"
+    ],
+    "spreadConditions": {
+      "humidity": "Above 85%",
+      "temperature": "30 C to 40 C",
+      "rainfall": "Heavy rain splashed by strong winds",
+      "season": null
+    },
+    "immediateActions": {
+      "low": [
+        "Ensure seeds are not saved from an infected field"
+      ],
+      "medium": [
+        "Apply recommended prophylactic antibiotic/copper sprays if angular spots appear on leaves"
+      ],
+      "high": [
+        "Curative chemical treatment (foliar spray of Streptomycin + Copper oxychloride) to prevent stem invasion"
+      ]
+    },
+    "organicTreatments": [
+      "Rogue out volunteer cotton plants",
+      "Deep plow to destroy infected plant debris",
+      "Rotate with cereal crops"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Concentrated sulphuric acid (H2SO4)",
+        "dosage": "100ml/kg",
+        "sprayInterval": "Seed treatment prior to sowing",
+        "notes": "Delinting seeds."
+      },
+      {
+        "activeIngredient": "Carboxin + Thiram",
+        "dosage": "2.5 g/kg",
+        "sprayInterval": "Seed treatment prior to sowing",
+        "notes": "Treat delinted seeds."
+      },
+      {
+        "activeIngredient": "Streptomycin sulphate + Copper oxychloride 50% WP",
+        "dosage": "100-150g/ha (Streptomycin) + 1.25 kg/ha (Copper)",
+        "sprayInterval": "Foliar spray",
+        "notes": "Curative (Early) chemical spray to stop bacteria from entering stems."
+      }
+    ],
+    "prevention": [
+      "Strict seed sanitation and seed treatment",
+      "Delint seeds with concentrated sulphuric acid",
+      "Rogue out volunteer plants and deep plow",
+      "Rotate cotton with non-host cereals"
+    ],
+    "monitoringAdvice": [
+      "Monitor seedling cotyledons for water-soaked brown lesions",
+      "Monitor lower leaf surfaces for angular, dark-green water-soaked spots"
+    ],
+    "farmerFriendlyExplanation": "A highly aggressive bacterial infection that creates sharp, square-shaped black spots on the leaves. It rapidly moves into the main stem, turning it black and brittle, causing branches to break off and the cotton bolls to rot before they open. The farmer must never save seeds from infected fields and must spray antibiotics mixed with copper at the first sign of spots. Locally known as కాలా బజూ రోగ్ / కోణీయ పత్తీ ధబ్బా (Kala baju rog / Koniya patti dhabba) in Hindi and బ్యాక్టీరియా ఆకుమచ్చ / నల్లమచ్చ తెగులు (Bacteria aakumacha / Nallamacha tegulu) in Telugu.",
+    "sourceAttribution": [
+      "Bacterial blight of cotton - Wikipedia, accessed on May 24, 2026, https://en.wikipedia.org/wiki/Bacterial_blight_of_cotton",
+      "Bacterial blight - TNAU Agritech Portal :: Crop Protection, accessed on May 24, 2026, https://www.agritech.tnau.ac.in/crop_protection/cotton_diseases/cotton_d9.html"
+    ],
+    "displayName": {
+      "en": "Bacterial Blight",
+      "hi": "काला बाजू रोग / कोणीय पत्ती धब्बा",
+      "te": "బ్యాక్టీరియా ఆకుమచ్చ / నల్లమచ్చ తెగులు"
+    },
+    "diseaseType": "bacterial"
+  },
+  {
+    "id": "cotton_curl_virus",
+    "crop": "Cotton",
+    "disease": "Cotton Leaf Curl Virus (CLCuV)",
+    "scientificName": "Cotton Leaf Curl Virus (CLCuV)",
+    "dangerLevel": "high",
+    "symptoms": [
+      "Upward or downward curling of the leaf margins",
+      "Abnormal thickening and swelling of the leaf veins on the underside of the leaves",
+      "Unique cup-shaped enations (abnormal leaf-like outgrowths) developing directly from thickened veins",
+      "Shrunk internodes leading to severe stunting of the plant",
+      "Dramatically reduced or entirely halted square and boll formation"
+    ],
+    "earlySymptoms": [
+      "Distinctive upward or downward curling of the leaf margins",
+      "Thickening and swelling of the leaf veins on the underside of the leaves"
+    ],
+    "advancedSymptoms": [
+      "Unique cup-shaped enations on the veins on the underside of the leaves",
+      "Shrunk internodes causing severe stunting of the plant and a bushy appearance",
+      "Complete cessation of square and boll formation"
+    ],
+    "causes": [
+      "Cotton Leaf Curl Virus (CLCuV) (begomovirus)",
+      "Transmission exclusively by the whitefly vector (Bemisia tabaci)",
+      "Reservoirs in alternate weed hosts like Abutilon indicum and Solanum nigrum"
+    ],
+    "spreadConditions": {
+      "humidity": "Low humidity",
+      "temperature": "Hot weather",
+      "rainfall": "Inversely linked to rainfall",
+      "season": null
+    },
+    "immediateActions": {
+      "low": [
+        "Eradicate alternate weed hosts (Abutilon indicum)",
+        "Deploy yellow sticky traps (1 foot above canopy)"
+      ],
+      "medium": [
+        "Foliar spray of Neem Seed Kernel Extract (NSKE) 5% combined with Neem oil at 5 ml/L of water at the first sign of vector"
+      ],
+      "high": [
+        "Immediate uprooting and burning of virally infected plants to protect the rest of the field",
+        "Chemical spray (Diafenthiuron 50% WP or Flonicamid 50% WG) when pest population reaches ETL"
+      ]
+    },
+    "organicTreatments": [
+      "Eradicate alternate weed hosts like Abutilon indicum",
+      "Deploy yellow sticky traps at 1 foot above canopy",
+      "Foliar spray of Neem Seed Kernel Extract (NSKE) 5% combined with Neem oil at 5 ml/L of water"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Diafenthiuron 50% WP",
+        "dosage": "240 g/acre",
+        "sprayInterval": "Spray when whitefly population reaches ETL (5 to 10 nymphs or adults per leaf)",
+        "notes": "Chemical vector control."
+      },
+      {
+        "activeIngredient": "Flonicamid 50% WG",
+        "dosage": "60 g/acre",
+        "sprayInterval": "Spray when whitefly population reaches ETL (5 to 10 nymphs or adults per leaf)",
+        "notes": "Chemical vector control."
+      }
+    ],
+    "prevention": [
+      "Eradicate alternate weed hosts (Abutilon indicum and Solanum nigrum) near the cotton fields",
+      "Deploy yellow sticky traps above the canopy",
+      "Integrated vector control to keep whitefly populations below ETL"
+    ],
+    "monitoringAdvice": [
+      "Check underside of the leaves for whitefly vector presence and vein thickening",
+      "Monitor ETL: spray when whitefly population reaches 5 to 10 nymphs or adults per leaf"
+    ],
+    "farmerFriendlyExplanation": "An incurable virus carried by tiny white flies. When they bite the plant, the virus enters the sap, causing leaves to curl up, veins underneath to swell, and the plant to stop growing and producing cotton. Farmers must immediately pull out and burn any curled plants, clear weeds, and spray neem oil or insecticides to kill the whiteflies. Known as పత్తీ మోరోడ్ వైరస్ (Patti morod virus) in Hindi and ఆకు ముడత వైరస్ (Aaku mudatha virus) in Telugu.",
+    "sourceAttribution": [
+      "Whitefly: Bemisia tabaci - TNAU Agritech Portal :: Crop Protection, accessed on May 24, 2026, https://agritech.tnau.ac.in/ta/crop_protection/cotton/crop_prot_crop_insectpest%20_cotton_13.html",
+      "Whitefly: Bemisia tabaci (Aleyrodidae: Hemiptera) - TNAU Agritech Portal :: Crop Protection, accessed on May 24, 2026, https://agritech.tnau.ac.in/crop_protection/cotton/crop_prot_crop_insectpest%20_cotton_13.html"
+    ],
+    "displayName": {
+      "en": "Cotton Leaf Curl Virus",
+      "hi": "पत्ती मरोड़ वायरस",
+      "te": "ఆకు ముడత వైరస్"
+    },
+    "diseaseType": "viral"
+  },
+  {
+    "id": "cotton_fusarium_wilt",
+    "crop": "Cotton",
+    "disease": "Fusarium Wilt",
+    "scientificName": "Fusarium oxysporum f. sp. vasinfectum",
+    "dangerLevel": "high",
+    "symptoms": [
+      "General loss of turgor",
+      "Noticeable wilt during the heat of the day (even with adequate soil moisture)",
+      "Yellowing (chlorosis) starting at margins of lower leaves and moving inward",
+      "Leaf tissue necrosis",
+      "Continuous, dark brown discoloration of vascular tissues (xylem and phloem) inside the stem/taproot",
+      "Rapid death of seedlings (mimicking damping-off)"
+    ],
+    "earlySymptoms": [
+      "Wilt during the heat of the day",
+      "Yellowing (chlorosis) starting at the margins of lower leaves"
+    ],
+    "advancedSymptoms": [
+      "Continuous, dark brown discoloration of vascular tissues inside the lower stem or upper taproot when cut longitudinally",
+      "Complete defoliation and death of the plant",
+      "Rapid seedling mortality"
+    ],
+    "causes": [
+      "Fusarium oxysporum f. sp. vasinfectum (soil-borne fungal pathogen)",
+      "Pathogen survival as chlamydospores in the soil",
+      "Root penetration aided by plant-parasitic root-knot nematodes"
+    ],
+    "spreadConditions": {
+      "humidity": null,
+      "temperature": null,
+      "rainfall": null,
+      "season": "Monocropping of cotton, poor drainage, acidic soils"
+    },
+    "immediateActions": {
+      "low": [
+        "Uproot and burn the dead plants to reduce soil contamination"
+      ],
+      "medium": [
+        "Perform longitudinal cut of a wilting plant stem to confirm dark brown vascular staining"
+      ],
+      "high": [
+        "Do not plant cotton in that specific patch the following year without heavy soil treatment"
+      ]
+    },
+    "organicTreatments": [
+      "Seed treatment prior to sowing with Trichoderma viride @ 4g/kg or Bacillus subtilis @ 10g/kg",
+      "Fortify soil by applying Trichoderma viride @ 1.0 kg/acre mixed thoroughly with 20 kg FYM as a basal application",
+      "Implement deep summer plowing",
+      "Rotate cotton with non-host cereal crops"
+    ],
+    "chemicalTreatments": [],
+    "prevention": [
+      "Preventative biological seed treatments (Trichoderma viride or Bacillus subtilis)",
+      "Soil fortification with beneficial microbes",
+      "Use of resistant cotton varieties",
+      "Rigorous crop rotation with non-host cereals",
+      "Management of nematode populations"
+    ],
+    "monitoringAdvice": [
+      "Monitor plants for wilting during the heat of the day",
+      "Perform destructive check (cut stem longitudinally) to inspect for dark brown vascular staining in wilting plants"
+    ],
+    "farmerFriendlyExplanation": "A soil fungus that invades the plant's roots and clogs its water pipes (veins). Since the plant cannot drink water, it droops and turns yellow from the bottom up, eventually dying. To confirm, cut the stem of a wilting plant; if the inside is stained dark brown, it is Fusarium wilt. Uproot and burn dead plants, rotate crops, and treat soil/seeds with bio-fungicides like Trichoderma. Locally known as ఉకట రోగ్ (Ukata rog) in Hindi and వడలు తెగులు (Vadalu tegulu) in Telugu.",
+    "sourceAttribution": [
+      "Fusarium Wilt / Cotton / Agriculture - UC IPM, accessed on May 24, 2026, https://ipm.ucanr.edu/agriculture/cotton/fusarium-wilt/",
+      "A Rapid and Reliable Method for Evaluating Cotton Resistance to Fusarium Wilt Race 4 Based on Taproot Rot at the Seed Germination Stage - PubMed, accessed on May 24, 2026, https://pubmed.ncbi.nlm.nih.gov/36647181/",
+      "Control Strategies for Fusarium Wilt of Cotton in Australia, accessed on May 24, 2026, https://www.cotton.org/beltwide/proceedings/getPDF.cfm?year=2000&paper=070.pdf",
+      "Season and Varieties :: Cotton - TNAU Agritech Portal, accessed on May 24, 2026, http://www.agritech.tnau.ac.in/agriculture/agri_season_cotton_Foliar%20diseases%20.html",
+      "suppression of fusarium colonization of cotton roots and fusarum wilt by seed treatments with gliocladium virens and bacillus subtilis - Publication : USDA ARS, accessed on May 24, 2026, https://www.ars.usda.gov/research/publications/publication/?seqNo115=75514"
+    ],
+    "displayName": {
+      "en": "Fusarium Wilt",
+      "hi": "उकठा रोग",
+      "te": "వడలు తెగులు"
+    },
+    "diseaseType": "fungal"
+  }
+]

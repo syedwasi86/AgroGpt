@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Loader2, FlaskConical } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { GlassCard } from '../components/GlassCard'
 import { cn } from '../core/utils/cn'
 import { useTranslation } from 'react-i18next'
-import { useAuth } from '../core/auth/AuthProvider'
+import { useAuth } from '../core/auth/AuthContext'
 
 type AuthMode = 'google' | 'phone'
 
@@ -33,7 +33,7 @@ function GoogleIcon({ className }: { className?: string }) {
 
 export function Auth() {
   const { t } = useTranslation()
-  const { devLogin, signInWithGoogle, signInWithPhone, verifyOtp, busy: authBusy, user } = useAuth()
+  const { signInWithGoogle, signInWithPhone, verifyOtp, busy: authBusy, user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [mode, setMode] = useState<AuthMode>('google')
@@ -41,29 +41,37 @@ export function Auth() {
   const [otp, setOtp] = useState('')
   const [step, setStep] = useState<'phone' | 'otp'>('phone')
   const [error, setError] = useState<string | null>(null)
+  const [authAction, setAuthAction] = useState<'signin' | 'signup'>('signin')
 
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
-      const from = (location.state as any)?.from?.pathname || '/dashboard'
+      interface LocationState {
+        from?: {
+          pathname: string
+        }
+      }
+      const from = (location.state as LocationState)?.from?.pathname || '/dashboard'
       navigate(from, { replace: true })
     }
   }, [user, navigate, location])
 
   const handleGoogleLogin = async () => {
     setError(null)
+    localStorage.setItem('is_signup', authAction === 'signup' ? 'true' : 'false')
     const { error } = await signInWithGoogle()
     if (error) {
-      setError(error.message)
+      setError((error as any).message || String(error))
     }
   }
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    localStorage.setItem('is_signup', authAction === 'signup' ? 'true' : 'false')
     const { error } = await signInWithPhone(phone)
     if (error) {
-      setError(error.message)
+      setError((error as any).message || String(error))
     } else {
       setStep('otp')
     }
@@ -72,9 +80,10 @@ export function Auth() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    localStorage.setItem('is_signup', authAction === 'signup' ? 'true' : 'false')
     const { error } = await verifyOtp(phone, otp)
     if (error) {
-      setError(error.message)
+      setError((error as any).message || String(error))
     } else {
       // On success, the useEffect will trigger and navigate, 
       // but we can also navigate here explicitly for immediate feedback
@@ -90,8 +99,16 @@ export function Auth() {
       <div className="w-full max-w-md">
         <GlassCard variant="strong" className="p-8 shadow-glass">
           <div className="mb-8 text-center">
-            <h1 className="agro-h1 text-2xl sm:text-3xl">{t('auth.title')}</h1>
-            <p className="subtle mt-2">{t('auth.subtitle')}</p>
+            <h1 className="agro-h1 text-2xl sm:text-3xl">
+              {authAction === 'signin' 
+                ? t('auth.titleSignIn', 'AgroGPT Sign In') 
+                : t('auth.titleSignUp', 'AgroGPT Sign Up')}
+            </h1>
+            <p className="subtle mt-2">
+              {authAction === 'signin'
+                ? t('auth.subtitleSignIn', 'Sign in to continue to your farm workspace')
+                : t('auth.subtitleSignUp', 'Create an account to set up your farm workspace')}
+            </p>
           </div>
 
           <div
@@ -146,7 +163,7 @@ export function Auth() {
                 className="flex w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.06] py-3 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/[0.1] disabled:opacity-50"
               >
                 {authBusy ? <Loader2 className="animate-spin" size={20} /> : <GoogleIcon className="h-5 w-5" />}
-                Sign in with Google
+                {authAction === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}
               </button>
             </div>
           ) : (
@@ -199,7 +216,7 @@ export function Auth() {
                   style={{ backgroundColor: '#2E7D32' }}
                 >
                   {authBusy ? <Loader2 className="animate-spin inline-block mr-2" size={16} /> : null}
-                  Verify & Sign In
+                  {authAction === 'signin' ? 'Verify & Sign In' : 'Verify & Sign Up'}
                 </button>
                 <button
                   type="button"
@@ -211,21 +228,24 @@ export function Auth() {
               </form>
             )
           )}
-        </GlassCard>
 
-        {import.meta.env.DEV && (
-          <div className="mt-4">
+          <div className="mt-6 text-center border-t border-white/5 pt-4">
             <button
               type="button"
-              onClick={() => { devLogin(); navigate('/dashboard', { replace: true }) }}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 py-3 text-sm font-semibold text-yellow-400 transition hover:bg-yellow-500/20"
+              onClick={() => {
+                setAuthAction(prev => prev === 'signin' ? 'signup' : 'signin')
+                setError(null)
+              }}
+              className="text-xs font-semibold text-[#87A96B] hover:underline"
             >
-              <FlaskConical size={16} />
-              Demo Mode (Bypass Login)
+              {authAction === 'signin'
+                ? t('auth.switchToSignUp', "Don't have an account? Sign Up")
+                : t('auth.switchToSignIn', "Already have an account? Sign In")}
             </button>
-            <p className="mt-2 text-center text-xs text-white/30">Dev only — not visible in production</p>
           </div>
-        )}
+        </GlassCard>
+
+
       </div>
     </div>
   )

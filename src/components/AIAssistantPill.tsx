@@ -4,6 +4,7 @@ import { GlassCard } from './GlassCard'
 import { cn } from '../core/utils/cn'
 import { askAgroGPT, callGeminiAPI, localInference } from '../ai/provider'
 import { saveAiQuery, getPendingAiQueries, getPendingAiQueryCount, markAiQueryAnswered, markAiQueryProcessing } from '../lib/repository'
+import { type AiQueryRecord } from '../lib/db'
 import { useTranslation } from 'react-i18next'
 import { useConnectivity } from '../hooks/useConnectivity'
 
@@ -85,10 +86,10 @@ export function AIAssistantPill() {
     setSyncing(true)
     setOpen(true)
 
-    let queued: any[] = []
+    let queued: AiQueryRecord[] = []
     try {
       queued = await getPendingAiQueries()
-    } catch (err) {
+    } catch {
       setSyncing(false)
       return
     }
@@ -102,7 +103,7 @@ export function AIAssistantPill() {
         const reply = await callGeminiAPI(record.question)
         setMessages(prev => [...prev, { role: 'assistant', content: reply.text }])
         if (record.id != null) await markAiQueryAnswered(record.id, reply.text)
-      } catch (err) {
+      } catch {
         const fallback = localInference(record.question)
         setMessages(prev => [...prev, { role: 'assistant', content: fallback + ' (Retry queued)' }])
       }

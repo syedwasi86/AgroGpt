@@ -101,8 +101,8 @@ async function fetchRAGContext(): Promise<RAGContext> {
   // 1. Active crop
   let cropName = 'N/A'
   try {
-    const activeCrop = await db.crops.where('status').equals('active').first()
-    if (activeCrop?.name) cropName = activeCrop.name
+    const activePlan = await db.crop_plans.where('status').equals('active').first()
+    if (activePlan?.crop_type) cropName = activePlan.crop_type
   } catch { /* ignore */ }
 
   // 2. Soil NPK from user profile
@@ -121,7 +121,7 @@ async function fetchRAGContext(): Promise<RAGContext> {
   } catch { /* ignore */ }
 
   // 3. Latest weather (Offline fallback: unavailable since cache removed)
-  let tempC = 'N/A'
+  const tempC = 'N/A'
 
   return { cropName, soilType, nitrogen, phosphorus, potassium, tempC }
 }
@@ -238,7 +238,6 @@ export async function callGeminiAPI(prompt: string): Promise<AIReply> {
  */
 export async function askAgroGPT(
   prompt: string,
-  _context?: AIContext,
 ): Promise<AIReply> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 
@@ -250,10 +249,11 @@ export async function askAgroGPT(
   try {
     // 2. Attempt the real API call
     return await callGeminiAPI(prompt);
-  } catch (err: any) {
+  } catch (err: unknown) {
     // 3. CHECK THE ERROR TYPE
     // If it's a 403 or 401, the user IS online, but the key is the problem.
-    if (err.status === 403 || err.status === 401) {
+    const geminiErr = err as { status?: number };
+    if (geminiErr.status === 403 || geminiErr.status === 401) {
       return {
         text: `⚠️ API Key Error: Google rejected your request (403). Please ensure your key in .env.local has no quotes and is valid.`,
         source: 'error'

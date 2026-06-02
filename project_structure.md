@@ -38,10 +38,10 @@ Contains the essential setup and utilities that are used across the entire appli
 ### `features/` (Domain-Specific Modules)
 Each folder encapsulates all components, pages, and specific logic relevant to a single domain of the application.
 - **`dashboard/`**: Contains the `DashboardPage.tsx` and its specific widgets (`WeatherCard.tsx`, `FarmMap.tsx`).
-- **`digital-ledger/`**: Contains the `DigitalLedgerPage.tsx` for financial tracking logic.
+- **`digital-khata/`**: Contains the `DigitalLedgerPage.tsx` for financial tracking logic. (Renamed from `digital-ledger`).
 - **`field-vision/`**: Contains the `FieldVisionPage.tsx` handling camera uploads and disease detection UI.
-- **`precision-planning/`**: Contains `PrecisionPlanningPage.tsx` and the heuristic logic file `planningLogic.ts` for crop rotation.
-- **`market/`**: Contains `MarketPostHarvestPage.tsx` for post-harvest advice.
+- **`crop-calendar/`**: Contains pages and sub-modules for managing the crop calendar, growth stages, scheduled farm tasks, and weather adjustments.
+- **`market/`**: Contains `MarketPostHarvestPage.tsx` for post-harvest advice and mandi market rates.
 - **`settings/`**: Contains user profile and settings views (`ProfilePage.tsx`, `SettingsPage.tsx`) and the associated `accountService.ts`.
 - **`agronomy/`**: Contains agronomic core logic such as `irrigationCalculator.ts`.
 - **`gis/`**: Contains geospatial logic like `soilMapping.ts` and `weatherService.ts`.
@@ -69,6 +69,7 @@ Contains generic, reusable UI components that are domain-agnostic.
 
 ### `ai/` (AI Assistant)
 - **`provider.ts`**: Contains the logic for the floating AI Assistant pill, handling online inference and offline mock fallbacks.
+- **`geminiRecommendationService.ts`**: Personalizes crop disease advice by connecting to the Gemini 2.5 Flash API when online.
 
 ### `hooks/` (Custom React Hooks)
 - **`useAuth.ts`**: A custom hook for accessing the current user's authentication context globally.
@@ -77,3 +78,23 @@ Contains generic, reusable UI components that are domain-agnostic.
 
 ### `assets/` (Static Assets)
 - Contains images, SVGs, and icons used in the UI, such as `hero.png`, `react.svg`, and `vite.svg`.
+
+## Core Architectural & Sync Patterns
+
+### 1. Chronological Sync Sequence Hierarchy
+To satisfy remote PostgreSQL foreign key constraints on the cloud database, `syncEngine.ts` pushes local pending modifications in a strict, chronological sequence:
+`crop_plans` ➔ `crop_stages` ➔ `farm_tasks` ➔ `transactions` ➔ `scans` ➔ `ai_queries` ➔ `weather_adjustments`
+
+This order guarantees that any parent entities exist in the remote database before their dependent children rows are upserted.
+
+### 2. 3-Phase Profile Circular Dependency Resolution
+To resolve the circular dependency between the `profiles` table and the `crop_plans` table (where `profiles.active_crop_plan_id` points to a plan, but `crop_plans.user_id` points to the profile), a 3-phase push architecture is implemented in the sync engine:
+1. **Phase 1 (Pre-Loop):** Query `db.profiles` for unsynced changes. Map the payload and delete `active_crop_plan_id` to temporarily strip the circular foreign key. Enforce the user's authentic session ID, sanitize the metadata, and upsert this parent profile row first to build the foundational database row.
+2. **Phase 2 (Main Sync Loop):** Execute the standard table push sequence in chronological hierarchy (pushing `crop_plans`, growth stages, farm tasks, etc.). This populates the dependent tables.
+3. **Phase 3 (Post-Loop):** Re-query the pending profiles from Dexie and push the complete profile payload (including the newly generated `active_crop_plan_id` pointer) to link the active plan successfully.
+
+### 3. Authentication & Session Loop Prevention
+- **Purge of Developer Bypass:** The legacy developer bypass user (`dev-bypass-user` mock session) has been completely removed to enforce strict UUID type safety against Supabase authentication standards.
+- **Focus Ref Loop Prevention:** Swapping browser tabs triggers Supabase `TOKEN_REFRESHED` background events, which previously trapped `AuthProvider.tsx` in a loading state loop. The system now utilizes a React mutable `statusRef` hook implementation:
+  - If the auth state change event is `TOKEN_REFRESHED`, it is explicitly ignored.
+  - If the event is `SIGNED_IN` and `statusRef.current` is already `READY` (or `READY_WITH_WARNING`), it is ignored to prevent duplicate initial sync sequences and loading screens.

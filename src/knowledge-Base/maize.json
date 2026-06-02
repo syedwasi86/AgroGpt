@@ -1,0 +1,287 @@
+[
+  {
+    "id": "maize_healthy",
+    "crop": "Maize",
+    "disease": "Healthy",
+    "scientificName": null,
+    "dangerLevel": null,
+    "symptoms": [
+      "Thick, sturdy stalks capable of resisting lodging",
+      "Expansive, dark green leaf blades",
+      "Well-developed, anchoring brace roots",
+      "Ears well-filled with kernels right to the tip"
+    ],
+    "earlySymptoms": [],
+    "advancedSymptoms": [],
+    "causes": [],
+    "spreadConditions": {
+      "humidity": null,
+      "temperature": null,
+      "rainfall": null,
+      "season": null
+    },
+    "immediateActions": {
+      "low": [],
+      "medium": [],
+      "high": []
+    },
+    "organicTreatments": [],
+    "chemicalTreatments": [],
+    "prevention": [
+      "Maintain optimal soil pH (between 5.8 and 7.0)",
+      "Rigorous pre-emergence weed management using herbicides like Atrazine to eliminate early resource competition",
+      "Highly calculated, balanced nitrogen applications to sustain the rapid, demanding growth phase"
+    ],
+    "monitoringAdvice": [
+      "Check for uniform emergence",
+      "Ensure whorls are free of pests like the Fall Armyworm"
+    ],
+    "farmerFriendlyExplanation": "A healthy maize plant has thick, strong stalks, dark green leaves, and strong brace roots. The corn cobs are fully filled with kernels right to the very tip. In Telugu, it is known as స్వస్థ మొక్కజొన్న (Swastha mokkajonna) and in Hindi as स्वस्थ मक्का (Swasth makka).",
+    "sourceAttribution": [
+      "Training cum Awareness Programme on Best Management practices - Home - pjtau.edu.in, accessed on May 24, 2026, https://pjtau.edu.in/training-cum-awareness-programme-on-best-management-practices/"
+    ],
+    "displayName": {
+      "en": "Healthy Maize",
+      "hi": "स्वस्थ मक्का",
+      "te": "స్వస్థ మొక్కజొన్న"
+    },
+    "diseaseType": null
+  },
+  {
+    "id": "maize_gray_leaf_spot",
+    "crop": "Maize",
+    "disease": "Gray Leaf Spot",
+    "scientificName": "Cercospora zeae-maydis",
+    "dangerLevel": "high",
+    "symptoms": [
+      "Small, light tan to brown lesions surrounded by a faint, watery yellow halo",
+      "Elongated, perfectly rectangular, block-like lesions (laterally constrained by leaf veins)",
+      "Lesions turning distinct gray color (as fungus sporulates)",
+      "Coalescing rectangular lesions blighting entire leaves",
+      "Premature death of the foliage",
+      "Loss of photosynthetic area"
+    ],
+    "earlySymptoms": [
+      "Small, light tan to brown lesions surrounded by a faint, watery yellow halo (best observed by holding leaf to light)"
+    ],
+    "advancedSymptoms": [
+      "Elongated, perfectly rectangular, block-like lesions",
+      "Distinct gray coloration of lesions after about two weeks",
+      "Rectangular lesions coalescing, blighting entire leaves and causing premature death of foliage"
+    ],
+    "causes": [
+      "Cercospora zeae-maydis (fungal pathogen)",
+      "Fungus overwintering on unburied crop residue left on the soil surface"
+    ],
+    "spreadConditions": {
+      "humidity": "High humidity",
+      "temperature": "High heat and moderate to high temperatures",
+      "rainfall": null,
+      "season": "Associated with minimum tillage or no-till farming practices"
+    },
+    "immediateActions": {
+      "low": [
+        "Inspect lower leaves just before the plants begin to flower"
+      ],
+      "medium": [
+        "Foliar spray of recommended protective fungicide (Chlorothalonil or Mancozeb) if rectangular spots are visible on lower leaves"
+      ],
+      "high": [
+        "Foliar spray of systemic fungicides (Kresoxim-methyl or Tebuconazole) to prevent disease climbing the canopy"
+      ]
+    },
+    "organicTreatments": [
+      "Bury old corn stalks (deep plowing) in the next season to reduce overwintering spores",
+      "Annual crop rotation with non-hosts like soybeans or cotton"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Chlorothalonil",
+        "dosage": "2 ml/L",
+        "sprayInterval": "applied prior to full canopy closure",
+        "notes": "Early / Protectant foliar spray."
+      },
+      {
+        "activeIngredient": "Mancozeb",
+        "dosage": "2 ml/L",
+        "sprayInterval": "applied prior to full canopy closure",
+        "notes": "Early / Protectant foliar spray."
+      },
+      {
+        "activeIngredient": "Kresoxim-methyl 44.3% SC",
+        "dosage": "1 ml/L",
+        "sprayInterval": "applied at 35 and 50 Days After Sowing",
+        "notes": "Curative (High Severity) systemic foliar spray."
+      },
+      {
+        "activeIngredient": "Tebuconazole",
+        "dosage": "1 ml/L",
+        "sprayInterval": "applied at 35 and 50 Days After Sowing",
+        "notes": "Curative (High Severity) systemic foliar spray."
+      }
+    ],
+    "prevention": [
+      "Deep plowing to fully bury infected crop residue",
+      "Annual crop rotation with non-hosts like soybeans or cotton",
+      "Timely fungicide application to protect the ear leaf and leaves above it"
+    ],
+    "monitoringAdvice": [
+      "Inspect the lower leaves just before the plants begin to flower for blocky, rectangular spots",
+      "Hold leaves up to the light to scout for small tan lesions with a watery yellow halo"
+    ],
+    "farmerFriendlyExplanation": "A dangerous fungus that creates sharp, rectangular gray boxes on the leaves. It systematically destroys the green parts of the leaf, stopping the plant from making the food necessary to fill the corn cobs with heavy grain. The farmer must inspect lower leaves before flowering, spray immediately if spots are seen, and deep plow in the next season. Known as భూరా పత్తా ధబ్బా (Bhura patta dhabba) in Hindi and బూడిద ఆకుమచ్చ (Boodida aakumacha) in Telugu.",
+    "sourceAttribution": [
+      "Gray Leaf Spot in Corn | NC State Extension Publications, accessed on May 24, 2026, https://content.ces.ncsu.edu/gray-leaf-spot-in-corn",
+      "Gray Leaf Spot in Corn - Bayer Crop Science, accessed on May 24, 2026, https://www.cropscience.bayer.us/articles/bayer/gray-leaf-spot-in-corn",
+      "Gray Leaf Spot | CropWatch - University of Nebraska–Lincoln, accessed on May 24, 2026, https://cropwatch.unl.edu/plant-disease/corn/gray-leaf-spot/",
+      "Gray Leaf Spot & Northern Corn Leaf Blight - National Agricultural Genotyping Center, accessed on May 24, 2026, https://genotypingcenter.com/product/gray-leaf-spot-northern-corn-leaf-blight/"
+    ],
+    "displayName": {
+      "en": "Gray Leaf Spot",
+      "hi": "भूरा पत्ता धब्बा",
+      "te": "బూడిద ఆకుమచ్చ"
+    },
+    "diseaseType": "fungal"
+  },
+  {
+    "id": "maize_blight",
+    "crop": "Maize",
+    "disease": "Northern and Southern Corn Leaf Blight",
+    "scientificName": "Bipolaris maydis (Southern Corn Leaf Blight) / Exserohilum turcicum (Northern Corn Leaf Blight)",
+    "dangerLevel": "medium to high",
+    "symptoms": [
+      "Small, diamond-shaped lesions that elongate between the veins with distinct buff to brown borders (Southern/Maydis)",
+      "Much larger, distinctively cigar-shaped (elliptical) grayish-green to tan lesions (Northern/Turcicum)",
+      "Coalescing lesions causing complete 'burning' or blighting of massive leaf areas",
+      "Dry, dead leaf tissue"
+    ],
+    "earlySymptoms": [
+      "Small, diamond-shaped lesions that elongate between leaf veins (Southern)",
+      "Large, grayish-green to tan cigar-shaped spots (Northern)"
+    ],
+    "advancedSymptoms": [
+      "Pathogens rapidly coalescing, causing a complete 'burning' or blighting of massive leaf areas"
+    ],
+    "causes": [
+      "Bipolaris maydis (fungal pathogen causing Southern Corn Leaf Blight)",
+      "Exserohilum turcicum (fungal pathogen causing Northern Corn Leaf Blight)"
+    ],
+    "spreadConditions": {
+      "humidity": "Highly humid",
+      "temperature": "Warm environments",
+      "rainfall": "Rainy and wet, cloudy weather",
+      "season": null
+    },
+    "immediateActions": {
+      "low": [
+        "Select genetically resistant seeds for the next planting season"
+      ],
+      "medium": [
+        "Ensure proper row spacing to lower intra-canopy humidity"
+      ],
+      "high": [
+        "Foliar spray of Mancozeb as soon as elliptical/spindle-shaped spots are visible on the leaves"
+      ]
+    },
+    "organicTreatments": [
+      "Plant identified resistant hybrids (e.g., Deccan, VL 42, PEMH series)",
+      "Ensure proper row spacing to lower intra-canopy humidity"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Mancozeb 75% WP",
+        "dosage": "2.0 g/Liter of water",
+        "sprayInterval": "Immediately upon sighting spindle-shaped lesions",
+        "notes": "Curative (Contact) foliar spray."
+      }
+    ],
+    "prevention": [
+      "Plant genetically resistant hybrids (e.g., Deccan, VL 42, PEMH series)",
+      "Ensure proper row spacing to reduce humidity in the crop canopy"
+    ],
+    "monitoringAdvice": [
+      "Monitor leaves for large, cigar-shaped or diamond-shaped spots, especially during wet and cloudy weather"
+    ],
+    "farmerFriendlyExplanation": "Fungal infections that create large, cigar-shaped or diamond-shaped dead spots on the leaves. When the weather stays wet and cloudy, these spots quickly merge and burn the entire leaf to a crisp. Spray Mancozeb as soon as spots appear and choose resistant hybrid seeds for next season. Locally known as పత్తీ జులసా రోగ్ (Patti jhulasa rog) in Hindi and ఆకు ఎండు తెగులు (Aaku endu tegulu) in Telugu.",
+    "sourceAttribution": [
+      "Gray Leaf Spot & Northern Corn Leaf Blight - National Agricultural Genotyping Center, accessed on May 24, 2026, https://genotypingcenter.com/product/gray-leaf-spot-northern-corn-leaf-blight/",
+      "Management - TNAU Agritech Portal :: Crop Protection, accessed on May 24, 2026, https://agritech.tnau.ac.in/crop_protection/maize_disease/maize_5.html",
+      "Fungal Species Causing Maize Leaf Blight in Different Agro-Ecologies in India - PubMed, accessed on May 24, 2026, https://pubmed.ncbi.nlm.nih.gov/34959576/"
+    ],
+    "displayName": {
+      "en": "Northern and Southern Corn Leaf Blight",
+      "hi": "पत्ती झुलसा रोग",
+      "te": "ఆకు ఎండు తెగులు"
+    },
+    "diseaseType": "fungal"
+  },
+  {
+    "id": "maize_rust",
+    "crop": "Maize",
+    "disease": "Common Rust",
+    "scientificName": "Puccinia sorghi",
+    "dangerLevel": "medium",
+    "symptoms": [
+      "Small, circular to elongate, powdery pustules erupting through leaf epidermis",
+      "Pustules on both the upper and lower leaf surfaces",
+      "Pustules are initially vibrant brick-red to golden-brown, giving the leaf a rusty appearance",
+      "Pustules turn black as the plant matures (producing teliospores)",
+      "Sapping of plant energy"
+    ],
+    "earlySymptoms": [
+      "Small, circular to elongate, powdery pustules erupting through the leaf epidermis"
+    ],
+    "advancedSymptoms": [
+      "Pustules turning black as the plant matures and the fungus produces teliospores"
+    ],
+    "causes": [
+      "Puccinia sorghi (fungal pathogen)"
+    ],
+    "spreadConditions": {
+      "humidity": "Humid conditions",
+      "temperature": "Cool temperatures",
+      "rainfall": null,
+      "season": "Late season, highly wind-borne"
+    },
+    "immediateActions": {
+      "low": [
+        "Monitor leaves later in the season for first signs of red pustules"
+      ],
+      "medium": [
+        "Select rust-resistant hybrids for future seasons"
+      ],
+      "high": [
+        "Foliar spray of Mancozeb when pustules are first observed to stop the spread"
+      ]
+    },
+    "organicTreatments": [
+      "Utilize rust-resistant maize hybrids"
+    ],
+    "chemicalTreatments": [
+      {
+        "activeIngredient": "Mancozeb 75% WP",
+        "dosage": "2.0 g/L (or 1 kg/ha)",
+        "sprayInterval": "when pustules are first observed",
+        "notes": "Curative foliar spray."
+      }
+    ],
+    "prevention": [
+      "Utilize genetically rust-resistant maize hybrids",
+      "Early application of contact fungicides if high susceptibility is expected"
+    ],
+    "monitoringAdvice": [
+      "Scout both upper and lower leaf surfaces for reddish-brown or golden-brown powdery pustules later in the season"
+    ],
+    "farmerFriendlyExplanation": "This looks exactly like reddish-brown iron rust powder erupting from the leaves. It steals the plant's nutrients and saps its energy. The immediate action is to spray Mancozeb as soon as you see the first red pustules. Known as రతువా రోగ్ (Ratuwa rog) in Hindi and తుప్పు తెగులు (Tuppu tegulu) in Telugu.",
+    "sourceAttribution": [
+      "Common Rust: Puccinia sorghi - TNAU Agritech Portal :: Crop Protection, accessed on May 24, 2026, https://agritech.tnau.ac.in/crop_protection/maize_disease_new/maize_4.html",
+      "Management - TNAU Agritech Portal :: Crop Protection, accessed on May 24, 2026, https://agritech.tnau.ac.in/crop_protection/maize_disease/maize_5.html"
+    ],
+    "displayName": {
+      "en": "Common Rust",
+      "hi": "रतुआ रोग",
+      "te": "తుప్పు తెగులు"
+    },
+    "diseaseType": "fungal"
+  }
+]

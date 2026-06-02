@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../lib/db'
-import { useAuth } from '../../core/auth/AuthProvider'
+import { useAuth } from '../../core/auth/AuthContext'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { GlassCard } from '../../components/GlassCard'
 import { cropTemplates } from '../crop-calendar/templates/cropTemplates'
 import { cropCalendarService } from '../crop-calendar/services/cropCalendarService'
 import { convertToAcres } from '../../core/utils/formulas'
-import { syncData } from '../../core/api/syncEngine'
+import { backgroundSync } from '../../core/api/syncEngine'
 import {
   Languages,
   User,
@@ -355,21 +355,30 @@ export function OnboardingPage() {
     try {
       const cropName = selectedCrop === 'Custom' ? customCropName : selectedCrop
 
-      // Create planning schedule locally
-      const cropPlanId = await cropCalendarService.initializeCropPlan({
-        cropType: cropName,
-        variety: cropTemplates[cropName]?.variety || 'Local Variety',
-        sowingDate,
-        area: cropAreaInAcres,
-        userId: user.id,
-        // Custom fields extension
-        crop_area_value: parseFloat(cropAreaValue),
-        crop_area_unit: cropAreaUnit,
-        crop_area_acres: cropAreaInAcres,
-        farmer_selected_stage: selectedStage,
-        crop_condition: cropCondition,
-        created_by_onboarding: true
-      })
+      // Active crop plan safety check
+      const existingPlans = await db.crop_plans.filter(p => p.user_id === user.id && p.status === 'active').toArray()
+      let cropPlanId = ''
+
+      if (existingPlans.length > 0) {
+        console.log('[Onboarding] Found existing active crop plan, reusing.')
+        cropPlanId = existingPlans[0].id
+      } else {
+        // Create planning schedule locally
+        cropPlanId = await cropCalendarService.initializeCropPlan({
+          cropType: cropName,
+          variety: cropTemplates[cropName]?.variety || 'Local Variety',
+          sowingDate,
+          area: cropAreaInAcres,
+          userId: user.id,
+          // Custom fields extension
+          crop_area_value: parseFloat(cropAreaValue),
+          crop_area_unit: cropAreaUnit,
+          crop_area_acres: cropAreaInAcres,
+          farmer_selected_stage: selectedStage,
+          crop_condition: cropCondition,
+          created_by_onboarding: true
+        })
+      }
 
       // Update profile with active crop plan link
       await db.profiles.update(user.id, {
@@ -380,7 +389,7 @@ export function OnboardingPage() {
       })
 
       // Kick off background sync (silent)
-      void syncData().catch(e => console.warn('Background sync error post onboarding:', e))
+      void backgroundSync().catch(e => console.warn('Background sync error post onboarding:', e))
 
       // Direct to dashboard
       navigate('/dashboard')
@@ -396,7 +405,7 @@ export function OnboardingPage() {
   const handleCompleteCropLater = async () => {
     if (!user?.id) return
     // Trigger background sync (silent)
-    void syncData().catch(e => console.warn('Background sync error:', e))
+    void backgroundSync().catch(e => console.warn('Background sync error:', e))
     navigate('/dashboard')
   }
 

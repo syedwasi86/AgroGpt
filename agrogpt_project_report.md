@@ -42,8 +42,10 @@ Instead of presenting static, unresponsive calendars, the Precision Planning fea
 
 ### Responsive Agricultural Workflow Design
 The interface is designed as a calm, operational workspace optimized for field use:
-- **Legacy System:** A basic React calendar widget directly dependent on Supabase. It caused crashes when offline, had no caching, offered no dynamic stage calculations, and lacked weather-aware logic.
 - **Modern System:** A local-first agricultural operations system with an offline-first scheduler, on-device templates, automatic weather adjustments, and bidirectional background sync.
+
+### Naming Transition & Rebranding Sweep
+To better align the product with local farming semantics and establish higher user trust, the application is undergoing a strategic transition away from the engineering-focused legacy name **"AgroGPT"** to a regional/hybrid project name (represented under internal storage parameters as **"Yield"** or its regional equivalents). This naming update is being swept across the codebase (e.g., standardizing local storage keys to `yield_user`), the internationalization locale configs, and the system reports.
 
 ---
 
@@ -585,6 +587,7 @@ Calling Gemini API on every dashboard element or chip is extremely expensive and
 - The system prompt compiles the complete snapshot status.
 - Gemini returns a single unified JSON payload containing the `dailyInsight` and the answers to the 4 quick prompt chips.
 - The 4 quick prompts (*What should I do today?*, *Water requirement?*, *Pest risk?*, *Fertilizer advice?*) simply reveal these cached answers instantly without making new network requests.
+- **Concurrent Request Throttling:** To prevent 429 Rate Limit burst errors on the Gemini API endpoints during page loads, focus shifts, or multiple concurrent user refreshes, `dashboardRepository.ts` implements a single-promise in-flight locking/throttling strategy. Any concurrent call to fetch dashboard AI insights checks for an existing, unresolved in-flight promise (`inFlightAIInsightsPromise`) and reuses it rather than executing duplicate external API fetches. This shields the API and maintains stability while background event-driven triggers are under development.
 
 #### Deterministic Offline Advisory
 When offline, a rules engine maps templates into structured guides:
@@ -826,6 +829,12 @@ The **Profile Page** (`ProfilePage.tsx`) acts as the farmer's central identity, 
   4. The record is flagged with `sync_status = 'pending'` and has its `version` incremented.
   5. The background `syncEngine.ts` automatically pushes updates to Supabase without blocking user navigation.
 - If the sowing date or crop type is edited in the Active Crop modal, the calendar engine regenerates the schedule, calculating new milestones while soft-deleting the previous tasks.
+
+### Profile Data Deletion Flow ("Delete All My Data")
+For compliance and absolute user control, the settings menu includes a "Delete All My Data" utility. The execution follows a strict 3-step sequence to guarantee clean teardowns:
+1. **Cloud Deletion:** Calls Supabase to delete the user's row from the `profiles` table. Because remote tables are linked with `ON DELETE CASCADE` constraints, PostgreSQL deletes all child relational rows (crop plans, stages, tasks, scans, transactions, queries, etc.) instantly.
+2. **Local Dexie Wipe:** Clear all local databases immediately in the background (`db.tables.map(table => table.clear())`) to wipe diagnostic files, cash registers, schedules, and configuration logs from IndexedDB.
+3. **Session Sign-Out:** Calls the `signOut` provider workflow to delete session keys (e.g., local storage `yield_user` and Supabase auth keys) and redirect the client to the `/auth` gateway.
 
 ### Soil NPK Auto-Extraction OCR Pipeline
 To simplify nutrient data input, the profile page includes an automated lab report parsing tool:

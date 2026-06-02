@@ -7,7 +7,7 @@ import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 import { Trash2, Wallet, RefreshCw, Mic, MicOff, AlertCircle, TrendingUp, TrendingDown, Loader2 } from 'lucide-react'
 import { cn } from '@/core/utils/cn'
 import { addTransaction, initDatabase, deleteTransaction } from '@/lib/repository'
-import { syncData } from '@/core/api/syncEngine'
+import { backgroundSync } from '@/core/api/syncEngine'
 import { useCrop } from '@/core/context/CropContext'
 
 function inr(n: number) {
@@ -239,7 +239,7 @@ export function DigitalLedgerPage() {
     setSyncing(true)
     setSyncMsg(null)
     try {
-      const { synced, failed } = await syncData()
+      const { synced, failed } = await backgroundSync()
       if (failed > 0) {
         setSyncMsg({
           text: `Sync partially completed. ${synced} synced, ${failed} failed.`,

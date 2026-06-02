@@ -19,7 +19,9 @@
 11. [AI Farm Command Center Dashboard Report](#11-ai-farm-command-center-dashboard-report)
 12. [Farmer Onboarding System](#12-farmer-onboarding-system)
 13. [Profile Page Architecture](#13-profile-page-architecture)
-14. [Future Extensibility](#14-future-extensibility)
+14. [Mandi Rates & Market Integration Architecture](#14-mandi-rates--market-integration-architecture)
+15. [Digital Khata (Financial Ledger) Architecture](#15-digital-khata-financial-ledger-architecture)
+16. [Future Extensibility](#16-future-extensibility)
 
 ---
 
@@ -42,8 +44,10 @@ Instead of presenting static, unresponsive calendars, the Precision Planning fea
 
 ### Responsive Agricultural Workflow Design
 The interface is designed as a calm, operational workspace optimized for field use:
-- **Legacy System:** A basic React calendar widget directly dependent on Supabase. It caused crashes when offline, had no caching, offered no dynamic stage calculations, and lacked weather-aware logic.
 - **Modern System:** A local-first agricultural operations system with an offline-first scheduler, on-device templates, automatic weather adjustments, and bidirectional background sync.
+
+### Naming Transition & Rebranding Sweep
+To better align the product with local farming semantics and establish higher user trust, the application is undergoing a strategic transition away from the engineering-focused legacy name **"AgroGPT"** to a regional/hybrid product name (represented under internal storage parameters as **"Yield"** or its regional equivalents). This naming update is being swept across the codebase (e.g., standardizing local storage keys to `yield_user`), the internationalization locale configs, and the system reports.
 
 ---
 
@@ -585,6 +589,7 @@ Calling Gemini API on every dashboard element or chip is extremely expensive and
 - The system prompt compiles the complete snapshot status.
 - Gemini returns a single unified JSON payload containing the `dailyInsight` and the answers to the 4 quick prompt chips.
 - The 4 quick prompts (*What should I do today?*, *Water requirement?*, *Pest risk?*, *Fertilizer advice?*) simply reveal these cached answers instantly without making new network requests.
+- **Concurrent Request Throttling:** To prevent 429 Rate Limit burst errors on the Gemini API endpoints during page loads, focus shifts, or multiple concurrent user refreshes, `dashboardRepository.ts` implements a single-promise in-flight locking/throttling strategy. Any concurrent call to fetch dashboard AI insights checks for an existing, unresolved in-flight promise (`inFlightAIInsightsPromise`) and reuses it rather than executing duplicate external API fetches. This shields the API and maintains stability while background event-driven triggers are under development.
 
 #### Deterministic Offline Advisory
 When offline, a rules engine maps templates into structured guides:
@@ -827,6 +832,12 @@ The **Profile Page** (`ProfilePage.tsx`) acts as the farmer's central identity, 
   5. The background `syncEngine.ts` automatically pushes updates to Supabase without blocking user navigation.
 - If the sowing date or crop type is edited in the Active Crop modal, the calendar engine regenerates the schedule, calculating new milestones while soft-deleting the previous tasks.
 
+### Profile Data Deletion Flow ("Delete All My Data")
+For compliance and absolute user control, the settings menu includes a "Delete All My Data" utility. The execution follows a strict 3-step sequence to guarantee clean teardowns:
+1. **Cloud Deletion:** Calls Supabase to delete the user's row from the `profiles` table. Because remote tables are linked with `ON DELETE CASCADE` constraints, PostgreSQL deletes all child relational rows (crop plans, stages, tasks, scans, transactions, queries, etc.) instantly.
+2. **Local Dexie Wipe:** Clear all local databases immediately in the background (`db.tables.map(table => table.clear())`) to wipe diagnostic files, cash registers, schedules, and configuration logs from IndexedDB.
+3. **Session Sign-Out:** Calls the `signOut` provider workflow to delete session keys (e.g., local storage `yield_user` and Supabase auth keys) and redirect the client to the `/auth` gateway.
+
 ### Soil NPK Auto-Extraction OCR Pipeline
 To simplify nutrient data input, the profile page includes an automated lab report parsing tool:
 
@@ -862,7 +873,92 @@ To simplify nutrient data input, the profile page includes an automated lab repo
 
 ---
 
-## 14. Future Extensibility
+## 14. Mandi Rates & Market Integration Architecture
+
+### Live Market Mandi Intelligence Hub
+The **Market & Mandi Integration** feature is designed to connect smallholder farmers with live commodity market rates (Mandi rates) and intelligent agricultural input suggestions based on AI diagnosis. This bridges the critical gap between field health diagnostics and marketplace commerce.
+
+### Market Integration Components
+1. **Government Mandi API Integration:** Fetches daily mandi commodity rates from the official Agmarknet portal (`api.data.gov.in`) using a dedicated developer key.
+2. **Supabase Edge Function Sync Pipeline:** Uses an edge function (`sync-mandi-prices`) written in Deno to pull the Agmarknet rates, filter for relevant state markets (Telangana and Andhra Pradesh), normalize commodity names (e.g. mapping "Paddy" to "Rice"), and bulk upsert them into the cloud database.
+3. **Market & Mandi UI Page:** A two-column premium dashboard rendering:
+   - **Today's Mandi Rates:** Grouped by market, commodity variety, price per quintal, and arrival date.
+   - **Bazaar List:** A context-aware agricultural supply marketplace proposing seeds, fertilizers, and pest controls specific to the farmer's active crop type.
+4. **AI-Driven Prescription Cards:** Automatically surfaces recommended input products (like copper fungicides or neem oil) if the farmer has an active diagnosis from the **Field Vision** leaf scanner, complete with direct links to purchase on BigHaat or Agribegri.
+
+### Database Schema Additions
+To persist mandi rates in the Supabase cloud database, the schema is established as reference data in `mandi_rates` table via migration `0000_base_schema.sql`:
+```sql
+CREATE TABLE public.mandi_rates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  crop_name TEXT NOT NULL,
+  market_name TEXT NOT NULL,
+  district TEXT,
+  state TEXT NOT NULL,
+  price_min NUMERIC NOT NULL,
+  price_max NUMERIC NOT NULL,
+  price_modal NUMERIC NOT NULL,
+  rate_date DATE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+- **RLS Policy:** Configured to allow anonymous, public read-only access:
+  ```sql
+  CREATE POLICY "Allow public read access to mandi rates" ON public.mandi_rates FOR SELECT USING (true);
+  ```
+
+### Offline & Local-First Resiliency
+- To ensure smooth execution even in zero-network conditions, the `MarketMandi` frontend component features a hybrid mode. It loads compiled mock rates instantly during offline boots and displays an "Offline Mode" notice, ensuring the UI remains active and responsive without causing blockages or page crashes.
+
+---
+
+## 15. Digital Khata (Financial Ledger) Architecture
+
+### Offline-First Ledger System
+The **Digital Khata** feature (`DigitalLedgerPage.tsx`) provides farmers with a decentralized, offline-first transaction book. Transactions are registered instantly in the client-side IndexedDB database (`transactions` table) and synchronized with the remote Supabase database in the background.
+
+### Dynamic Crop-Aware Accounting
+To allow farmers to evaluate the cost-to-revenue ratio of specific crop seasons, the ledger system on `integration_branch` has been upgraded with the following capabilities:
+1. **Dynamic Crop Filtering:** The ledger renders a toggle button showing either all records or only transactions relating to the globally selected active crop (e.g. Rice, Cotton).
+2. **Crop-Aware Transaction Tagging:** When posting a transaction, the engine automatically tags the record with the currently active crop name inside the `note` attribute in Dexie and Supabase.
+3. **Crop-Aware Financial Analytics:** The Net Profit, Income, and Expense cards, as well as the 6-Week Profit Trend Chart (constructed using Recharts), dynamically recalculate based on the active crop filter state.
+4. **Visual Theme Refinements:** Component spacing, tooltip overlays, and card colors are tuned to use the updated premium green-tinted dark design (`#141e18` background and `#223328` borders).
+
+### Voice-Assisted Entry Capture
+To lower the accessibility barrier for rural farmers who may struggle with typing numbers and categories on small keyboard screens, the ledger features a voice-assisted entry pipeline:
+- **Speech Capture:** Uses the Web Speech API (`SpeechRecognition`) to record voice commands directly from the device's microphone.
+- **Intent Parser:** Evaluates transcripts using regular expressions to extract:
+  - *Amount:* Extracted using digit matching patterns.
+  - *Type:* Differentiates income vs. expense intents (e.g., *"earned"*, *"received"* maps to `income`; *"spent"*, *"paid"* maps to `expense`).
+  - *Category:* Detects context prepended by common prepositions (e.g., *"on fertilizer"*, *"for seeds"*, *"from sale of wheat"*).
+
+### Database Schema
+The database stores transaction logs in local IndexedDB and remote Supabase tables:
+```sql
+CREATE TABLE public.transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+  plan_id UUID REFERENCES public.crop_plans(id) ON DELETE SET NULL,
+  type TEXT NOT NULL, -- 'income' | 'expense'
+  category TEXT NOT NULL,
+  amount NUMERIC NOT NULL,
+  note TEXT, -- codebase compatibility
+  notes TEXT, -- Phase 2 target
+  transaction_date DATE DEFAULT CURRENT_DATE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  version INTEGER DEFAULT 1,
+  sync_status TEXT DEFAULT 'synced',
+  deleted_at TIMESTAMP WITH TIME ZONE,
+  last_synced_at TIMESTAMP WITH TIME ZONE
+);
+```
+- **Sync Strategy:** Bidirectional sync using Last-Write-Wins based on the newer `updated_at` timestamp.
+
+---
+
+## 16. Future Extensibility
 
 The onboarding and profile architectures are designed to support future core enhancements:
 

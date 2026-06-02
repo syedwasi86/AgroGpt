@@ -1,4 +1,5 @@
-import { db, type CropRecord, type TransactionRecord, type ScanRecord, type AiQueryRecord, initializeUserPreferences, initializeUserProfile } from './db'
+import { db, type TransactionRecord, type ScanRecord, type AiQueryRecord, initializeUserPreferences, initializeUserProfile } from './db'
+import { generateCropSchedule } from '../features/crop-calendar/engines/scheduleGenerator'
 
 let initPromise: Promise<void> | null = null
 
@@ -6,7 +7,7 @@ export function initDatabase(): Promise<void> {
   if (!initPromise) {
     initPromise = (async () => {
       await db.open()
-      await seedDefaultsIfEmpty()
+      await deduplicateActivePlans()
       await initializeUserPreferences()
       await initializeUserProfile()
     })()
@@ -14,34 +15,61 @@ export function initDatabase(): Promise<void> {
   return initPromise
 }
 
-async function seedDefaultsIfEmpty(): Promise<void> {
+export async function seedDefaultsIfEmpty(): Promise<void> {
+  const plansCount = await db.crop_plans.count()
 
-  const actualCropCount = await db.crops.count()
-
-  if (actualCropCount === 0) {
+  if (plansCount === 0) {
     const now = new Date().toISOString()
-    await db.crops.add({
-      id: crypto.randomUUID(),
-      name: 'Cotton',
-      variety: 'G. hirsutum',
-      planted_date: now.slice(0, 10),
-      area: 2,
-      status: 'active',
-      created_at: now,
-      updated_at: now,
-      deleted_at: null
-    })
+    const sowingDate = now.slice(0, 10)
+    try {
+      const { plan, stages, tasks } = generateCropSchedule({
+        cropType: 'Cotton',
+        variety: 'G. hirsutum',
+        sowingDate,
+        area: 2,
+        crop_area_value: 2,
+        crop_area_unit: 'Acre',
+        crop_area_acres: 2,
+        crop_condition: 'Healthy',
+        created_by_onboarding: false
+      })
+
+      await db.transaction('rw', [db.crop_plans, db.crop_stages, db.farm_tasks], async () => {
+        await db.crop_plans.add(plan)
+        for (const stage of stages) {
+          await db.crop_stages.add(stage)
+        }
+        for (const task of tasks) {
+          await db.farm_tasks.add(task)
+        }
+      })
+
+      // Update profiles if exists
+      const profile = await db.profiles.toArray().then(a => a[0])
+      if (profile) {
+        await db.profiles.update(profile.id, {
+          active_crop_plan_id: plan.id,
+          primary_crop: 'Cotton',
+          updated_at: now
+        })
+      }
+    } catch (e) {
+      console.error('Failed to seed default crop plan:', e)
+    }
   }
 
   const txCount = await db.transactions.count()
   if (txCount === 0) {
     const now = new Date().toISOString()
+    const activePlan = await db.crop_plans.where('status').equals('active').first()
+    const planId = activePlan?.id || null
+    
     const samples: Omit<TransactionRecord, 'id' | 'created_at' | 'updated_at'>[] = [
-      { type: 'income', category: 'Cotton sale (advance)', amount: 18000, transaction_date: now, note: 'Cotton', deleted_at: null },
-      { type: 'expense', category: 'Fertilizer (DAP + urea)', amount: 5400, transaction_date: now, note: 'Cotton', deleted_at: null },
-      { type: 'expense', category: 'Diesel', amount: 1900, transaction_date: now, note: 'Cotton', deleted_at: null },
-      { type: 'income', category: 'Subsidy credit', amount: 2200, transaction_date: now, note: 'Cotton', deleted_at: null },
-      { type: 'expense', category: 'Labor (weeding)', amount: 3200, transaction_date: now, note: 'Cotton', deleted_at: null },
+      { type: 'income', category: 'Cotton sale (advance)', amount: 18000, transaction_date: now, note: 'Cotton', notes: 'Cotton sale (advance)', plan_id: planId, deleted_at: null },
+      { type: 'expense', category: 'Fertilizer (DAP + urea)', amount: 5400, transaction_date: now, note: 'Cotton', notes: 'Fertilizer (DAP + urea)', plan_id: planId, deleted_at: null },
+      { type: 'expense', category: 'Diesel', amount: 1900, transaction_date: now, note: 'Cotton', notes: 'Diesel', plan_id: planId, deleted_at: null },
+      { type: 'income', category: 'Subsidy credit', amount: 2200, transaction_date: now, note: 'Cotton', notes: 'Subsidy credit', plan_id: planId, deleted_at: null },
+      { type: 'expense', category: 'Labor (weeding)', amount: 3200, transaction_date: now, note: 'Cotton', notes: 'Labor (weeding)', plan_id: planId, deleted_at: null },
     ]
     await db.transaction('rw', db.transactions, async () => {
       for (const row of samples) {
@@ -56,33 +84,6 @@ async function seedDefaultsIfEmpty(): Promise<void> {
   }
 }
 
-/** Active crops = status active and not deleted */
-export async function getActiveCrops(): Promise<CropRecord[]> {
-  await initDatabase()
-  const crops = await db.crops.where('status').equals('active').toArray()
-  return crops.filter(c => !c.deleted_at)
-}
-
-export async function getAllCrops(): Promise<CropRecord[]> {
-  await initDatabase()
-  const crops = await db.crops.orderBy('planted_date').reverse().toArray()
-  return crops.filter(c => !c.deleted_at)
-}
-
-export async function addCrop(input: Omit<CropRecord, 'id' | 'created_at' | 'updated_at' | 'deleted_at'>): Promise<string> {
-  await initDatabase()
-  const now = new Date().toISOString()
-  const id = crypto.randomUUID()
-  await db.crops.add({
-    ...input,
-    id,
-    created_at: now,
-    updated_at: now,
-    deleted_at: null
-  })
-  return id
-}
-
 export async function getTransactions(): Promise<TransactionRecord[]> {
   await initDatabase()
   const txs = await db.transactions.orderBy('transaction_date').reverse().toArray()
@@ -93,6 +94,7 @@ export async function deleteTransaction(id: string): Promise<void> {
   await initDatabase()
   await db.transactions.update(id, {
     deleted_at: new Date().toISOString(),
+    sync_status: 'pending_delete',
     updated_at: new Date().toISOString()
   })
 }
@@ -100,24 +102,35 @@ export async function deleteTransaction(id: string): Promise<void> {
 export async function addExpense(input: {
   amount: number
   category: string
-  crop_id?: string | null
+  crop_id?: string | null // Keep for codebase compatibility, maps to plan_id
+  plan_id?: string | null
   note?: string
   transaction_date?: string
 }): Promise<string> {
   await initDatabase()
   const now = new Date().toISOString()
   const id = crypto.randomUUID()
+  
+  let planId = input.plan_id || input.crop_id
+  if (!planId) {
+    const activePlan = await db.crop_plans.where('status').equals('active').first()
+    planId = activePlan?.id || null
+  }
+
   await db.transactions.add({
     id,
-    crop_id: input.crop_id ?? null,
+    plan_id: planId ?? null,
     type: 'expense',
     category: input.category,
     amount: input.amount,
     transaction_date: input.transaction_date ?? now,
     note: input.note ?? '',
+    notes: input.category,
     created_at: now,
     updated_at: now,
-    deleted_at: null
+    deleted_at: null,
+    version: 1,
+    sync_status: 'pending'
   })
   return id
 }
@@ -125,24 +138,35 @@ export async function addExpense(input: {
 export async function addIncome(input: {
   amount: number
   category: string
-  crop_id?: string | null
+  crop_id?: string | null // Keep for codebase compatibility, maps to plan_id
+  plan_id?: string | null
   note?: string
   transaction_date?: string
 }): Promise<string> {
   await initDatabase()
   const now = new Date().toISOString()
   const id = crypto.randomUUID()
+  
+  let planId = input.plan_id || input.crop_id
+  if (!planId) {
+    const activePlan = await db.crop_plans.where('status').equals('active').first()
+    planId = activePlan?.id || null
+  }
+
   await db.transactions.add({
     id,
-    crop_id: input.crop_id ?? null,
+    plan_id: planId ?? null,
     type: 'income',
     category: input.category,
     amount: input.amount,
     transaction_date: input.transaction_date ?? now,
     note: input.note ?? '',
+    notes: input.category,
     created_at: now,
     updated_at: now,
-    deleted_at: null
+    deleted_at: null,
+    version: 1,
+    sync_status: 'pending'
   })
   return id
 }
@@ -170,21 +194,33 @@ export async function addScan(input: {
   confidence: number
   is_low_confidence: boolean
   scanned_at?: string
+  plan_id?: string | null
 }): Promise<string> {
   await initDatabase()
   const now = new Date().toISOString()
   const id = crypto.randomUUID()
+  
+  let planId = input.plan_id
+  if (!planId) {
+    const activePlan = await db.crop_plans.where('status').equals('active').first()
+    planId = activePlan?.id || null
+  }
+
   await db.scans.add({
     id,
     scanned_at: input.scanned_at ?? now,
     created_at: now,
     updated_at: now,
+    plan_id: planId,
     crop_type: input.crop_type,
     prediction: input.prediction,
     confidence: input.confidence,
+    confidence_score: input.confidence,
     is_low_confidence: input.is_low_confidence,
     image_url: input.image_url,
-    deleted_at: null
+    deleted_at: null,
+    version: 1,
+    sync_status: 'pending'
   })
   return id
 }
@@ -195,6 +231,7 @@ export async function saveScan(input: {
   prediction: string
   confidence: number
   is_low_confidence: boolean
+  plan_id?: string | null
 }): Promise<string> {
   return addScan(input)
 }
@@ -210,25 +247,46 @@ export async function clearAllScans(): Promise<void> {
   const scans = await getRecentScans(1000)
   const now = new Date().toISOString()
   for (const s of scans) {
-    await db.scans.update(s.id, { deleted_at: now, updated_at: now })
+    await db.scans.update(s.id, { 
+      deleted_at: now, 
+      sync_status: 'pending_delete',
+      updated_at: now 
+    })
   }
 }
 
-export async function addTransaction(data: { amount: number, category: string, type: 'income' | 'expense', transaction_date: string, note?: string }): Promise<string> {
+export async function addTransaction(data: { 
+  amount: number
+  category: string
+  type: 'income' | 'expense'
+  transaction_date: string
+  note?: string
+  plan_id?: string | null
+}): Promise<string> {
   await initDatabase()
   const now = new Date().toISOString()
   const id = crypto.randomUUID()
+  
+  let planId = data.plan_id
+  if (!planId) {
+    const activePlan = await db.crop_plans.where('status').equals('active').first()
+    planId = activePlan?.id || null
+  }
+
   await db.transactions.add({
     id,
     amount: data.amount,
     category: data.category,
     type: data.type,
     transaction_date: data.transaction_date,
-    crop_id: null,
+    plan_id: planId,
     note: data.note ?? '',
+    notes: data.category,
     created_at: now,
     updated_at: now,
-    deleted_at: null
+    deleted_at: null,
+    version: 1,
+    sync_status: 'pending'
   })
   return id
 }
@@ -239,7 +297,8 @@ export async function updateSoilProfile(soilData: { id: string, nitrogen?: numbe
     nitrogen: soilData.nitrogen,
     phosphorus: soilData.phosphorus,
     potassium: soilData.potassium,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    sync_status: 'pending'
   })
 }
 
@@ -297,4 +356,23 @@ export async function markAiQueryAnswered(id: string, answer: string): Promise<v
     answer,
     updated_at: new Date().toISOString()
   })
+}
+
+async function deduplicateActivePlans(): Promise<void> {
+  const activePlans = await db.crop_plans.where('status').equals('active').toArray()
+  const nonDeleted = activePlans.filter(p => !p.deleted_at)
+  if (nonDeleted.length > 1) {
+    console.warn('[Repository] Multiple active crop plans found locally. De-duplicating...', nonDeleted.length)
+    // Sort by updated_at descending to keep the most recent active plan
+    nonDeleted.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+    const [latest, ...older] = nonDeleted
+    for (const plan of older) {
+      await db.crop_plans.update(plan.id, {
+        status: 'completed',
+        sync_status: 'pending',
+        updated_at: new Date().toISOString()
+      })
+      console.log(`[Repository] Deactivated older plan: ${plan.id} (${plan.crop_type})`)
+    }
+  }
 }

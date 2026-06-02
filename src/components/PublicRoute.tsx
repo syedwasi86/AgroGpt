@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom'
-import { useAuth } from '../core/auth/AuthProvider'
+import { useAuth } from '../core/auth/AuthContext'
 
 export function PublicRoute() {
   const { session } = useAuth()

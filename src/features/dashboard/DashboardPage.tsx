@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense, useRef } from 'react'
+import { useEffect, useState, lazy, Suspense, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Activity,
@@ -80,8 +80,15 @@ export function DashboardPage() {
     'todayAdvice' | 'waterAdvice' | 'pestAdvice' | 'fertilizerAdvice' | null
   >(null)
 
+  // In-flight guard: prevents Strict Mode double-invoke from firing two Gemini requests
+  const fetchInFlight = useRef(false)
+
   // Fetch Snapshot DTO from repository
-  const loadSnapshot = async (force = false) => {
+  const loadSnapshot = useCallback(async (force = false) => {
+    // Block concurrent fetches — only allow a force-refresh to bypass
+    if (fetchInFlight.current && !force) return
+    fetchInFlight.current = true
+
     if (force) setRefreshing(true)
     else setLoading(true)
     setError(null)
@@ -95,11 +102,13 @@ export function DashboardPage() {
     } finally {
       setLoading(false)
       setRefreshing(false)
+      fetchInFlight.current = false
     }
-  }
+  }, []) // stable — no component-state deps
 
   useEffect(() => {
     loadSnapshot()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Manual Trigger to re-fetch weather/AI insights

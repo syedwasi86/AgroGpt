@@ -101,8 +101,8 @@ async function fetchRAGContext(): Promise<RAGContext> {
   // 1. Active crop
   let cropName = 'N/A'
   try {
-    const activeCrop = await db.crops.where('status').equals('active').first()
-    if (activeCrop?.name) cropName = activeCrop.name
+    const activePlan = await db.crop_plans.where('status').equals('active').first()
+    if (activePlan?.crop_type) cropName = activePlan.crop_type
   } catch { /* ignore */ }
 
   // 2. Soil NPK from user profile

@@ -6,6 +6,8 @@ import { getTodayUtcString } from '../crop-calendar/utils/dateUtils'
 import { fetchWeather, getWeatherCondition, type WeatherData } from '../gis/services/weatherService'
 import { getUserLocation } from '../../core/utils/geolocation'
 
+let inFlightAIInsightsPromise: Promise<any> | null = null
+
 // ─── Interfaces & Types ────────────────────────────────────────────────────────
 
 export interface FocusOperationItem {
@@ -777,9 +779,11 @@ export const dashboardRepository = {
     profile: any,
     forceRefresh: boolean
   ): Promise<DashboardSnapshot['aiInsights']> {
-    const todayTasks = tasks.filter(t => t.effective_date === getTodayUtcString() && !t.deleted_at)
-    
-    // Create status state key fingerprint to check if cache is dirty
+    if (!forceRefresh && inFlightAIInsightsPromise) {
+      console.log('[DashboardRepository] Reusing in-flight AI insights promise')
+      return inFlightAIInsightsPromise
+    }
+
     const statusFingerprint = {
       crop: cropDto?.name || 'none',
       stage: cropDto?.currentStage || 'none',
@@ -790,26 +794,40 @@ export const dashboardRepository = {
       lastScanId: lastScan ? lastScan.id : 'none'
     }
 
-    const cached = await this.getCacheRecord(CACHE_AI_INSIGHTS_KEY)
-    const isCacheValid = cached && JSON.stringify(cached.payload) === JSON.stringify(statusFingerprint)
+    const runGeneration = async (): Promise<DashboardSnapshot['aiInsights']> => {
+      const todayTasks = tasks.filter(t => t.effective_date === getTodayUtcString() && !t.deleted_at)
+      
+      const cached = await this.getCacheRecord(CACHE_AI_INSIGHTS_KEY)
+      const isCacheValid = !!(
+        cached &&
+        cached.payload &&
+        typeof cached.payload === 'object' &&
+        (cached.payload as any).crop === statusFingerprint.crop &&
+        (cached.payload as any).stage === statusFingerprint.stage &&
+        (cached.payload as any).temp === statusFingerprint.temp &&
+        (cached.payload as any).humid === statusFingerprint.humid &&
+        (cached.payload as any).rain === statusFingerprint.rain &&
+        (cached.payload as any).tasksCount === statusFingerprint.tasksCount &&
+        (cached.payload as any).lastScanId === statusFingerprint.lastScanId
+      )
 
-    if (!forceRefresh && isCacheValid) {
-      // Re-read cached values
-      const val = cached as any
-      if (val.ai_data) {
-        return {
-          ...val.ai_data,
-          isCached: true,
-          updatedAt: val.updated_at
+      if (!forceRefresh && isCacheValid) {
+        // Re-read cached values
+        const val = cached as any
+        if (val.payload && val.payload.ai_data) {
+          return {
+            ...val.payload.ai_data,
+            isCached: true,
+            updatedAt: val.updated_at
+          }
         }
       }
-    }
 
-    // Call Gemini API if online, otherwise generate local fallback
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-    if (this.isOnline() && apiKey) {
-      try {
-        const prompt = `
+      // Call Gemini API if online, otherwise generate local fallback
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
+      if (this.isOnline() && apiKey) {
+        try {
+          const prompt = `
 Generate a Farm Command Center dashboard advice block for the farmer.
 Farmer Name: ${profile?.name || 'Farmer'}
 Location: ${profile?.city || 'Hyderabad'}
@@ -849,77 +867,84 @@ Return EXACTLY a JSON object matching this schema (do NOT wrap in markdown backt
 }
 `
 
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [
-                {
-                  role: 'user',
-                  parts: [{ text: prompt }]
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    role: 'user',
+                    parts: [{ text: prompt }]
+                  }
+                ],
+                generationConfig: {
+                  temperature: 0.4,
+                  responseMimeType: 'application/json',
+                  maxOutputTokens: 1024
                 }
-              ],
-              generationConfig: {
-                temperature: 0.4,
-                responseMimeType: 'application/json',
-                maxOutputTokens: 1024
-              }
-            })
-          }
-        )
-
-        if (response.ok) {
-          const resBody = await response.json()
-          const text = resBody?.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-          if (text) {
-            const parsed = JSON.parse(text)
-            // Cache both fingerprint and generated insights
-            await db.dashboard_cache.put({
-              key: CACHE_AI_INSIGHTS_KEY,
-              type: 'ai-insights',
-              payload: statusFingerprint,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              // Store computed insights inside the cache record custom parameters
-              ...({ ai_data: parsed } as any)
-            })
-
-            return {
-              dailyInsight: parsed.dailyInsight,
-              todayAdvice: parsed.todayAdvice,
-              waterAdvice: parsed.waterAdvice,
-              pestAdvice: parsed.pestAdvice,
-              fertilizerAdvice: parsed.fertilizerAdvice,
-              isCached: false,
-              updatedAt: new Date().toISOString()
+              })
             }
+          )
+          if (!response.ok) {
+            throw new Error(`Gemini API error: ${response.statusText}`)
           }
+          const resBody = await response.json()
+          let text = resBody.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+          if (!text) {
+            throw new Error('Empty Gemini response')
+          }
+          // Strip markdown code block wrappers if present
+          if (text.startsWith('```')) {
+            text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+          }
+          const parsed = JSON.parse(text)
+          const aiData = {
+            dailyInsight: parsed.dailyInsight || '',
+            todayAdvice: parsed.todayAdvice || '',
+            waterAdvice: parsed.waterAdvice || '',
+            pestAdvice: parsed.pestAdvice || '',
+            fertilizerAdvice: parsed.fertilizerAdvice || ''
+          }
+          
+          await this.setCacheRecord(CACHE_AI_INSIGHTS_KEY, 'ai-insights', {
+            ...statusFingerprint,
+            ai_data: aiData
+          })
+          
+          return {
+            ...aiData,
+            isCached: false,
+            updatedAt: new Date().toISOString()
+          }
+        } catch (err) {
+          console.error('[DashboardRepository] Live Gemini call failed, falling back to local advice:', err)
         }
-      } catch (err) {
-        console.error('[DashboardRepository] Error calling Gemini for batched insights:', err)
+      }
+
+      // Local fallback
+      const localAdvice = this.generateLocalAgronomicFallback(cropDto, weather, todayTasks, lastScan)
+      await this.setCacheRecord(CACHE_AI_INSIGHTS_KEY, 'ai-insights', {
+        ...statusFingerprint,
+        ai_data: localAdvice
+      })
+      
+      return {
+        ...localAdvice,
+        isCached: false,
+        updatedAt: new Date().toISOString()
       }
     }
 
-    // Local Agronomic Fallback (Offline or error fallback)
-    const localAdvice = this.generateLocalAgronomicFallback(cropDto, weather, todayTasks, lastScan)
-    
-    // Store fingerprint and fallback insights
-    await db.dashboard_cache.put({
-      key: CACHE_AI_INSIGHTS_KEY,
-      type: 'ai-insights',
-      payload: statusFingerprint,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      ...({ ai_data: localAdvice } as any)
+    const promise = runGeneration().finally(() => {
+      if (inFlightAIInsightsPromise === promise) {
+        inFlightAIInsightsPromise = null
+      }
     })
 
-    return {
-      ...localAdvice,
-      isCached: true,
-      updatedAt: new Date().toISOString()
-    }
+    inFlightAIInsightsPromise = promise
+    return promise
   },
 
   /**

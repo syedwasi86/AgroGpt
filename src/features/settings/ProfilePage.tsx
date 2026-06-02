@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../lib/db'
-import { useAuth } from '../../core/auth/AuthProvider'
+import { useAuth } from '../../core/auth/AuthContext'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '../../core/auth/supabaseClient'
 import { useTranslation } from 'react-i18next'
 import { convertToAcres } from '../../core/utils/formulas'
-import { syncData } from '../../core/api/syncEngine'
+import { backgroundSync } from '../../core/api/syncEngine'
 import { cropCalendarService } from '../crop-calendar/services/cropCalendarService'
 import { cropTemplates } from '../crop-calendar/templates/cropTemplates'
 import { cn } from '../../core/utils/cn'
@@ -49,7 +51,9 @@ const CROP_CONDITIONS = ['Healthy', 'Average', 'Not Growing Well', 'Pest/Disease
 export function ProfilePage() {
   const { i18n } = useTranslation()
   const { user, signOut } = useAuth()
+  const navigate = useNavigate()
   const [syncing, setSyncing] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ─── LOCAL DB QUERY LAYERS ─────────────────────────────────────────────────
@@ -209,7 +213,7 @@ export function ProfilePage() {
   const triggerSync = async () => {
     setSyncing(true)
     try {
-      await syncData()
+      await backgroundSync()
     } catch (e) {
       console.warn('[ProfilePage] Silent sync failed:', e)
     } finally {
@@ -620,16 +624,38 @@ export function ProfilePage() {
         sync_status: 'pending'
       })
 
-      if (settings) {
-        await db.user_settings.update(settings.id, {
-          language: lang,
-          updated_at: new Date().toISOString()
-        })
-      }
       setLanguageModal(false)
       void triggerSync()
     } catch (e) {
       console.error(e)
+    }
+  }
+
+  const handleDeleteData = async () => {
+    if (!user?.id) return
+    const confirmed = window.confirm(
+      "WARNING: This will permanently delete your account profile, all crop plans, transactions, scans, and weather data from both the cloud database and this local device. This action CANNOT be undone.\n\nAre you sure you want to proceed?"
+    )
+    if (!confirmed) return
+
+    setDeleting(true)
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', user.id)
+
+      if (error) {
+        throw new Error(error.message || 'Database error occurred')
+      }
+
+      await Promise.all(db.tables.map(table => table.clear()))
+      await signOut()
+      navigate('/auth', { replace: true })
+    } catch (err: any) {
+      console.error('[ProfilePage] Delete account data failed:', err)
+      alert(`Error deleting account data: ${err.message || String(err)}`)
+      setDeleting(false)
     }
   }
 
@@ -1024,6 +1050,35 @@ export function ProfilePage() {
               <div className="text-xs font-bold text-red-400">Sign Out</div>
             </button>
 
+          </div>
+        </GlassCard>
+
+        {/* SECTION 8 — DANGER ZONE */}
+        <GlassCard className="p-6 md:col-span-2 border border-red-500/20 bg-red-500/[0.02]" variant="strong">
+          <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-red-400">
+            <AlertCircle size={20} className="text-red-400" />
+            Danger Zone
+          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-white">Delete All My Data</p>
+              <p className="text-xs text-white/50 mt-1">
+                Permanently delete your profile, crop plans, transactions, scans, and all other data from our server and your local device. This action is irreversible.
+              </p>
+            </div>
+            <button
+              onClick={handleDeleteData}
+              disabled={deleting}
+              className="shrink-0 rounded-2xl bg-red-500/10 border border-red-500/10 px-5 py-2.5 text-xs font-bold text-red-400 transition hover:bg-red-500/20 active:scale-[0.97] flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" /> Deleting...
+                </>
+              ) : (
+                'Delete All My Data'
+              )}
+            </button>
           </div>
         </GlassCard>
 

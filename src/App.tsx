@@ -14,31 +14,48 @@ import { Auth } from './pages/Auth'
 import { ProfilePage } from './features/settings/ProfilePage'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { useEffect } from 'react'
-import { syncData } from './core/api/syncEngine'
-import { useAuth } from './core/auth/AuthProvider'
+import { backgroundSync } from './core/api/syncEngine'
+import { useAuth } from './core/auth/AuthContext'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './lib/db'
-import { Loader2 } from 'lucide-react'
+import { AppLoader } from './components/AppLoader'
 import { OnboardingPage } from './features/onboarding/OnboardingPage'
 import { CropProvider } from './core/context/CropContext'
 
 function ProtectedShell() {
   const { user } = useAuth()
-  const profile = useLiveQuery(async () => {
+
+  const shellData = useLiveQuery(async () => {
     if (!user?.id) return null
-    return (await db.profiles.get(user.id)) || null
+    const profile = await db.profiles.get(user.id)
+    const plansCount = await db.crop_plans.count()
+    return { profile, hasCropPlan: plansCount > 0 }
   }, [user])
 
-  if (profile === undefined) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black/90">
-        <Loader2 className="animate-spin text-primary-500" size={32} />
-      </div>
-    )
+  useEffect(() => {
+    if (shellData?.profile && !shellData.profile.onboarding_completed && shellData.hasCropPlan) {
+      console.log('[ProtectedShell] User has crop plans. Auto-completing onboarding flag.')
+      db.profiles.update(shellData.profile.id, {
+        onboarding_completed: true,
+        updated_at: new Date().toISOString(),
+        sync_status: 'pending'
+      }).then(() => {
+        backgroundSync().catch(e => console.warn('Sync after onboarding bypass failed:', e))
+      })
+    }
+  }, [shellData])
+
+  if (shellData === undefined) {
+    return <AppLoader message="Loading workspace..." subMessage="Fetching profile" />
   }
 
-  // If onboarding is not completed, redirect to /onboarding
-  if (!profile || !profile.onboarding_completed) {
+  const { profile, hasCropPlan } = shellData || { profile: null, hasCropPlan: false }
+
+  const onboardingCompleted = profile?.onboarding_completed === true
+  const hasActiveCropPlan = !!profile?.active_crop_plan_id || hasCropPlan
+
+  // If the user has not completed onboarding and has no crop plans, forcefully redirect to onboarding
+  if (!onboardingCompleted && !hasActiveCropPlan) {
     return <Navigate to="/onboarding" replace />
   }
 
@@ -56,7 +73,7 @@ export default function App() {
   useEffect(() => {
     const handleOnline = async () => {
       try {
-        await syncData()
+        await backgroundSync()
       } catch (err) {
         console.error('Auto-sync on reconnect failed:', err)
       }

@@ -25,22 +25,25 @@ export async function saveProfile(data: Partial<ProfileRecord>) {
 
 export async function saveSettings(data: Partial<UserSettingsRecord>) {
   const existing = await db.user_settings.toArray().then(a => a[0])
+  const cleanData = { ...data } as any
+  delete cleanData.language
+
   if (existing) {
     return db.user_settings.update(existing.id, {
-      ...data,
+      ...cleanData,
       updated_at: new Date().toISOString()
     })
   } else {
-    // If not exists, use defaults
     const now = new Date().toISOString()
     return db.user_settings.put({
       id: crypto.randomUUID(),
-      language: 'en',
-      font_size: 'medium',
       notifications_enabled: false,
       biometric_enabled: false,
       last_sync: new Date(0).toISOString(),
-      ...data,
+      font_size: 'medium',
+      theme: 'dark',
+      voice_enabled: false,
+      ...cleanData,
       created_at: now,
       updated_at: now
     })

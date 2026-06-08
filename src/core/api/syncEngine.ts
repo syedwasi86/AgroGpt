@@ -72,7 +72,11 @@ function cleanRecordData(tableName: string, record: any, userId: string): any {
     }
   }
 
-  // 5. Strip undefined values completely
+  // 5. Delete client-only metadata fields
+  delete cleanRecord.sync_status
+  delete cleanRecord.last_synced_at
+
+  // 6. Strip undefined values completely
   for (const key of Object.keys(cleanRecord)) {
     if (cleanRecord[key] === undefined) {
       delete cleanRecord[key]
@@ -85,8 +89,11 @@ function cleanRecordData(tableName: string, record: any, userId: string): any {
 /**
  * Pushes unsynced local records to Supabase.
  */
-export async function pushChanges(providedSession?: Session | null): Promise<{ synced: number; failed: number }> {
-  console.log('[SyncEngine] pushChanges START')
+export async function pushChanges(
+  providedSession?: Session | null,
+  targetTables?: string[]
+): Promise<{ synced: number; failed: number }> {
+  console.log('[SyncEngine] pushChanges START', targetTables ? `for tables: ${targetTables.join(', ')}` : 'for all tables')
   await initDatabase()
 
   const session = providedSession || (await supabase.auth.getSession()).data.session
@@ -103,51 +110,55 @@ export async function pushChanges(providedSession?: Session | null): Promise<{ s
   const lastSync = await getLastSyncTimestamp()
   console.log('[SyncEngine] pushChanges - LAST SYNC TIMESTAMP:', lastSync)
 
+  const shouldPushProfiles = !targetTables || targetTables.includes('profiles')
+
   // ─── PHASE 1: Foundational Profile Push (Before the loop) ───
-  const pendingProfiles = await db.profiles.filter((record: any) =>
-    record.sync_status === 'pending' ||
-    record.sync_status === 'pending_delete' ||
-    record.updated_at > lastSync
-  ).toArray()
+  if (shouldPushProfiles) {
+    const pendingProfiles = await db.profiles.filter((record: any) =>
+      record.sync_status === 'pending' ||
+      record.sync_status === 'pending_delete' ||
+      record.sync_status === 'pending_del'
+    ).toArray()
 
-  const poisonedProfiles = pendingProfiles.filter((record: any) =>
-    record.id === 'dev-bypass-user' ||
-    record.user_id === 'dev-bypass-user'
-  )
-  const validProfiles = pendingProfiles.filter((record: any) =>
-    record.id !== 'dev-bypass-user' &&
-    record.user_id !== 'dev-bypass-user'
-  )
-
-  if (poisonedProfiles.length > 0) {
-    const poisonedIds = poisonedProfiles.map((r: any) => r.id)
-    console.warn(`[SyncEngine] Wiping ${poisonedIds.length} legacy dev-bypass profiles from IndexedDB:`, poisonedIds)
-    await db.profiles.bulkDelete(poisonedIds).catch((err: any) =>
-      console.error('[SyncEngine] Failed to bulkDelete poisoned profiles:', err)
+    const poisonedProfiles = pendingProfiles.filter((record: any) =>
+      record.id === 'dev-bypass-user' ||
+      record.user_id === 'dev-bypass-user'
     )
-  }
+    const validProfiles = pendingProfiles.filter((record: any) =>
+      record.id !== 'dev-bypass-user' &&
+      record.user_id !== 'dev-bypass-user'
+    )
 
-  if (validProfiles.length > 0) {
-    const strippedProfiles = validProfiles.map((record: any) => {
-      const cleanRecord = cleanRecordData('profiles', record, userId)
-      cleanRecord.id = userId
-      delete cleanRecord.active_crop_plan_id
-      return cleanRecord
-    })
+    if (poisonedProfiles.length > 0) {
+      const poisonedIds = poisonedProfiles.map((r: any) => r.id)
+      console.warn(`[SyncEngine] Wiping ${poisonedIds.length} legacy dev-bypass profiles from IndexedDB:`, poisonedIds)
+      await db.profiles.bulkDelete(poisonedIds).catch((err: any) =>
+        console.error('[SyncEngine] Failed to bulkDelete poisoned profiles:', err)
+      )
+    }
 
-    console.log('[SyncEngine] pushChanges Phase 1 - Upserting stripped profiles:', strippedProfiles)
-    const { error } = await supabase.from('profiles').upsert(strippedProfiles)
-    if (error) {
-      console.error('[SyncEngine] Phase 1 profile upsert failed:', error)
-      failed += validProfiles.length
-      for (const record of validProfiles) {
-        await db.profiles.update(record.id, { sync_status: 'failed' }).catch(() => {})
+    if (validProfiles.length > 0) {
+      const strippedProfiles = validProfiles.map((record: any) => {
+        const cleanRecord = cleanRecordData('profiles', record, userId)
+        cleanRecord.id = userId
+        delete cleanRecord.active_crop_plan_id
+        return cleanRecord
+      })
+
+      console.log('[SyncEngine] pushChanges Phase 1 - Upserting stripped profiles:', strippedProfiles)
+      const { error } = await supabase.from('profiles').upsert(strippedProfiles)
+      if (error) {
+        console.error('[SyncEngine] Phase 1 profile upsert failed:', error)
+        failed += validProfiles.length
+        for (const record of validProfiles) {
+          await db.profiles.update(record.id, { sync_status: 'failed' }).catch(() => {})
+        }
       }
     }
   }
 
   // ─── PHASE 2: Standard relational tables push ───
-  const tables = [
+  const allRelationalTables = [
     'crop_plans',          // Trunk: Must exist first
     'crop_stages',         // Branch: Depends on crop_plans
     'farm_tasks',          // Leaf: Depends on crop_plans and crop_stages
@@ -157,13 +168,45 @@ export async function pushChanges(providedSession?: Session | null): Promise<{ s
     'weather_adjustments'  // Independent / Depends on plans or tasks
   ] as const
 
-  for (const tableName of tables) {
+  const tablesToProcess = targetTables
+    ? allRelationalTables.filter(t => targetTables.includes(t))
+    : allRelationalTables
+
+  for (const tableName of tablesToProcess) {
     const table = db[tableName] as any
     const pending = await table.filter((record: any) =>
       record.sync_status === 'pending' ||
       record.sync_status === 'pending_delete' ||
-      record.updated_at > lastSync
+      record.sync_status === 'pending_del'
     ).toArray()
+
+    // ─── Enforce Single Active Plan Rule Locally ───
+    if (tableName === 'crop_plans') {
+      const activePendingPlans = pending.filter((p: any) => p.status === 'active')
+      if (activePendingPlans.length > 1) {
+        console.log(`[SyncEngine] Found ${activePendingPlans.length} active pending crop plans. Enforcing single active plan rule.`)
+        
+        // Sort activePendingPlans by updated_at descending (newest first)
+        activePendingPlans.sort((a: any, b: any) => {
+          const timeA = a.updated_at ? new Date(a.updated_at).getTime() : 0
+          const timeB = b.updated_at ? new Date(b.updated_at).getTime() : 0
+          return timeB - timeA
+        })
+
+        const newestPlan = activePendingPlans[0]
+        const olderPlans = activePendingPlans.slice(1)
+
+        for (const oldPlan of olderPlans) {
+          oldPlan.status = 'completed'
+          oldPlan.updated_at = oldPlan.updated_at || new Date().toISOString()
+          await db.crop_plans.update(oldPlan.id, {
+            status: 'completed',
+            updated_at: oldPlan.updated_at
+          }).catch((err: any) => console.error(`[SyncEngine] Failed to update older plan ${oldPlan.id} to completed:`, err))
+        }
+      }
+    }
+
     console.log(`[SyncEngine] pushChanges - TABLE: ${tableName} | PENDING: ${pending.length}`)
 
     const poisonedRecords = pending.filter((record: any) =>
@@ -231,40 +274,42 @@ export async function pushChanges(providedSession?: Session | null): Promise<{ s
   }
 
   // ─── PHASE 3: Final Profile Push (To link active_crop_plan_id) ───
-  const pendingProfilesPhase3 = await db.profiles.filter((record: any) =>
-    record.sync_status === 'pending' ||
-    record.sync_status === 'pending_delete' ||
-    record.updated_at > lastSync
-  ).toArray()
+  if (shouldPushProfiles) {
+    const pendingProfilesPhase3 = await db.profiles.filter((record: any) =>
+      record.sync_status === 'pending' ||
+      record.sync_status === 'pending_delete' ||
+      record.sync_status === 'pending_del'
+    ).toArray()
 
-  const validProfilesPhase3 = pendingProfilesPhase3.filter((record: any) =>
-    record.id !== 'dev-bypass-user' &&
-    record.user_id !== 'dev-bypass-user'
-  )
+    const validProfilesPhase3 = pendingProfilesPhase3.filter((record: any) =>
+      record.id !== 'dev-bypass-user' &&
+      record.user_id !== 'dev-bypass-user'
+    )
 
-  if (validProfilesPhase3.length > 0) {
-    const fullProfiles = validProfilesPhase3.map((record: any) => {
-      const cleanRecord = cleanRecordData('profiles', record, userId)
-      cleanRecord.id = userId
-      return cleanRecord
-    })
+    if (validProfilesPhase3.length > 0) {
+      const fullProfiles = validProfilesPhase3.map((record: any) => {
+        const cleanRecord = cleanRecordData('profiles', record, userId)
+        cleanRecord.id = userId
+        return cleanRecord
+      })
 
-    console.log('[SyncEngine] pushChanges Phase 3 - Upserting full profiles:', fullProfiles)
-    const { error } = await supabase.from('profiles').upsert(fullProfiles)
+      console.log('[SyncEngine] pushChanges Phase 3 - Upserting full profiles:', fullProfiles)
+      const { error } = await supabase.from('profiles').upsert(fullProfiles)
 
-    if (error) {
-      console.error('[SyncEngine] Phase 3 profile upsert failed:', error)
-      failed += validProfilesPhase3.length
-      for (const record of validProfilesPhase3) {
-        await db.profiles.update(record.id, { sync_status: 'failed' }).catch(() => {})
-      }
-    } else {
-      synced += validProfilesPhase3.length
-      for (const record of validProfilesPhase3) {
-        if (record.sync_status === 'pending_delete') {
-          await db.profiles.delete(record.id).catch(() => {})
-        } else {
-          await db.profiles.update(record.id, { sync_status: 'synced' }).catch(() => {})
+      if (error) {
+        console.error('[SyncEngine] Phase 3 profile upsert failed:', error)
+        failed += validProfilesPhase3.length
+        for (const record of validProfilesPhase3) {
+          await db.profiles.update(record.id, { sync_status: 'failed' }).catch(() => {})
+        }
+      } else {
+        synced += validProfilesPhase3.length
+        for (const record of validProfilesPhase3) {
+          if (record.sync_status === 'pending_delete') {
+            await db.profiles.delete(record.id).catch(() => {})
+          } else {
+            await db.profiles.update(record.id, { sync_status: 'synced' }).catch(() => {})
+          }
         }
       }
     }

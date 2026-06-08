@@ -4,11 +4,12 @@ import { db } from '@/lib/db'
 import { GlassCard } from '@/components/GlassCard'
 import { SkeletonRow } from '@/components/Skeleton'
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Trash2, Wallet, RefreshCw, Mic, MicOff, AlertCircle, TrendingUp, TrendingDown, Loader2 } from 'lucide-react'
+import { Trash2, Wallet, RefreshCw, Mic, MicOff, AlertCircle, TrendingUp, TrendingDown, Loader2, Pencil } from 'lucide-react'
 import { cn } from '@/core/utils/cn'
 import { addTransaction, initDatabase, deleteTransaction } from '@/lib/repository'
-import { backgroundSync } from '@/core/api/syncEngine'
+import { backgroundSync, pushChanges } from '@/core/api/syncEngine'
 import { useCrop } from '@/core/context/CropContext'
+import { useAuth } from '@/core/auth/AuthContext'
 
 function inr(n: number) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(n)
@@ -22,7 +23,15 @@ function formatLedgerDate(iso: string): string {
 
 export function DigitalLedgerPage() {
   const { activeCrop } = useCrop()
+  const { session } = useAuth()
   const [filterByCrop, setFilterByCrop] = useState(true)
+
+  // Editing State for transactions
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editAmount, setEditAmount] = useState('')
+  const [editType, setEditType] = useState<'income' | 'expense'>('expense')
+  const [editCategory, setEditCategory] = useState('')
+  const [editTransactionDate, setEditTransactionDate] = useState('')
 
   const rawTransactions = useLiveQuery(() => db.transactions.orderBy('transaction_date').reverse().toArray())
   const transactions = useMemo(() => rawTransactions || [], [rawTransactions])
@@ -124,6 +133,9 @@ export function DigitalLedgerPage() {
         note: activeCrop // Tag it with the active crop
       })
 
+      // Trigger targeted sync on creation
+      void pushChanges(session, ['transactions'])
+
       // Reset form
       setAmount('')
       setCategory('')
@@ -143,6 +155,58 @@ export function DigitalLedgerPage() {
       await deleteTransaction(id)
     } catch {
       alert('Failed to delete entry.')
+    }
+  }
+
+  const startEditing = (e: any) => {
+    setEditingId(e.id || null)
+    setEditAmount(e.amount.toString())
+    setEditType(e.type)
+    setEditCategory(e.category)
+    setEditTransactionDate(e.transaction_date.slice(0, 10))
+  }
+
+  async function handleSave(id: string, deleted = false) {
+    if (deleted && !confirm('Are you sure you want to delete this transaction?')) {
+      return
+    }
+
+    const numAmount = Number(editAmount)
+    if (!deleted) {
+      if (!editAmount || Number.isNaN(numAmount) || numAmount <= 0) {
+        alert("Please enter a valid amount.")
+        return
+      }
+      if (!editCategory.trim()) {
+        alert("Please enter a category or note.")
+        return
+      }
+    }
+
+    try {
+      const now = new Date().toISOString()
+      const updateData: any = {
+        amount: numAmount,
+        category: editCategory.trim(),
+        type: editType,
+        transaction_date: new Date(editTransactionDate).toISOString(),
+        notes: editCategory.trim(),
+        updated_at: now,
+        sync_status: 'pending'
+      }
+
+      if (deleted) {
+        updateData.deleted_at = now
+      }
+
+      await db.transactions.update(id, updateData)
+
+      // Immediately after the Dexie update, trigger pushChanges and exit edit state
+      void pushChanges(session, ['transactions'])
+      setEditingId(null)
+    } catch (err) {
+      console.error('Failed to update transaction:', err)
+      alert('Failed to save changes. Please try again.')
     }
   }
 
@@ -462,36 +526,139 @@ export function DigitalLedgerPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {filteredTransactions.filter(t => !t.deleted_at).map((e) => (
-                      <tr key={e.id} className="group hover:bg-white/[0.02] transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-bold text-white/90">{e.category}</div>
-                          <div className="text-[10px] font-bold text-white/30 uppercase flex items-center gap-2">
-                            {e.type}
-                            {e.note && (
-                              <span className="text-[9px] font-black tracking-widest text-[#4ade80] bg-[#1d3526] px-2 py-0.5 rounded border border-[#223328] uppercase">
-                                {e.note}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-xs text-white/50">{formatLedgerDate(e.transaction_date)}</td>
-                        <td className={cn(
-                          "px-6 py-4 text-right text-sm font-black",
-                          e.type === 'income' ? "text-green-400" : "text-red-400"
-                        )}>
-                          {e.type === 'income' ? '+' : '-'}{inr(e.amount)}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => e.id && void handleDelete(e.id)}
-                            className="p-2 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredTransactions.filter(t => !t.deleted_at).map((e) => {
+                      const isEditing = editingId === e.id
+                      return (
+                        <tr key={e.id} className="group hover:bg-white/[0.02] transition-colors">
+                          {isEditing ? (
+                            <>
+                              <td className="px-6 py-4">
+                                <input
+                                  type="text"
+                                  value={editCategory}
+                                  onChange={(ev) => setEditCategory(ev.target.value)}
+                                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-1.5 text-xs text-white placeholder:text-white/30 outline-none transition focus:border-stroke-2 focus:ring-1 focus:ring-stroke-2/30"
+                                  placeholder="Category / Details"
+                                  required
+                                />
+                                <div className="mt-2 flex gap-2 p-0.5 bg-white/5 rounded-xl border border-white/5 w-fit">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditType('expense')}
+                                    className={cn(
+                                      "px-3 py-1 text-[10px] font-bold rounded-lg transition-all",
+                                      editType === 'expense'
+                                        ? "bg-red-500/20 text-red-400 shadow-sm"
+                                        : "text-white/30 hover:text-white/60"
+                                    )}
+                                  >
+                                    Expense
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditType('income')}
+                                    className={cn(
+                                      "px-3 py-1 text-[10px] font-bold rounded-lg transition-all",
+                                      editType === 'income'
+                                        ? "bg-green-500/20 text-green-400 shadow-sm"
+                                        : "text-white/30 hover:text-white/60"
+                                    )}
+                                  >
+                                    Income
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <input
+                                  type="date"
+                                  value={editTransactionDate}
+                                  onChange={(ev) => setEditTransactionDate(ev.target.value)}
+                                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-1.5 text-xs text-white outline-none transition focus:border-stroke-2 focus:ring-1 focus:ring-stroke-2/30"
+                                  required
+                                />
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-white/30">₹</span>
+                                  <input
+                                    type="number"
+                                    value={editAmount}
+                                    onChange={(ev) => setEditAmount(ev.target.value)}
+                                    className="w-full rounded-xl border border-white/10 bg-black/30 pl-7 pr-3 py-1.5 text-xs text-white text-right outline-none transition focus:border-stroke-2 focus:ring-1 focus:ring-stroke-2/30"
+                                    placeholder="0.00"
+                                    required
+                                  />
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    onClick={() => e.id && void handleSave(e.id, false)}
+                                    className="px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-500 text-xs font-bold text-white transition-all shadow-glowPrimary"
+                                    title="Save Changes"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={() => e.id && void handleSave(e.id, true)}
+                                    className="p-2 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+                                    title="Delete Entry"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingId(null)}
+                                    className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-white/60 transition-all border border-white/10"
+                                    title="Cancel"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="px-6 py-4">
+                                <div className="text-sm font-bold text-white/90">{e.category}</div>
+                                <div className="text-[10px] font-bold text-white/30 uppercase flex items-center gap-2">
+                                  {e.type}
+                                  {e.note && (
+                                    <span className="text-[9px] font-black tracking-widest text-[#4ade80] bg-[#1d3526] px-2 py-0.5 rounded border border-[#223328] uppercase">
+                                      {e.note}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-xs text-white/50">{formatLedgerDate(e.transaction_date)}</td>
+                              <td className={cn(
+                                "px-6 py-4 text-right text-sm font-black",
+                                e.type === 'income' ? "text-green-400" : "text-red-400"
+                              )}>
+                                {e.type === 'income' ? '+' : '-'}{inr(e.amount)}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                  <button
+                                    onClick={() => startEditing(e)}
+                                    className="p-2 text-white/40 hover:text-[#4ade80] hover:bg-white/5 rounded-xl transition-all"
+                                    title="Edit Entry"
+                                  >
+                                    <Pencil size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => e.id && void handleDelete(e.id)}
+                                    className="p-2 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+                                    title="Delete Entry"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               )}

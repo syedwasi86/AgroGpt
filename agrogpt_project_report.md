@@ -44,9 +44,6 @@ Instead of presenting static, unresponsive calendars, the Precision Planning fea
 The interface is designed as a calm, operational workspace optimized for field use:
 - **Modern System:** A local-first agricultural operations system with an offline-first scheduler, on-device templates, automatic weather adjustments, and bidirectional background sync.
 
-### Naming Transition & Rebranding Sweep
-To better align the product with local farming semantics and establish higher user trust, the application is undergoing a strategic transition away from the engineering-focused legacy name **"AgroGPT"** to a regional/hybrid project name (represented under internal storage parameters as **"Yield"** or its regional equivalents). This naming update is being swept across the codebase (e.g., standardizing local storage keys to `yield_user`), the internationalization locale configs, and the system reports.
-
 ---
 
 ## 2. Offline-First Architecture

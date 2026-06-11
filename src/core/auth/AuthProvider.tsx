@@ -4,7 +4,6 @@ import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from './supabaseClient'
 import { db } from '../../lib/db'
 import { initialSync, backgroundSync, pullUpdates, pushChanges } from '../api/syncEngine'
-import { seedDefaultsIfEmpty } from '../../lib/repository'
 import i18n from '../i18n'
 import { AuthContext } from './AuthContext'
 
@@ -152,8 +151,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.error('[AuthProvider] Boot pullUpdates failed:', syncErr)
           }
           await runAuthSequence(fetchedSession, false)
-        } else {
-          await seedDefaultsIfEmpty().catch(e => console.warn('Failed to seed defaults in guest mode:', e))
         }
       } catch (err) {
         console.error('[AuthProvider] Error during auth initialization:', err)
@@ -217,7 +214,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               } catch (e) {
                 console.error('Error clearing local data on sign out:', e)
               }
-              await seedDefaultsIfEmpty().catch(e => console.warn('Failed to seed defaults in guest mode:', e))
             }
           })
           authListener = subscription

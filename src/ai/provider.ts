@@ -13,6 +13,7 @@
 
 import i18next from 'i18next'
 import { db } from '../lib/db'
+import { profileRepository } from '../lib/profileRepository'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -111,14 +112,18 @@ async function fetchRAGContext(): Promise<RAGContext> {
   let phosphorus = 'N/A'
   let potassium = 'N/A'
   try {
-    const profile = await db.profiles.toArray().then(a => a[0])
-    if (profile) {
-      soilType = profile.soil_type ?? 'N/A'
-      nitrogen = profile.nitrogen != null ? String(profile.nitrogen) : 'N/A'
-      phosphorus = profile.phosphorus != null ? String(profile.phosphorus) : 'N/A'
-      potassium = profile.potassium != null ? String(profile.potassium) : 'N/A'
+    const profile = await profileRepository.getCurrentProfile()
+    if (!profile) {
+      throw new Error('Profile not found. Cannot gather RAG context.')
     }
-  } catch { /* ignore */ }
+    soilType = profile.soil_type ?? 'N/A'
+    nitrogen = profile.nitrogen != null ? String(profile.nitrogen) : 'N/A'
+    phosphorus = profile.phosphorus != null ? String(profile.phosphorus) : 'N/A'
+    potassium = profile.potassium != null ? String(profile.potassium) : 'N/A'
+  } catch (err) {
+    console.error('Error gathering RAG context profile:', err)
+    throw err
+  }
 
   // 3. Latest weather (Offline fallback: unavailable since cache removed)
   const tempC = 'N/A'

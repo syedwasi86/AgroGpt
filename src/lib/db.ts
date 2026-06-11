@@ -120,7 +120,7 @@ export interface UserSettingsRecord {
   user_id?: string
   theme?: string // Phase 2 target
   notifications_enabled: boolean
-  biometric_enabled: boolean
+  biometric_enabled?: boolean
   font_size: string
   last_sync: string // ISO string
   voice_enabled: boolean // Phase 2 target
@@ -404,7 +404,6 @@ export async function initializeUserPreferences(userId?: string) {
       id: crypto.randomUUID(),
       user_id: userId,
       notifications_enabled: false,
-      biometric_enabled: false,
       last_sync: new Date(0).toISOString(),
       font_size: 'medium',
       theme: 'dark',
@@ -417,31 +416,4 @@ export async function initializeUserPreferences(userId?: string) {
   }
 }
 
-export async function initializeUserProfile(userId?: string) {
-  const existing = userId 
-    ? await db.profiles.get(userId)
-    : await db.profiles.toArray().then(a => a[0])
 
-  if (!existing) {
-    const city = await detectCityFromGeolocation()
-    const soilType = getSoilProfile(city)
-    const npk = getSoilNPK(soilType)
-    const now = new Date().toISOString()
-    
-    const id = userId || crypto.randomUUID()
-    
-    await db.profiles.put({
-      id,
-      phone: '',
-      city,
-      soil_type: soilType,
-      primary_crop: '',
-      total_acreage: 0,
-      nitrogen: npk.nitrogen,
-      phosphorus: npk.phosphorus,
-      potassium: npk.potassium,
-      created_at: now,
-      updated_at: now,
-    })
-  }
-}

@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Activity,
@@ -19,49 +19,15 @@ import { SkeletonCard } from '../../components/Skeleton'
 import { dashboardRepository, type DashboardSnapshot } from './dashboardRepository'
 import { askAgroGPT } from '../../ai/provider'
 import { saveAiQuery } from '../../lib/repository'
+import { useAuth } from '../../core/auth/AuthContext'
 
-// Lazy-load the heavy Leaflet bundle
-const FarmMap = lazy(() => import('./FarmMap').then(m => ({ default: m.FarmMap })))
 
-// ─── Scroll-visibility/Intersection Observer Wrapper ──────────────────────────
-
-function LazyVisible({ children, placeholderHeight = 280 }: { children: React.ReactNode; placeholderHeight?: number }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [isVisible, setIsVisible] = useState(false)
-
-  useEffect(() => {
-    const el = ref.current
-    if (!el) return
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true)
-          observer.disconnect()
-        }
-      },
-      { rootMargin: '100px' }
-    )
-
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-
-  return (
-    <div ref={ref} style={{ minHeight: isVisible ? undefined : `${placeholderHeight}px` }}>
-      {isVisible ? children : (
-        <div className="flex h-full min-h-[240px] items-center justify-center rounded-2xl border border-white/5 bg-black/20 text-sm text-white/30">
-          Scroll near to load map assets...
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ─── Main Dashboard Page ───────────────────────────────────────────────────────
 
 export function DashboardPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   // State Management
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null)
@@ -94,7 +60,7 @@ export function DashboardPage() {
     setError(null)
 
     try {
-      const data = await dashboardRepository.fetchDashboardSnapshot(undefined, force)
+      const data = await dashboardRepository.fetchDashboardSnapshot(user?.id, force)
       setSnapshot(data)
     } catch (err: any) {
       console.error('Failed to load dashboard snapshot:', err)
@@ -104,12 +70,13 @@ export function DashboardPage() {
       setRefreshing(false)
       fetchInFlight.current = false
     }
-  }, []) // stable — no component-state deps
+  }, [user?.id]) // stable — no component-state deps except user.id
 
   useEffect(() => {
-    loadSnapshot()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (user?.id) {
+      loadSnapshot()
+    }
+  }, [loadSnapshot, user?.id])
 
   // Manual Trigger to re-fetch weather/AI insights
   const handleManualRefresh = () => {
@@ -521,29 +488,7 @@ export function DashboardPage() {
                 </div>
               </div>
 
-              {/* Farm Map Overview */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-white">Geospatial Field Overview</h3>
-                  <span className="text-xs text-white/40">Live positioning</span>
-                </div>
-                <LazyVisible placeholderHeight={240}>
-                  <div className="h-72 overflow-hidden rounded-3xl border border-white/5 bg-black/20">
-                    <Suspense
-                      fallback={
-                        <div className="flex h-full items-center justify-center text-sm text-white/30">
-                          Lazy loading map modules...
-                        </div>
-                      }
-                    >
-                      <FarmMap
-                        initialCenter={snapshot ? [snapshot.mapData.latitude, snapshot.mapData.longitude] : undefined}
-                        farmName={snapshot?.farm?.name}
-                      />
-                    </Suspense>
-                  </div>
-                </LazyVisible>
-              </div>
+
 
             </div>
 

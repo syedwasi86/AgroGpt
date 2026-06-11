@@ -5,6 +5,7 @@ import { cropTemplates } from '../crop-calendar/templates/cropTemplates'
 import { getTodayUtcString } from '../crop-calendar/utils/dateUtils'
 import { fetchWeather, getWeatherCondition, type WeatherData } from '../gis/services/weatherService'
 import { getUserLocation } from '../../core/utils/geolocation'
+import { profileRepository } from '../../lib/profileRepository'
 
 let inFlightAIInsightsPromise: Promise<any> | null = null
 
@@ -209,25 +210,12 @@ export const dashboardRepository = {
 
     // 2. Fetch Base Aggregations (Dexie local tables)
     // Profile
-    let profile: any = await db.profiles.toArray().then(a => a[0])
+    const profile = userId
+      ? await db.profiles.get(userId)
+      : await profileRepository.getCurrentProfile()
+
     if (!profile) {
-      // Seed fallback profile to ensure no errors
-      const nowStr = new Date().toISOString()
-      const fallbackId = userId || crypto.randomUUID()
-      await db.profiles.put({
-        id: fallbackId,
-        phone: '',
-        city: 'Hyderabad',
-        soil_type: 'Red Sandy Loam',
-        primary_crop: 'Cotton',
-        total_acreage: 2,
-        nitrogen: 100,
-        phosphorus: 50,
-        potassium: 50,
-        created_at: nowStr,
-        updated_at: nowStr
-      })
-      profile = await db.profiles.get(fallbackId)
+      throw new Error(`Profile not found for user: ${userId || 'current session'}`)
     }
 
     const farmName = profile?.farm_name || (profile?.name ? `${profile.name}'s Farm` : 'My Farm')

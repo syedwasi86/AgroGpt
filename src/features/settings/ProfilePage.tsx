@@ -89,7 +89,6 @@ export function ProfilePage() {
 
   // Modal Visibility States
   const [farmerInfoModal, setFarmerInfoModal] = useState(false)
-  const [locationModal, setLocationModal] = useState(false)
   const [farmDetailsModal, setFarmDetailsModal] = useState(false)
   const [waterSourcesModal, setWaterSourcesModal] = useState(false)
   const [cropPlanModal, setCropPlanModal] = useState(false)
@@ -101,12 +100,7 @@ export function ProfilePage() {
   const [formPhone, setFormPhone] = useState('')
   const [formEmail, setFormEmail] = useState('')
 
-  const [formVillage, setFormVillage] = useState('')
-  const [formDistrict, setFormDistrict] = useState('')
-  const [formState, setFormState] = useState('')
-  const [formLocationLabel, setFormLocationLabel] = useState('')
-  const [formLat, setFormLat] = useState('')
-  const [formLon, setFormLon] = useState('')
+
 
   const [formFarmName, setFormFarmName] = useState('')
   const [formFarmAreaValue, setFormFarmAreaValue] = useState('')
@@ -148,17 +142,7 @@ export function ProfilePage() {
     setFarmerInfoModal(true)
   }
 
-  const openLocation = () => {
-    setFormVillage(profile?.village || '')
-    setFormDistrict(profile?.district || '')
-    setFormState(profile?.state || '')
-    setFormLocationLabel(profile?.location_label || '')
-    setFormLat(profile?.latitude !== undefined ? String(profile.latitude) : '')
-    setFormLon(profile?.longitude !== undefined ? String(profile.longitude) : '')
-    setValidationError(null)
-    setGpsError(null)
-    setLocationModal(true)
-  }
+
 
   const openFarmDetails = () => {
     setFormFarmName(profile?.farm_name || 'My Farm')
@@ -246,42 +230,7 @@ export function ProfilePage() {
     }
   }
 
-  const handleSaveLocation = async () => {
-    if (!profile?.id) return
-    const manualLabel = [formVillage, formDistrict, formState].filter(Boolean).join(', ')
-    const finalLabel = formLocationLabel.trim() || manualLabel || 'My Farm Location'
 
-    const lat = formLat.trim() ? parseFloat(formLat) : undefined
-    const lon = formLon.trim() ? parseFloat(formLon) : undefined
-
-    if (lat !== undefined && (isNaN(lat) || lat < -90 || lat > 90)) {
-      setValidationError('Latitude must be between -90 and 90.')
-      return
-    }
-    if (lon !== undefined && (isNaN(lon) || lon < -180 || lon > 180)) {
-      setValidationError('Longitude must be between -180 and 180.')
-      return
-    }
-
-    try {
-      await db.profiles.update(profile.id, {
-        village: formVillage || undefined,
-        district: formDistrict || undefined,
-        state: formState || undefined,
-        location_label: finalLabel,
-        latitude: lat,
-        longitude: lon,
-        version: (profile.version || 1) + 1,
-        updated_at: new Date().toISOString(),
-        sync_status: 'pending'
-      })
-      setLocationModal(false)
-      void triggerSync()
-    } catch (err) {
-      console.error(err)
-      setValidationError('Failed to update farm location.')
-    }
-  }
 
   const handleSaveFarmDetails = async () => {
     if (!profile?.id) return
@@ -464,49 +413,7 @@ export function ProfilePage() {
     }
   }
 
-  // ─── GEOLOCATION RETRIEVAL ────────────────────────────────────────────────
-  const handleGPSRetrieve = () => {
-    setGpsLoading(true)
-    setGpsError(null)
 
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude
-        const lon = pos.coords.longitude
-        setFormLat(lat.toFixed(6))
-        setFormLon(lon.toFixed(6))
-        setGpsLoading(false)
-
-        // Attempt background reverse geocoding if online
-        if (navigator.onLine) {
-          try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
-            if (res.ok) {
-              const data = await res.json()
-              const state = data.address?.state || ''
-              const district = data.address?.state_district || data.address?.county || ''
-              const village = data.address?.village || data.address?.town || data.address?.city || ''
-
-              if (state) setFormState(state)
-              if (district) setFormDistrict(district)
-              if (village) setFormVillage(village)
-
-              const label = [village, district, state].filter(Boolean).join(', ')
-              if (label) setFormLocationLabel(label)
-            }
-          } catch (e) {
-            console.warn('GPS geocode failed offline:', e)
-          }
-        }
-      },
-      (err) => {
-        console.warn(err)
-        setGpsError('Geolocation access denied or timed out.')
-        setGpsLoading(false)
-      },
-      { timeout: 8000 }
-    )
-  }
 
   // ─── NPK OCR LAB EXTRACTION ────────────────────────────────────────────────
   const parseNpkFromText = (text: string) => {
@@ -782,9 +689,6 @@ export function ProfilePage() {
               </div>
             </div>
           </div>
-          <button onClick={openLocation} className="mt-6 w-full rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 py-2.5 text-xs font-bold text-white transition active:scale-[0.97]">
-            Update Location
-          </button>
         </GlassCard>
 
         {/* SECTION 3 — FARM DETAILS */}
@@ -1125,85 +1029,7 @@ export function ProfilePage() {
         </div>
       )}
 
-      {/* 2. Location Modal */}
-      {locationModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <MapPin size={18} className="text-[#87A96B]" /> Update Location
-            </h3>
-            {validationError && (
-              <div className="mb-4 flex items-center gap-2 rounded-2xl bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-400">
-                <AlertCircle size={14} className="shrink-0" />
-                <span>{validationError}</span>
-              </div>
-            )}
 
-            <button
-              onClick={handleGPSRetrieve}
-              disabled={gpsLoading}
-              className="w-full mb-4 flex items-center justify-center gap-2 rounded-2xl bg-[#87A96B]/15 hover:bg-[#87A96B]/25 border border-[#87A96B]/20 py-3 text-sm font-bold text-[#A8C395] transition active:scale-[0.98] disabled:opacity-50"
-            >
-              {gpsLoading ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" /> Retrieving coordinates...
-                </>
-              ) : (
-                <>
-                  <Compass size={16} /> Fetch Geolocation Coordinates
-                </>
-              )}
-            </button>
-
-            {gpsError && (
-              <div className="mb-4 text-xs text-amber-400 font-bold bg-amber-500/5 p-2 rounded-xl border border-amber-500/10 text-center">
-                {gpsError}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Village</label>
-                  <input type="text" className={inputClass} value={formVillage} onChange={e => setFormVillage(e.target.value)} />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">District</label>
-                  <input type="text" className={inputClass} value={formDistrict} onChange={e => setFormDistrict(e.target.value)} />
-                </div>
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">State</label>
-                <input type="text" className={inputClass} value={formState} onChange={e => setFormState(e.target.value)} />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Location Label</label>
-                <input type="text" className={inputClass} placeholder="e.g. Warangal, Telangana" value={formLocationLabel} onChange={e => setFormLocationLabel(e.target.value)} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Latitude (Optional)</label>
-                  <input type="text" className={inputClass} placeholder="e.g. 17.9823" value={formLat} onChange={e => setFormLat(e.target.value)} />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Longitude (Optional)</label>
-                  <input type="text" className={inputClass} placeholder="e.g. 79.5298" value={formLon} onChange={e => setFormLon(e.target.value)} />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button onClick={() => setLocationModal(false)} className="rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-2.5 text-sm font-bold text-white transition active:scale-[0.98]">
-                Cancel
-              </button>
-              <button onClick={handleSaveLocation} className="rounded-2xl bg-[#87A96B] hover:bg-[#87A96B]/90 px-5 py-2.5 text-sm font-bold text-white transition active:scale-[0.98]">
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 3. Farm Details Modal */}
       {farmDetailsModal && (

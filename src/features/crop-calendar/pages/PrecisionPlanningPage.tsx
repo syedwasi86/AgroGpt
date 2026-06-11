@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { cn } from '../../../core/utils/cn'
 import { db } from '../../../lib/db'
 import { cropCalendarRepository } from '../repositories/cropCalendarRepository'
+import { profileRepository } from '../../../lib/profileRepository'
 import { cropCalendarService } from '../services/cropCalendarService'
 import { cropTemplates } from '../templates/cropTemplates'
 import { getTodayUtcString, formatUtcToLocal } from '../utils/dateUtils'
@@ -64,8 +65,11 @@ export function PrecisionPlanningPage() {
 
     const checkWeatherAndAdjust = async () => {
       try {
-        const profile = await db.profiles.toArray().then(a => a[0])
-        const coords = profile?.latitude !== undefined && profile?.longitude !== undefined
+        const profile = await profileRepository.getCurrentProfile()
+        if (!profile) {
+          throw new Error('Profile not found. Cannot evaluate weather adjustment.')
+        }
+        const coords = profile.latitude !== undefined && profile.longitude !== undefined
           ? { latitude: profile.latitude, longitude: profile.longitude }
           : await getUserLocation().catch(() => ({ latitude: 20.5937, longitude: 78.9629 }))
         const forecast = await fetchDailyWeather(coords.latitude, coords.longitude)

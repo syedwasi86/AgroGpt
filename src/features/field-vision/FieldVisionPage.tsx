@@ -4,6 +4,7 @@ import { Upload, Camera, Search, Leaf, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../core/utils/cn'
 import { db } from '../../lib/db'
+import { profileRepository } from '../../lib/profileRepository'
 import { CropSelector } from './CropSelector'
 import { PredictionResults } from './PredictionResults'
 import { runInference, type PredictionResult } from './inferenceEngine'
@@ -123,11 +124,17 @@ export function FieldVisionPage() {
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
 
-    db.profiles.toArray().then(profiles => {
-      if (profiles[0] && profiles[0].primary_crop) {
-        setSelectedCrop(profiles[0].primary_crop)
+    profileRepository.getCurrentProfile().then(profile => {
+      if (!profile) {
+        console.error('Active profile missing during crop selection loading.')
+        return
       }
-    }).catch(() => { })
+      if (profile.primary_crop) {
+        setSelectedCrop(profile.primary_crop)
+      }
+    }).catch((err) => {
+      console.error('Failed to load profile in FieldVisionPage:', err)
+    })
 
     return () => {
       window.removeEventListener('online', handleOnline)
@@ -233,8 +240,11 @@ export function FieldVisionPage() {
     setLoadingAi(true)
     setAiRecommendation(null)
     try {
-      const profile = await db.profiles.toArray().then(a => a[0])
-      const soilType = profile?.soil_type || 'N/A'
+      const profile = await profileRepository.getCurrentProfile()
+      if (!profile) {
+        throw new Error('Profile not found. Cannot retrieve recommendations.')
+      }
+      const soilType = profile.soil_type || 'N/A'
 
       // Use cached weather if available, else fetch it on demand
       let tempC = 'N/A'

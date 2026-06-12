@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { RefreshCw, Calendar, MapPin, Tag } from 'lucide-react'
 import { useCrop } from '@/core/context/CropContext'
+import { useTranslation } from 'react-i18next'
+import { useEnumTranslation } from '@/hooks/useEnumTranslation'
 
 interface MandiRate {
   market_name: string
@@ -105,6 +107,8 @@ const cropToCommodityMap: Record<string, string> = {
 }
 
 export function MarketMandi() {
+  const { t, i18n } = useTranslation('market')
+  const { tEnum } = useEnumTranslation()
   const { activeCrop } = useCrop()
   const [rates, setRates] = useState<MandiRate[]>([])
   const [loading, setLoading] = useState(true)
@@ -136,16 +140,16 @@ export function MarketMandi() {
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/20">
       <div className="bg-white/5 px-6 py-3 border-b border-white/5 flex justify-between items-center">
         <span className="text-[10px] font-black uppercase tracking-widest text-[#4ade80]">
-          Active Filter: {activeCrop}
+          {t('activeFilter', { crop: tEnum('cropType', activeCrop) })}
         </span>
       </div>
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="bg-white/5">
-            <th className="py-4 pl-6 text-[11px] font-black uppercase tracking-widest text-white/50">Crop & Variety</th>
-            <th className="py-4 text-[11px] font-black uppercase tracking-widest text-white/50">Market</th>
-            <th className="py-4 text-[11px] font-black uppercase tracking-widest text-white/50">Price (Qtl)</th>
-            <th className="py-4 pr-6 text-[11px] font-black uppercase tracking-widest text-white/50 text-right">Arrival Date</th>
+            <th className="py-4 pl-6 text-[11px] font-black uppercase tracking-widest text-white/50">{t('cropVariety')}</th>
+            <th className="py-4 text-[11px] font-black uppercase tracking-widest text-white/50">{t('market')}</th>
+            <th className="py-4 text-[11px] font-black uppercase tracking-widest text-white/50">{t('priceQtl')}</th>
+            <th className="py-4 pr-6 text-[11px] font-black uppercase tracking-widest text-white/50 text-right">{t('arrivalDate')}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
@@ -156,20 +160,20 @@ export function MarketMandi() {
                 <td className="py-5 pl-6">
                   <div className="flex flex-col">
                     <div className="font-black text-white text-lg flex items-center gap-1.5">
-                      {mandi.commodity_name}
+                      {tEnum('cropType', mandi.commodity_name)}
                     </div>
                     <div className="text-[10px] font-black uppercase tracking-wider text-[#4ade80] flex items-center gap-1 mt-0.5">
-                      <Tag size={10} /> {mandi.variety}
+                      <Tag size={10} /> {tEnum('mandiVariety', mandi.variety)}
                     </div>
                   </div>
                 </td>
                 <td className="py-5">
                   <div className="text-sm font-bold text-white/70 uppercase tracking-tight flex items-center gap-1">
-                    <MapPin size={12} className="text-white/40" /> {mandi.market_name}
+                    <MapPin size={12} className="text-white/40" /> {tEnum('mandiMarket', mandi.market_name)}
                   </div>
                 </td>
                 <td className="py-5">
-                  <div className="font-black text-white text-xl">₹{isNaN(parsedPrice) ? mandi.modal_price : parsedPrice.toLocaleString()}</div>
+                  <div className="font-black text-white text-xl">₹{isNaN(parsedPrice) ? mandi.modal_price : parsedPrice.toLocaleString(i18n.language, { numberingSystem: 'latn' })}</div>
                 </td>
                 <td className="py-5 pr-6 text-right">
                   <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 text-white/60 border border-white/10">
@@ -182,7 +186,7 @@ export function MarketMandi() {
           {filteredRates.length === 0 && (
             <tr>
               <td colSpan={4} className="py-10 text-center text-white/40 font-bold">
-                No rates available for {activeCrop}.
+                {t('noRates', { crop: tEnum('cropType', activeCrop) })}
               </td>
             </tr>
           )}
@@ -190,7 +194,7 @@ export function MarketMandi() {
       </table>
       <div className="p-4 border-t border-white/5 bg-white/5">
         <p className="text-[10px] text-white/30 font-black uppercase tracking-widest text-center">
-          Offline Mode | Loaded Locally from Mock API Array
+          {t('offlineMandiNotice')}
         </p>
       </div>
     </div>

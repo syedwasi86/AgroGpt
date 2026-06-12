@@ -5,6 +5,7 @@ import { useAuth } from '../../core/auth/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../core/auth/supabaseClient'
 import { useTranslation } from 'react-i18next'
+import { useEnumTranslation } from '../../hooks/useEnumTranslation'
 import { convertToAcres } from '../../core/utils/formulas'
 import { backgroundSync } from '../../core/api/syncEngine'
 import { cropCalendarService } from '../crop-calendar/services/cropCalendarService'
@@ -49,7 +50,8 @@ const WATER_SOURCES = ['Borewell', 'Canal', 'Rainfed', 'Open Well', 'Drip Irriga
 const CROP_CONDITIONS = ['Healthy', 'Average', 'Not Growing Well', 'Pest/Disease Problem', 'Not Sure']
 
 export function ProfilePage() {
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation(['common', 'profile', 'enums', 'validation'])
+  const { tEnum } = useEnumTranslation()
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [syncing, setSyncing] = useState(false)
@@ -126,12 +128,7 @@ export function ProfilePage() {
   const [rawOcrText, setRawOcrText] = useState<string>('')
   const [ocrErrorMsg, setOcrErrorMsg] = useState<string | null>(null)
 
-  // Sync state trigger on mount
-  useEffect(() => {
-    if (profile?.preferred_language) {
-      void i18n.changeLanguage(profile.preferred_language)
-    }
-  }, [profile, i18n])
+
 
   // ─── INITIALIZE MODAL FORMS ──────────────────────────────────────────────
   const openFarmerInfo = () => {
@@ -208,7 +205,7 @@ export function ProfilePage() {
   const handleSaveFarmerInfo = async () => {
     if (!profile?.id) return
     if (!formName.trim()) {
-      setValidationError('Name is required.')
+      setValidationError(t('validation:nameRequired'))
       return
     }
 
@@ -226,7 +223,7 @@ export function ProfilePage() {
       void triggerSync()
     } catch (err) {
       console.error(err)
-      setValidationError('Failed to update farmer info.')
+      setValidationError(t('validation:error', 'Failed to update farmer info.'))
     }
   }
 
@@ -236,7 +233,7 @@ export function ProfilePage() {
     if (!profile?.id) return
     const areaVal = parseFloat(formFarmAreaValue)
     if (isNaN(areaVal) || areaVal <= 0) {
-      setValidationError('Please enter a valid farm size greater than 0.')
+      setValidationError(t('validation:farmSizeError'))
       return
     }
 
@@ -258,14 +255,14 @@ export function ProfilePage() {
       void triggerSync()
     } catch (err) {
       console.error(err)
-      setValidationError('Failed to save farm details.')
+      setValidationError(t('validation:error', 'Failed to save farm details.'))
     }
   }
 
   const handleSaveWaterSources = async () => {
     if (!profile?.id) return
     if (formWaterSources.length === 0) {
-      setValidationError('Select at least one water source.')
+      setValidationError(t('validation:waterRequired'))
       return
     }
 
@@ -280,7 +277,7 @@ export function ProfilePage() {
       void triggerSync()
     } catch (err) {
       console.error(err)
-      setValidationError('Failed to update water sources.')
+      setValidationError(t('validation:error', 'Failed to update water sources.'))
     }
   }
 
@@ -291,7 +288,7 @@ export function ProfilePage() {
     const k = parseFloat(formPotassium)
 
     if (isNaN(n) || n < 0 || n > 1000 || isNaN(p) || p < 0 || p > 1000 || isNaN(k) || k < 0 || k > 1000) {
-      setValidationError('Soil nutrient values must be between 0 and 1000 ppm.')
+      setValidationError(t('validation:npkRangeError'))
       return
     }
 
@@ -308,7 +305,7 @@ export function ProfilePage() {
       void triggerSync()
     } catch (err) {
       console.error(err)
-      setValidationError('Failed to save soil health NPK details.')
+      setValidationError(t('validation:error', 'Failed to save soil health NPK details.'))
     }
   }
 
@@ -316,11 +313,11 @@ export function ProfilePage() {
     if (!profile?.id) return
     const cropArea = parseFloat(formCropAreaValue)
     if (isNaN(cropArea) || cropArea <= 0) {
-      setValidationError('Please enter a valid crop area size.')
+      setValidationError(t('validation:cropAreaRequired'))
       return
     }
     if (!formSowingDate) {
-      setValidationError('Sowing date is required.')
+      setValidationError(t('validation:sowingDateRequired'))
       return
     }
 
@@ -334,7 +331,12 @@ export function ProfilePage() {
       .reduce((sum, p) => sum + (p.crop_area_acres || p.area || 0), 0)
 
     if (cropAcres + otherActiveCropsAcres > farmAcres) {
-      setValidationError(`Total crop area (${(cropAcres + otherActiveCropsAcres).toFixed(2)} Acres) cannot exceed your farm size (${farmAcres.toFixed(2)} Acres).`)
+      setValidationError(
+        t('validation:cropAreaExceeds', {
+          cropAcres: (cropAcres + otherActiveCropsAcres).toFixed(2),
+          farmAcres: farmAcres.toFixed(2)
+        })
+      )
       return
     }
 
@@ -409,7 +411,7 @@ export function ProfilePage() {
       void triggerSync()
     } catch (err) {
       console.error(err)
-      setValidationError('Failed to update crop plan calendar.')
+      setValidationError(t('validation:error', 'Failed to update crop plan calendar.'))
     }
   }
 
@@ -573,7 +575,12 @@ export function ProfilePage() {
     if (!isoStr) return ''
     const d = new Date(isoStr)
     if (isNaN(d.getTime())) return isoStr
-    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
+    return d.toLocaleDateString(i18n.language, {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      numberingSystem: 'latn'
+    })
   }
 
   return (
@@ -584,10 +591,10 @@ export function ProfilePage() {
         <div>
           <h1 className="agro-h1 flex items-center gap-2">
             <Settings size={28} className="text-[#87A96B]" />
-            Farm Profile Command Center
+            {t('profile:title')}
           </h1>
           <p className="subtle mt-1 text-white/60">
-            View and manage your identity, farm dimensions, water systems, and crops locally.
+            {t('profile:subtitle')}
           </p>
         </div>
         <button
@@ -596,7 +603,7 @@ export function ProfilePage() {
           className="flex items-center justify-center gap-2 rounded-2xl bg-white/5 border border-white/10 px-4 py-2.5 text-xs font-bold text-white hover:bg-white/10 transition active:scale-[0.98] disabled:opacity-50"
         >
           <RefreshCw size={14} className={cn(syncing && "animate-spin text-[#87A96B]")} />
-          {syncing ? 'Syncing...' : 'Sync Database'}
+          {syncing ? t('profile:syncing') : t('profile:syncDatabase')}
         </button>
       </div>
 
@@ -607,34 +614,34 @@ export function ProfilePage() {
           <div>
             <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
               <User size={20} className="text-[#87A96B]" />
-              Farmer Information
+              {t('profile:farmerInformation')}
             </h2>
             <div className="space-y-3.5 text-sm">
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-white/50">Name</span>
-                <span className="font-semibold text-white">{profile?.display_name || profile?.name || 'Not Entered'}</span>
+                <span className="text-white/50">{t('profile:name')}</span>
+                <span className="font-semibold text-white">{profile?.display_name || profile?.name || t('common:notEntered', 'Not Entered')}</span>
               </div>
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-white/50">Preferred Language</span>
+                <span className="text-white/50">{t('profile:preferredLanguage')}</span>
                 <span className="font-semibold text-white">
                   {profile?.preferred_language === 'en' && 'English'}
                   {profile?.preferred_language === 'hi' && 'हिन्दी (Hindi)'}
                   {profile?.preferred_language === 'te' && 'తెలుగు (Telugu)'}
-                  {!profile?.preferred_language && 'Not Configured'}
+                  {!profile?.preferred_language && t('common:notConfigured', 'Not Configured')}
                 </span>
               </div>
               <div className="flex justify-between pb-2">
-                <span className="text-white/50">Account Email</span>
-                <span className="font-semibold text-white/80">{user?.email || profile?.email || 'No email associated'}</span>
+                <span className="text-white/50">{t('profile:accountEmail')}</span>
+                <span className="font-semibold text-white/80">{user?.email || profile?.email || t('profile:noEmailAssociated', 'No email associated')}</span>
               </div>
             </div>
           </div>
           <div className="mt-6 flex gap-3">
             <button onClick={openFarmerInfo} className="flex-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 py-2.5 text-xs font-bold text-white transition active:scale-[0.97]">
-              Edit Name
+              {t('profile:editName')}
             </button>
             <button onClick={() => setLanguageModal(true)} className="flex-1 rounded-xl bg-[#87A96B]/15 hover:bg-[#87A96B]/25 border border-[#87A96B]/20 py-2.5 text-xs font-bold text-[#A8C395] transition active:scale-[0.97]">
-              Change Language
+              {t('profile:changeLanguage')}
             </button>
           </div>
         </GlassCard>
@@ -644,24 +651,24 @@ export function ProfilePage() {
           <div>
             <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
               <MapPin size={20} className="text-[#87A96B]" />
-              Farm Location
+              {t('profile:farmLocation')}
             </h2>
             <div className="space-y-3.5 text-sm">
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-white/50">Village / Town</span>
-                <span className="font-semibold text-white">{profile?.village || 'Not Entered'}</span>
+                <span className="text-white/50">{t('profile:village')}</span>
+                <span className="font-semibold text-white">{profile?.village || t('common:notEntered', 'Not Entered')}</span>
               </div>
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-white/50">District</span>
-                <span className="font-semibold text-white">{profile?.district || 'Not Entered'}</span>
+                <span className="text-white/50">{t('profile:district')}</span>
+                <span className="font-semibold text-white">{profile?.district || t('common:notEntered', 'Not Entered')}</span>
               </div>
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-white/50">State</span>
-                <span className="font-semibold text-white">{profile?.state || 'Not Entered'}</span>
+                <span className="text-white/50">{t('profile:state')}</span>
+                <span className="font-semibold text-white">{profile?.state || t('common:notEntered', 'Not Entered')}</span>
               </div>
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-white/50">Location Label</span>
-                <span className="font-semibold text-white truncate max-w-[200px]" title={profile?.location_label}>{profile?.location_label || 'Not Set'}</span>
+                <span className="text-white/50">{t('profile:locationLabel')}</span>
+                <span className="font-semibold text-white truncate max-w-[200px]" title={profile?.location_label}>{profile?.location_label || t('common:notSet', 'Not Set')}</span>
               </div>
 
               {/* Coordinates Expandable */}
@@ -671,18 +678,18 @@ export function ProfilePage() {
                   className="flex items-center gap-1 text-xs text-[#87A96B] font-bold outline-none hover:opacity-85"
                 >
                   <Compass size={13} />
-                  {coordsExpanded ? 'Hide Raw Coordinates' : 'Show Raw Coordinates'}
+                  {coordsExpanded ? t('profile:hideRawCoordinates') : t('profile:showRawCoordinates')}
                   <ChevronDown size={12} className={cn("transition-transform", coordsExpanded && "rotate-180")} />
                 </button>
                 {coordsExpanded && (
                   <div className="mt-2 grid grid-cols-2 gap-3 rounded-2xl bg-black/30 border border-white/5 p-3 text-xs text-white/70">
                     <div>
-                      <div className="text-white/40 mb-0.5">Latitude</div>
-                      <div className="font-mono text-white">{profile?.latitude !== undefined ? profile.latitude.toFixed(6) : 'None'}</div>
+                      <div className="text-white/40 mb-0.5">{t('profile:latitude')}</div>
+                      <div className="font-mono text-white">{profile?.latitude !== undefined ? profile.latitude.toFixed(6) : t('common:none', 'None')}</div>
                     </div>
                     <div>
-                      <div className="text-white/40 mb-0.5">Longitude</div>
-                      <div className="font-mono text-white">{profile?.longitude !== undefined ? profile.longitude.toFixed(6) : 'None'}</div>
+                      <div className="text-white/40 mb-0.5">{t('profile:longitude')}</div>
+                      <div className="font-mono text-white">{profile?.longitude !== undefined ? profile.longitude.toFixed(6) : t('common:none', 'None')}</div>
                     </div>
                   </div>
                 )}
@@ -696,29 +703,29 @@ export function ProfilePage() {
           <div>
             <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
               <Layers size={20} className="text-[#87A96B]" />
-              Farm Details
+              {t('profile:farmDetails')}
             </h2>
             <div className="space-y-3.5 text-sm">
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-white/50">Farm Name</span>
+                <span className="text-white/50">{t('profile:farmName')}</span>
                 <span className="font-semibold text-white">{profile?.farm_name || 'Home Farm'}</span>
               </div>
               <div className="flex justify-between border-b border-white/5 pb-2">
-                <span className="text-white/50">Farm Size</span>
+                <span className="text-white/50">{t('profile:farmSize')}</span>
                 <span className="font-semibold text-white">
                   {profile?.farm_area_value !== undefined
-                    ? `${profile.farm_area_value} ${profile.farm_area_unit}s`
-                    : 'Not Configured'}
+                    ? `${profile.farm_area_value} ${tEnum('areaUnit', profile.farm_area_unit)}`
+                    : t('common:notConfigured', 'Not Configured')}
                 </span>
               </div>
               <div className="flex justify-between pb-2">
-                <span className="text-white/50">Soil Type</span>
-                <span className="font-semibold text-white">{profile?.soil_type || 'Red Sandy Loam'}</span>
+                <span className="text-white/50">{t('profile:soilType')}</span>
+                <span className="font-semibold text-white">{tEnum('soilType', profile?.soil_type || 'Red Sandy Loam')}</span>
               </div>
             </div>
           </div>
           <button onClick={openFarmDetails} className="mt-6 w-full rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 py-2.5 text-xs font-bold text-white transition active:scale-[0.97]">
-            Edit Farm Details
+            {t('profile:editFarmDetails')}
           </button>
         </GlassCard>
 
@@ -727,7 +734,7 @@ export function ProfilePage() {
           <div>
             <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
               <Droplets size={20} className="text-[#87A96B]" />
-              Water Sources
+              {t('profile:waterSources')}
             </h2>
             <div className="min-h-[90px]">
               {profile?.irrigation_sources && profile.irrigation_sources.length > 0 ? (
@@ -738,12 +745,12 @@ export function ProfilePage() {
                       className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#87A96B]/15 text-[#A8C395] border border-[#87A96B]/20"
                     >
                       <span className="h-1.5 w-1.5 rounded-full bg-[#87A96B]" />
-                      {source}
+                      {tEnum('waterSource', source)}
                     </span>
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-white/40 italic">No water sources configured yet.</div>
+                <div className="text-sm text-white/40 italic">{t('profile:noWaterSources', 'No water sources configured yet.')}</div>
               )}
             </div>
           </div>
@@ -757,23 +764,23 @@ export function ProfilePage() {
           <div>
             <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
               <FlaskConical size={20} className="text-[#87A96B]" />
-              Soil Health & NPK Nutrients
+              {t('profile:soilNpk')}
             </h2>
             <div className="grid gap-6 sm:grid-cols-3 text-sm">
               <div className="rounded-2xl bg-black/20 border border-white/5 p-4 flex flex-col justify-center">
-                <div className="text-xs text-white/40 mb-1 font-bold">NITROGEN (N)</div>
+                <div className="text-xs text-white/40 mb-1 font-bold">{t('profile:nitrogen')} (N)</div>
                 <div className="text-xl font-bold text-white">
                   {profile?.nitrogen !== undefined ? `${profile.nitrogen} ppm` : '0 ppm'}
                 </div>
               </div>
               <div className="rounded-2xl bg-black/20 border border-white/5 p-4 flex flex-col justify-center">
-                <div className="text-xs text-white/40 mb-1 font-bold">PHOSPHORUS (P)</div>
+                <div className="text-xs text-white/40 mb-1 font-bold">{t('profile:phosphorus')} (P)</div>
                 <div className="text-xl font-bold text-white">
                   {profile?.phosphorus !== undefined ? `${profile.phosphorus} ppm` : '0 ppm'}
                 </div>
               </div>
               <div className="rounded-2xl bg-black/20 border border-white/5 p-4 flex flex-col justify-center">
-                <div className="text-xs text-white/40 mb-1 font-bold">POTASSIUM (K)</div>
+                <div className="text-xs text-white/40 mb-1 font-bold">{t('profile:potassium')} (K)</div>
                 <div className="text-xl font-bold text-white">
                   {profile?.potassium !== undefined ? `${profile.potassium} ppm` : '0 ppm'}
                 </div>
@@ -781,7 +788,7 @@ export function ProfilePage() {
             </div>
           </div>
           <button onClick={openSoilNPK} className="mt-6 w-full rounded-xl bg-[#87A96B]/15 hover:bg-[#87A96B]/25 border border-[#87A96B]/20 py-2.5 text-xs font-bold text-[#A8C395] transition active:scale-[0.97]">
-            Update Soil Health (N-P-K)
+            {t('profile:updateNPK')}
           </button>
         </GlassCard>
 
@@ -790,49 +797,49 @@ export function ProfilePage() {
           <div>
             <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
               <Sprout size={20} className="text-[#87A96B]" />
-              Active Crop Summary
+              {t('profile:activeCropSummary')}
             </h2>
 
             {activeCropPlan ? (
               <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-5 text-sm">
                 <div className="border-r border-white/5 pr-4 flex flex-col justify-center py-2 sm:py-0">
                   <div className="text-white/40 text-xs mb-1 flex items-center gap-1">
-                    <Sprout size={13} /> Crop Name
+                    <Sprout size={13} /> {t('profile:cropName')}
                   </div>
-                  <div className="text-base font-bold text-white">{activeCropPlan.crop_type}</div>
-                  <div className="text-[11px] text-white/50 mt-0.5">Variety: {activeCropPlan.variety}</div>
+                  <div className="text-base font-bold text-white">{tEnum('cropType', activeCropPlan.crop_type)}</div>
+                  <div className="text-[11px] text-white/50 mt-0.5">{t('profile:variety')}: {activeCropPlan.variety === 'Local Variety' ? t('profile:customVariety') : activeCropPlan.variety}</div>
                 </div>
 
                 <div className="border-r border-white/5 pr-4 flex flex-col justify-center py-2 sm:py-0">
                   <div className="text-white/40 text-xs mb-1 flex items-center gap-1">
-                    <Layers size={13} /> Crop Area
+                    <Layers size={13} /> {t('profile:cropArea')}
                   </div>
                   <div className="text-base font-bold text-white">
                     {activeCropPlan.crop_area_value !== undefined
-                      ? `${activeCropPlan.crop_area_value} ${activeCropPlan.crop_area_unit}s`
-                      : `${activeCropPlan.area} Acres`}
+                      ? `${activeCropPlan.crop_area_value} ${tEnum('areaUnit', activeCropPlan.crop_area_unit)}`
+                      : `${activeCropPlan.area} ${tEnum('areaUnit', 'Acre')}`}
                   </div>
                   {activeCropPlan.crop_area_acres !== undefined && (
-                    <div className="text-[11px] text-white/50 mt-0.5">({activeCropPlan.crop_area_acres.toFixed(2)} Acres)</div>
+                    <div className="text-[11px] text-white/50 mt-0.5">({activeCropPlan.crop_area_acres.toFixed(2)} {tEnum('areaUnit', 'Acres')})</div>
                   )}
                 </div>
 
                 <div className="border-r border-white/5 pr-4 flex flex-col justify-center py-2 sm:py-0">
                   <div className="text-white/40 text-xs mb-1 flex items-center gap-1">
-                    <Calendar size={13} /> Sowing Date
+                    <Calendar size={13} /> {t('profile:sowingDate')}
                   </div>
                   <div className="text-base font-bold text-white">{formatDate(activeCropPlan.sowing_date)}</div>
                 </div>
 
                 <div className="border-r border-white/5 pr-4 flex flex-col justify-center py-2 sm:py-0">
                   <div className="text-white/40 text-xs mb-1 flex items-center gap-1">
-                    <TrendingUp size={13} /> Current Stage
+                    <TrendingUp size={13} /> {t('profile:cropStage')}
                   </div>
                   <div className="text-base font-bold text-white flex flex-wrap items-center gap-1.5">
-                    <span>{activeCropPlan.farmer_selected_stage || 'Calculated Stage'}</span>
+                    <span>{activeCropPlan.farmer_selected_stage ? tEnum('cropStage', activeCropPlan.farmer_selected_stage) : t('cropCalendar:calculatedStage', 'Calculated Stage')}</span>
                     {activeCropPlan.farmer_selected_stage && (
                       <span className="text-[9px] font-black uppercase text-[#87A96B] bg-[#87A96B]/10 px-1.5 py-0.5 rounded border border-[#87A96B]/20">
-                        Farmer Selected
+                        {t('cropCalendar:farmerSelectedNotice', 'Farmer Selected')}
                       </span>
                     )}
                   </div>
@@ -840,7 +847,7 @@ export function ProfilePage() {
 
                 <div className="flex flex-col justify-center py-2 sm:py-0">
                   <div className="text-white/40 text-xs mb-1 flex items-center gap-1">
-                    <CheckCircle size={13} /> Condition
+                    <CheckCircle size={13} /> {t('profile:cropCondition')}
                   </div>
                   <span className={cn(
                     "text-base font-black uppercase",
@@ -850,27 +857,27 @@ export function ProfilePage() {
                     activeCropPlan.crop_condition === 'Pest/Disease Problem' && "text-red-400",
                     activeCropPlan.crop_condition === 'Not Sure' && "text-white/60"
                   )}>
-                    {activeCropPlan.crop_condition || 'Healthy'}
+                    {tEnum('cropCondition', activeCropPlan.crop_condition || 'Healthy')}
                   </span>
                 </div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center border border-white/5 bg-black/20 rounded-2xl py-8 text-center">
                 <AlertCircle size={28} className="text-white/30 mb-2" />
-                <div className="text-sm font-semibold text-white/80">No crop added yet.</div>
-                <p className="text-xs text-white/40 mt-1 mb-4">Set up your first active crop schedule to track calendar guidelines.</p>
+                <div className="text-sm font-semibold text-white/80">{t('profile:noCropAddedYet', 'No crop added yet.')}</div>
+                <p className="text-xs text-white/40 mt-1 mb-4">{t('profile:noCropAddedYetDesc', 'Set up your first active crop schedule to track calendar guidelines.')}</p>
                 <button
                   onClick={openCropPlan}
                   className="inline-flex items-center gap-1.5 rounded-xl bg-[#87A96B] hover:bg-[#87A96B]/90 px-4 py-2 text-xs font-bold text-white transition active:scale-[0.98]"
                 >
-                  <PlusCircle size={14} /> Add Crop
+                  <PlusCircle size={14} /> {t('profile:addActiveCrop')}
                 </button>
               </div>
             )}
           </div>
           {activeCropPlan && (
             <button onClick={openCropPlan} className="mt-6 w-full rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 py-2.5 text-xs font-bold text-white transition active:scale-[0.97]">
-              Edit Crop Details
+              {t('profile:editActiveCrop')}
             </button>
           )}
         </GlassCard>
@@ -879,29 +886,29 @@ export function ProfilePage() {
         <GlassCard className="p-6 md:col-span-2" variant="strong">
           <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
             <CheckCircle size={20} className="text-[#87A96B]" />
-            Account Status
+            {t('profile:account')}
           </h2>
           <div className="grid gap-6 sm:grid-cols-3 text-sm">
 
             <div className="rounded-2xl bg-black/20 border border-white/5 p-4 flex flex-col justify-center">
-              <div className="text-xs text-white/40 mb-1">Profile Completion Date</div>
+              <div className="text-xs text-white/40 mb-1">{t('profile:profileCompletionDate', 'Profile Completion Date')}</div>
               <div className="text-base font-bold text-white">
-                {profile?.profile_completed_at ? formatDate(profile.profile_completed_at) : 'Incomplete'}
+                {profile?.profile_completed_at ? formatDate(profile.profile_completed_at) : t('common:incomplete', 'Incomplete')}
               </div>
             </div>
 
             <div className="rounded-2xl bg-black/20 border border-white/5 p-4 flex flex-col justify-center">
-              <div className="text-xs text-white/40 mb-1">Last Sync Time</div>
+              <div className="text-xs text-white/40 mb-1">{t('profile:lastSyncTime')}</div>
               <div className="text-base font-bold text-white">
                 {settings?.last_sync && new Date(settings.last_sync).getTime() > 0
                   ? formatDate(settings.last_sync)
-                  : 'Never Synced'}
+                  : t('profile:neverSynced')}
               </div>
             </div>
 
             <div className="rounded-2xl bg-black/20 border border-white/5 p-4 flex items-center justify-between">
               <div>
-                <div className="text-xs text-white/40 mb-1">Sync Status</div>
+                <div className="text-xs text-white/40 mb-1">{t('profile:syncStatus')}</div>
                 <div className="text-sm font-bold text-white capitalize">
                   {profile?.sync_status || 'Synced'}
                 </div>
@@ -912,9 +919,9 @@ export function ProfilePage() {
                 profile?.sync_status === 'pending' && "bg-amber-500/10 text-amber-400 border-amber-500/20",
                 profile?.sync_status === 'failed' && "bg-red-500/10 text-red-400 border-red-500/20"
               )}>
-                {(profile?.sync_status === 'synced' || !profile?.sync_status) && 'Synced'}
-                {profile?.sync_status === 'pending' && 'Pending'}
-                {profile?.sync_status === 'failed' && 'Failed'}
+                {(profile?.sync_status === 'synced' || !profile?.sync_status) && t('profile:syncSuccess')}
+                {profile?.sync_status === 'pending' && t('common:pending', 'Pending')}
+                {profile?.sync_status === 'failed' && t('profile:syncFailed')}
               </span>
             </div>
 
@@ -925,33 +932,33 @@ export function ProfilePage() {
         <GlassCard className="p-6 md:col-span-2" variant="strong">
           <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
             <Globe size={20} className="text-[#87A96B]" />
-            Quick Actions
+            {t('profile:quickActions', 'Quick Actions')}
           </h2>
           <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
 
             <button onClick={openFarmerInfo} className="group rounded-2xl bg-black/20 border border-white/5 p-4 flex flex-col items-center justify-center text-center transition hover:bg-black/30 hover:border-white/10 active:scale-[0.97]">
               <User size={20} className="text-[#87A96B] mb-2 group-hover:scale-110 transition-transform" />
-              <div className="text-xs font-bold text-white">Edit Profile</div>
+              <div className="text-xs font-bold text-white">{t('profile:editName')}</div>
             </button>
 
             <button onClick={openCropPlan} className="group rounded-2xl bg-black/20 border border-white/5 p-4 flex flex-col items-center justify-center text-center transition hover:bg-black/30 hover:border-white/10 active:scale-[0.97]">
               <Sprout size={20} className="text-[#87A96B] mb-2 group-hover:scale-110 transition-transform" />
-              <div className="text-xs font-bold text-white">Manage Crops</div>
+              <div className="text-xs font-bold text-white">{t('profile:editActiveCrop')}</div>
             </button>
 
             <button onClick={handleExportData} className="group rounded-2xl bg-black/20 border border-white/5 p-4 flex flex-col items-center justify-center text-center transition hover:bg-black/30 hover:border-white/10 active:scale-[0.97]">
               <Download size={20} className="text-[#87A96B] mb-2 group-hover:scale-110 transition-transform" />
-              <div className="text-xs font-bold text-white">Export Farm Data</div>
+              <div className="text-xs font-bold text-white">{t('profile:exportFarmData', 'Export Farm Data')}</div>
             </button>
 
             <button onClick={() => setLanguageModal(true)} className="group rounded-2xl bg-black/20 border border-white/5 p-4 flex flex-col items-center justify-center text-center transition hover:bg-black/30 hover:border-white/10 active:scale-[0.97]">
               <Languages size={20} className="text-[#87A96B] mb-2 group-hover:scale-110 transition-transform" />
-              <div className="text-xs font-bold text-white">Language Settings</div>
+              <div className="text-xs font-bold text-white">{t('profile:changeLanguage')}</div>
             </button>
 
             <button onClick={() => signOut()} className="col-span-2 sm:col-span-1 group rounded-2xl bg-red-500/10 border border-red-500/10 p-4 flex flex-col items-center justify-center text-center transition hover:bg-red-500/20 hover:border-red-500/20 active:scale-[0.97]">
               <LogOut size={20} className="text-red-400 mb-2 group-hover:scale-110 transition-transform" />
-              <div className="text-xs font-bold text-red-400">Sign Out</div>
+              <div className="text-xs font-bold text-red-400">{t('common:logout')}</div>
             </button>
 
           </div>
@@ -961,13 +968,13 @@ export function ProfilePage() {
         <GlassCard className="p-6 md:col-span-2 border border-red-500/20 bg-red-500/[0.02]" variant="strong">
           <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-red-400">
             <AlertCircle size={20} className="text-red-400" />
-            Danger Zone
+            {t('profile:dangerZone', 'Danger Zone')}
           </h2>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-white">Delete All My Data</p>
+              <p className="text-sm font-semibold text-white">{t('profile:deleteAllMyData', 'Delete All My Data')}</p>
               <p className="text-xs text-white/50 mt-1">
-                Permanently delete your profile, crop plans, transactions, scans, and all other data from our server and your local device. This action is irreversible.
+                {t('profile:deleteDataDesc', 'Permanently delete your profile, crop plans, transactions, scans, and all other data from our server and your local device. This action is irreversible.')}
               </p>
             </div>
             <button
@@ -977,10 +984,10 @@ export function ProfilePage() {
             >
               {deleting ? (
                 <>
-                  <Loader2 size={14} className="animate-spin" /> Deleting...
+                  <Loader2 size={14} className="animate-spin" /> {t('common:deleting', 'Deleting...')}
                 </>
               ) : (
-                'Delete All My Data'
+                t('profile:deleteAllMyData', 'Delete All My Data')
               )}
             </button>
           </div>
@@ -995,7 +1002,7 @@ export function ProfilePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl relative">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <User size={18} className="text-[#87A96B]" /> Edit Farmer Information
+              <User size={18} className="text-[#87A96B]" /> {t('profile:editFarmerInfo', 'Edit Farmer Information')}
             </h3>
             {validationError && (
               <div className="mb-4 flex items-center gap-2 rounded-2xl bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-400">
@@ -1005,24 +1012,24 @@ export function ProfilePage() {
             )}
             <div className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Full Name</label>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">{t('profile:name')}</label>
                 <input type="text" className={inputClass} value={formName} onChange={e => setFormName(e.target.value)} />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Phone Number</label>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">{t('profile:phoneLabel')}</label>
                 <input type="tel" className={inputClass} value={formPhone} onChange={e => setFormPhone(e.target.value)} />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Account Email</label>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">{t('profile:accountEmail')}</label>
                 <input type="email" className={inputClass} value={formEmail} onChange={e => setFormEmail(e.target.value)} />
               </div>
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <button onClick={() => setFarmerInfoModal(false)} className="rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-2.5 text-sm font-bold text-white transition active:scale-[0.98]">
-                Cancel
+                {t('common:cancel')}
               </button>
               <button onClick={handleSaveFarmerInfo} className="rounded-2xl bg-[#87A96B] hover:bg-[#87A96B]/90 px-5 py-2.5 text-sm font-bold text-white transition active:scale-[0.98]">
-                Save Changes
+                {t('common:saveChanges')}
               </button>
             </div>
           </div>
@@ -1036,7 +1043,7 @@ export function ProfilePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl relative">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Layers size={18} className="text-[#87A96B]" /> Edit Farm Details
+              <Layers size={18} className="text-[#87A96B]" /> {t('profile:editFarmDetails')}
             </h3>
             {validationError && (
               <div className="mb-4 flex items-center gap-2 rounded-2xl bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-400">
@@ -1046,20 +1053,20 @@ export function ProfilePage() {
             )}
             <div className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Farm Name</label>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">{t('profile:farmName')}</label>
                 <input type="text" className={inputClass} value={formFarmName} onChange={e => setFormFarmName(e.target.value)} />
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2">
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Farm Size</label>
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">{t('profile:farmSize')}</label>
                   <input type="number" step="0.01" className={inputClass} value={formFarmAreaValue} onChange={e => setFormFarmAreaValue(e.target.value)} />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Unit</label>
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">{t('onboarding.unit', 'Unit')}</label>
                   <div className="relative">
                     <select className={inputClass} value={formFarmAreaUnit} onChange={e => setFormFarmAreaUnit(e.target.value)}>
                       {AREA_UNITS.map(u => (
-                        <option key={u} className="bg-zinc-800" value={u}>{u}</option>
+                        <option key={u} className="bg-zinc-800" value={u}>{tEnum('areaUnit', u)}</option>
                       ))}
                     </select>
                     <ChevronDown size={14} className="absolute right-4 top-4 text-white/50 pointer-events-none" />
@@ -1067,11 +1074,11 @@ export function ProfilePage() {
                 </div>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Soil Type</label>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">{t('profile:soilType')}</label>
                 <div className="relative">
                   <select className={inputClass} value={formSoilType} onChange={e => setFormSoilType(e.target.value)}>
                     {SOIL_TYPES.map(s => (
-                      <option key={s} className="bg-zinc-800" value={s}>{s}</option>
+                      <option key={s} className="bg-zinc-800" value={s}>{tEnum('soilType', s)}</option>
                     ))}
                   </select>
                   <ChevronDown size={14} className="absolute right-4 top-4 text-white/50 pointer-events-none" />
@@ -1080,10 +1087,10 @@ export function ProfilePage() {
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <button onClick={() => setFarmDetailsModal(false)} className="rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-2.5 text-sm font-bold text-white transition active:scale-[0.98]">
-                Cancel
+                {t('common:cancel')}
               </button>
               <button onClick={handleSaveFarmDetails} className="rounded-2xl bg-[#87A96B] hover:bg-[#87A96B]/90 px-5 py-2.5 text-sm font-bold text-white transition active:scale-[0.98]">
-                Save Changes
+                {t('common:saveChanges')}
               </button>
             </div>
           </div>
@@ -1095,7 +1102,7 @@ export function ProfilePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl relative">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Droplets size={18} className="text-[#87A96B]" /> Edit Water Sources
+              <Droplets size={18} className="text-[#87A96B]" /> {t('profile:editWaterSources')}
             </h3>
             {validationError && (
               <div className="mb-4 flex items-center gap-2 rounded-2xl bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-400">
@@ -1123,7 +1130,7 @@ export function ProfilePage() {
                     )}
                   >
                     <span className={cn("h-2 w-2 rounded-full", selected ? "bg-[#87A96B]" : "bg-white/20")} />
-                    {source}
+                    {tEnum('waterSource', source)}
                   </button>
                 )
               })}
@@ -1131,10 +1138,10 @@ export function ProfilePage() {
 
             <div className="mt-6 flex justify-end gap-3">
               <button onClick={() => setWaterSourcesModal(false)} className="rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-2.5 text-sm font-bold text-white transition active:scale-[0.98]">
-                Cancel
+                {t('common:cancel')}
               </button>
               <button onClick={handleSaveWaterSources} className="rounded-2xl bg-[#87A96B] hover:bg-[#87A96B]/90 px-5 py-2.5 text-sm font-bold text-white transition active:scale-[0.98]">
-                Save Changes
+                {t('common:saveChanges')}
               </button>
             </div>
           </div>
@@ -1146,7 +1153,7 @@ export function ProfilePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <FlaskConical size={18} className="text-[#87A96B]" /> Update Soil N-P-K Nutrients
+              <FlaskConical size={18} className="text-[#87A96B]" /> {t('profile:updateNPK')}
             </h3>
 
             {validationError && (
@@ -1162,13 +1169,13 @@ export function ProfilePage() {
                 onClick={() => setSoilTab('upload')}
                 className={cn("flex-1 rounded-xl py-2 text-xs font-bold transition-all", soilTab === 'upload' ? "bg-white/10 text-white shadow-lg" : "text-white/40 hover:text-white/70")}
               >
-                Auto-Extract (Lab PDF/Image)
+                {t('profile:autoExtract')}
               </button>
               <button
                 onClick={() => setSoilTab('manual')}
                 className={cn("flex-1 rounded-xl py-2 text-xs font-bold transition-all", soilTab === 'manual' ? "bg-white/10 text-white shadow-lg" : "text-white/40 hover:text-white/70")}
               >
-                Manual Entry
+                {t('profile:manualEntry')}
               </button>
             </div>
 
@@ -1186,35 +1193,35 @@ export function ProfilePage() {
                   {extractionStatus === 'processing' ? (
                     <div className="text-center">
                       <Loader2 size={32} className="mx-auto mb-3 animate-spin text-[#87A96B]" />
-                      <p className="text-sm font-semibold text-white/80">Running AI OCR Analysis...</p>
-                      <p className="mt-1 text-[10px] text-white/40 font-mono">Converting document to digital data</p>
+                      <p className="text-sm font-semibold text-white/80">{t('profile:runningOcr')}</p>
+                      <p className="mt-1 text-[10px] text-white/40 font-mono">{t('profile:convertingOcr')}</p>
                     </div>
                   ) : (
                     <div className="text-center p-4">
                       <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/5 text-white/60">
                         <Upload size={24} />
                       </div>
-                      <p className="text-sm font-semibold text-white/80">Upload Soil Lab Report</p>
-                      <p className="mt-1 text-xs text-white/40">PDF, JPG, PNG supported</p>
+                      <p className="text-sm font-semibold text-white/80">{t('profile:uploadLabReport')}</p>
+                      <p className="mt-1 text-xs text-white/40">{t('profile:supportedFormats')}</p>
                     </div>
                   )}
                 </div>
 
                 {extractionStatus === 'success' && (
                   <div className="flex items-center gap-2 rounded-2xl bg-green-500/10 p-3 text-xs text-green-400 border border-green-500/20">
-                    <CheckCircle size={16} /> All Nitrogen, Phosphorus, Potassium extracted successfully!
+                    <CheckCircle size={16} /> {t('profile:ocrSuccess')}
                   </div>
                 )}
                 {extractionStatus === 'partial' && (
                   <div className="flex items-center gap-2 rounded-2xl bg-amber-500/10 p-3 text-xs text-amber-400 border border-amber-500/20">
-                    <AlertCircle size={16} /> Some values were not found. Please review extracted values below.
+                    <AlertCircle size={16} /> {t('profile:ocrPartial')}
                   </div>
                 )}
                 {extractionStatus === 'failed' && (
                   <div className="flex items-start gap-2 rounded-2xl bg-red-500/10 p-3 text-xs text-red-400 border border-red-500/20">
                     <XCircle size={16} className="mt-0.5 shrink-0" />
                     <div>
-                      <p className="font-bold">Extraction Failed</p>
+                      <p className="font-bold">{t('profile:ocrFailed')}</p>
                       <p className="opacity-80 mt-0.5">{ocrErrorMsg}</p>
                     </div>
                   </div>
@@ -1226,15 +1233,15 @@ export function ProfilePage() {
             <div className="mt-6 space-y-4">
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="mb-1 block text-[10px] font-bold text-white/40 uppercase">Nitrogen (N)</label>
+                  <label className="mb-1 block text-[10px] font-bold text-white/40 uppercase">{t('profile:nitrogen')} (N)</label>
                   <input type="number" className={inputClass} value={formNitrogen} onChange={e => setFormNitrogen(e.target.value)} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-[10px] font-bold text-white/40 uppercase">Phosphorus (P)</label>
+                  <label className="mb-1 block text-[10px] font-bold text-white/40 uppercase">{t('profile:phosphorus')} (P)</label>
                   <input type="number" className={inputClass} value={formPhosphorus} onChange={e => setFormPhosphorus(e.target.value)} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-[10px] font-bold text-white/40 uppercase">Potassium (K)</label>
+                  <label className="mb-1 block text-[10px] font-bold text-white/40 uppercase">{t('profile:potassium')} (K)</label>
                   <input type="number" className={inputClass} value={formPotassium} onChange={e => setFormPotassium(e.target.value)} />
                 </div>
               </div>
@@ -1251,10 +1258,10 @@ export function ProfilePage() {
 
             <div className="mt-6 flex justify-end gap-3">
               <button onClick={() => setSoilNPKModal(false)} className="rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-2.5 text-sm font-bold text-white transition active:scale-[0.98]">
-                Cancel
+                {t('common:cancel')}
               </button>
               <button onClick={handleSaveSoilNPKData} className="rounded-2xl bg-[#87A96B] hover:bg-[#87A96B]/90 px-5 py-2.5 text-sm font-bold text-white transition active:scale-[0.98]">
-                Save Soil Data
+                {t('profile:saveSoilData', 'Save Soil Data')}
               </button>
             </div>
           </div>
@@ -1267,7 +1274,7 @@ export function ProfilePage() {
           <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
               <Sprout size={18} className="text-[#87A96B]" />
-              {activeCropPlan ? 'Edit Active Crop Details' : 'Add Active Crop'}
+              {activeCropPlan ? t('profile:editActiveCropDetails', 'Edit Active Crop Details') : t('profile:addActiveCrop', 'Add Active Crop')}
             </h3>
             {validationError && (
               <div className="mb-4 flex items-center gap-2 rounded-2xl bg-red-500/10 border border-red-500/20 p-3 text-xs text-red-400">
@@ -1278,11 +1285,11 @@ export function ProfilePage() {
 
             <div className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Crop</label>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">{t('profile:cropName', 'Crop')}</label>
                 <div className="relative">
                   <select className={inputClass} value={formCropType} onChange={e => setFormCropType(e.target.value)}>
                     {Object.keys(cropTemplates).map(c => (
-                      <option key={c} className="bg-zinc-800" value={c}>{c}</option>
+                      <option key={c} className="bg-zinc-800" value={c}>{tEnum('cropType', c)}</option>
                     ))}
                   </select>
                   <ChevronDown size={14} className="absolute right-4 top-4 text-white/50 pointer-events-none" />
@@ -1290,21 +1297,21 @@ export function ProfilePage() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Variety</label>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">{t('profile:variety', 'Variety')}</label>
                 <input type="text" className={inputClass} value={formVariety} onChange={e => setFormVariety(e.target.value)} />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2">
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Crop Area</label>
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">{t('profile:cropArea', 'Crop Area')}</label>
                   <input type="number" step="0.01" className={inputClass} value={formCropAreaValue} onChange={e => setFormCropAreaValue(e.target.value)} />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Unit</label>
+                  <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">{t('profile:unit', 'Unit')}</label>
                   <div className="relative">
                     <select className={inputClass} value={formCropAreaUnit} onChange={e => setFormCropAreaUnit(e.target.value)}>
                       {AREA_UNITS.map(u => (
-                        <option key={u} className="bg-zinc-800" value={u}>{u}</option>
+                        <option key={u} className="bg-zinc-800" value={u}>{tEnum('areaUnit', u)}</option>
                       ))}
                     </select>
                     <ChevronDown size={14} className="absolute right-4 top-4 text-white/50 pointer-events-none" />
@@ -1313,26 +1320,26 @@ export function ProfilePage() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Sowing Date</label>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">{t('profile:sowingDate', 'Sowing Date')}</label>
                 <input type="date" className={inputClass} value={formSowingDate} onChange={e => setFormSowingDate(e.target.value)} />
                 {activeCropPlan && (
                   <div className="mt-1 text-[10px] text-amber-400">
-                    * Changing the sowing date or crop type will regenerate your calendar recommendations.
+                    {t('profile:sowingDateWarning', '* Changing the sowing date or crop type will regenerate your calendar recommendations.')}
                   </div>
                 )}
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Crop Stage (Farmer Selected)</label>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">{t('profile:cropStageFarmerSelected', 'Crop Stage (Farmer Selected)')}</label>
                 <div className="relative">
                   <select className={inputClass} value={formStage} onChange={e => setFormStage(e.target.value)}>
-                    <option value="" className="bg-zinc-800">Clear Override (Use System Calculation)</option>
+                    <option value="" className="bg-zinc-800">{t('profile:clearOverride', 'Clear Override (Use System Calculation)')}</option>
                     {(
                       (cropTemplates[formCropType]?.stages || []).map(s => typeof s === 'object' ? s.name : s).length > 0
                         ? (cropTemplates[formCropType]?.stages || []).map(s => typeof s === 'object' ? s.name : s)
                         : ['Germination', 'Vegetative', 'Flowering', 'Harvesting']
                     ).map(name => (
-                      <option key={name} className="bg-zinc-800" value={name}>{name}</option>
+                      <option key={name} className="bg-zinc-800" value={name}>{tEnum('cropStage', name)}</option>
                     ))}
                   </select>
                   <ChevronDown size={14} className="absolute right-4 top-4 text-white/50 pointer-events-none" />
@@ -1340,11 +1347,11 @@ export function ProfilePage() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">Crop Condition</label>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-white/50">{t('profile:cropCondition', 'Crop Condition')}</label>
                 <div className="relative">
                   <select className={inputClass} value={formCondition} onChange={e => setFormCondition(e.target.value)}>
                     {CROP_CONDITIONS.map(cond => (
-                      <option key={cond} className="bg-zinc-800" value={cond}>{cond}</option>
+                      <option key={cond} className="bg-zinc-800" value={cond}>{tEnum('cropCondition', cond)}</option>
                     ))}
                   </select>
                   <ChevronDown size={14} className="absolute right-4 top-4 text-white/50 pointer-events-none" />
@@ -1354,10 +1361,10 @@ export function ProfilePage() {
 
             <div className="mt-6 flex justify-end gap-3">
               <button onClick={() => setCropPlanModal(false)} className="rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-2.5 text-sm font-bold text-white transition active:scale-[0.98]">
-                Cancel
+                {t('common:cancel')}
               </button>
               <button onClick={handleSaveCropPlan} className="rounded-2xl bg-[#87A96B] hover:bg-[#87A96B]/90 px-5 py-2.5 text-sm font-bold text-white transition active:scale-[0.98]">
-                Save Crop details
+                {t('profile:saveCropDetails', 'Save Crop details')}
               </button>
             </div>
           </div>
@@ -1369,7 +1376,7 @@ export function ProfilePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl relative">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <Languages size={18} className="text-[#87A96B]" /> Language Settings
+              <Languages size={18} className="text-[#87A96B]" /> {t('profile:languageSettings', 'Language Settings')}
             </h3>
 
             <div className="space-y-2">
@@ -1415,7 +1422,7 @@ export function ProfilePage() {
 
             <div className="mt-6 flex justify-end">
               <button onClick={() => setLanguageModal(false)} className="rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-2.5 text-sm font-bold text-white transition active:scale-[0.98]">
-                Close
+                {t('common:close')}
               </button>
             </div>
           </div>

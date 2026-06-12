@@ -19,7 +19,7 @@ export function AIAssistantPill() {
   const [syncing, setSyncing] = useState(false)
   const [shaky, setShaky] = useState(false)
   const [messages, setMessages] = useState<Message[]>(() => [
-    { role: 'assistant', content: t('assistant.welcome') },
+    { role: 'assistant', content: t('assistant.welcome', 'Hello! I am AgroGPT, your offline-first agricultural assistant. How can I help you today?') },
   ])
 
   // ── Connectivity Logic ──────────────────────────────────────────────────────
@@ -157,7 +157,12 @@ export function AIAssistantPill() {
   }
 
   const quickChips = useMemo(
-    () => [t('assistant.chipActionToday'), t('assistant.chipPestRisk'), t('assistant.chipWaterAcre'), t('assistant.chipFertilizerPlan')],
+    () => [
+      t('assistant.chipActionToday', 'What should I do today?'),
+      t('assistant.chipPestRisk', 'Pest risk?'),
+      t('assistant.chipWaterAcre', 'Water requirement?'),
+      t('assistant.chipFertilizerPlan', 'Fertilizer advice?')
+    ],
     [t],
   )
 
@@ -165,7 +170,7 @@ export function AIAssistantPill() {
   const statusInfo = useMemo(() => {
     if (syncing) return { label: 'Syncing...', color: 'text-secondary', icon: RefreshCw }
     if (shaky) return { label: 'Connection shaky. Retrying...', color: 'text-amber-400', icon: RefreshCw }
-    if (loading) return { label: t('assistant.thinking'), color: 'text-white/50', icon: Sparkles }
+    if (loading) return { label: t('assistant.thinking', 'Thinking...'), color: 'text-white/50', icon: Sparkles }
 
     switch (connectivity) {
       case 'online':
@@ -200,7 +205,7 @@ export function AIAssistantPill() {
               )} />
             </span>
             <div className="text-left leading-tight">
-              <div className="text-sm font-semibold text-white">{t('assistant.pillTitle')}</div>
+              <div className="text-sm font-semibold text-white">{t('assistant.pillTitle', 'Ask AgroGPT')}</div>
               <div className="text-xs text-white/60">{statusInfo.label}</div>
             </div>
           </button>
@@ -218,7 +223,7 @@ export function AIAssistantPill() {
                     <statusInfo.icon size={18} className={statusInfo.color} />
                   </div>
                   <div className="leading-tight">
-                    <div className="text-sm font-semibold text-white">{t('assistant.title')}</div>
+                    <div className="text-sm font-semibold text-white">{t('assistant.title', 'AgroGPT Assistant')}</div>
                     <div className={cn("text-xs", statusInfo.color)}>{statusInfo.label}</div>
                   </div>
                 </div>
@@ -270,7 +275,7 @@ export function AIAssistantPill() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') void send(query) }}
-                    placeholder={t('assistant.inputPlaceholder')}
+                    placeholder={t('assistant.inputPlaceholder', 'Ask about pests, fertilizer, seeds...')}
                     className="h-11 flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 text-sm text-white outline-none focus:border-stroke-2"
                   />
                   <button

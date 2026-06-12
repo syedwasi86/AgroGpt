@@ -9,6 +9,7 @@ import { cropTemplates } from '../crop-calendar/templates/cropTemplates'
 import { cropCalendarService } from '../crop-calendar/services/cropCalendarService'
 import { convertToAcres } from '../../core/utils/formulas'
 import { backgroundSync } from '../../core/api/syncEngine'
+import { useEnumTranslation } from '../../hooks/useEnumTranslation'
 import {
   Languages,
   User,
@@ -30,7 +31,8 @@ import {
 const AREA_UNITS = ['Acre', 'Hectare', 'Guntha', 'Cent', 'Bigha', 'Square Meter']
 
 export function OnboardingPage() {
-  const { t, i18n } = useTranslation()
+  const { t, i18n } = useTranslation(['common', 'profile', 'enums', 'validation'])
+  const { tEnum } = useEnumTranslation()
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -192,7 +194,7 @@ export function OnboardingPage() {
     if (step === 1) {
       // Language Selection
       if (!prefLang) {
-        setValidationError('Please select a language.')
+        setValidationError(t('validation:languageRequired'))
         return
       }
       // Apply i18n language change immediately
@@ -202,7 +204,7 @@ export function OnboardingPage() {
     else if (step === 2) {
       // Farmer Name
       if (!farmerName.trim()) {
-        setValidationError('Name is required.')
+        setValidationError(t('validation:nameRequired'))
         return
       }
       setStep(3)
@@ -212,7 +214,7 @@ export function OnboardingPage() {
       const hasGPS = latitude !== undefined && longitude !== undefined
       const hasManual = stateName.trim() !== '' && districtName.trim() !== '' && villageName.trim() !== ''
       if (!hasGPS && !hasManual) {
-        setValidationError('Please provide GPS coordinates or enter manual location details.')
+        setValidationError(t('validation:gpsError'))
         return
       }
       // Construct location label if not already set or updated manually
@@ -230,7 +232,7 @@ export function OnboardingPage() {
       // Farm Size
       const val = parseFloat(farmAreaValue)
       if (isNaN(val) || val <= 0) {
-        setValidationError('Please enter a valid farm size greater than 0.')
+        setValidationError(t('validation:farmSizeError'))
         return
       }
       setStep(6)
@@ -238,7 +240,7 @@ export function OnboardingPage() {
     else if (step === 6) {
       // Soil Type
       if (!soilType) {
-        setValidationError('Please select a soil type.')
+        setValidationError(t('validation:soilRequired'))
         return
       }
       setStep(7)
@@ -246,7 +248,7 @@ export function OnboardingPage() {
     else if (step === 7) {
       // Water Source
       if (selectedWaterSources.length === 0) {
-        setValidationError('Please select at least one irrigation/water source.')
+        setValidationError(t('validation:waterRequired'))
         return
       }
       // Profile completion write triggered after completing step 7
@@ -255,7 +257,7 @@ export function OnboardingPage() {
     else if (step === 8) {
       // Crop Selection
       if (selectedCrop === 'Custom' && !customCropName.trim()) {
-        setValidationError('Please enter a crop name.')
+        setValidationError(t('validation:cropNameRequired'))
         return
       }
       setStep(9)
@@ -264,12 +266,17 @@ export function OnboardingPage() {
       // Crop Area
       const val = parseFloat(cropAreaValue)
       if (isNaN(val) || val <= 0) {
-        setValidationError('Please enter a valid area under crop.')
+        setValidationError(t('validation:cropAreaRequired'))
         return
       }
       // Area validation: crop area must be <= farm area
       if (cropAreaInAcres > farmAreaInAcres) {
-        setValidationError(`Crop area (${cropAreaInAcres.toFixed(2)} Acres) cannot exceed total farm size (${farmAreaInAcres.toFixed(2)} Acres).`)
+        setValidationError(
+          t('validation:cropAreaExceeds', {
+            cropAcres: cropAreaInAcres.toFixed(2),
+            farmAcres: farmAreaInAcres.toFixed(2)
+          })
+        )
         return
       }
       setStep(10)
@@ -277,7 +284,7 @@ export function OnboardingPage() {
     else if (step === 10) {
       // Sowing Date
       if (!sowingDate) {
-        setValidationError('Please select a sowing date.')
+        setValidationError(t('validation:sowingDateRequired'))
         return
       }
       setStep(11)
@@ -285,7 +292,7 @@ export function OnboardingPage() {
     else if (step === 11) {
       // Stage
       if (!selectedStage) {
-        setValidationError('Please select a stage.')
+        setValidationError(t('validation:cropStageRequired', 'Please select a crop stage.'))
         return
       }
       setStep(12)
@@ -429,10 +436,10 @@ export function OnboardingPage() {
         {/* Step Indicator */}
         <div className="flex justify-between items-center mb-6">
           <span className="text-[10px] uppercase font-black tracking-widest text-[#87A96B]">
-            {step <= 7 ? '1. Profile Setup' : '2. Crop Setup'}
+            {step <= 7 ? t('profile:profileSetup') : t('profile:cropSetup')}
           </span>
           <span className="text-white/40 text-xs font-bold">
-            Step {step} of 12
+            {t('profile:stepIndicator', { step })}
           </span>
         </div>
 
@@ -459,9 +466,9 @@ export function OnboardingPage() {
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Languages className="text-[#87A96B]" size={22} />
-                {t('onboarding.title', 'Choose Your Language')}
+                {t('profile:chooseLanguage')}
               </h2>
-              <p className="text-white/40 text-xs">select your preferred interface language</p>
+              <p className="text-white/40 text-xs">{t('profile:selectLanguageDesc')}</p>
             </div>
             
             <div className="grid grid-cols-1 gap-3">
@@ -496,13 +503,13 @@ export function OnboardingPage() {
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <User className="text-[#87A96B]" size={22} />
-                {t('onboarding.farmerName', 'What is your name?')}
+                {t('profile:enterName')}
               </h2>
-              <p className="text-white/40 text-xs">how should we address you in notifications and advisory reports</p>
+              <p className="text-white/40 text-xs">{t('profile:enterNameSub')}</p>
             </div>
             
             <div>
-              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Farmer Name</label>
+              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">{t('profile:name')}</label>
               <input
                 type="text"
                 placeholder={t('onboarding.namePlaceholder', 'Enter your full name')}
@@ -521,9 +528,9 @@ export function OnboardingPage() {
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <MapPin className="text-[#87A96B]" size={22} />
-                {t('onboarding.farmLocation', 'Where is your farm located?')}
+                {t('profile:farmLocation')}
               </h2>
-              <p className="text-white/40 text-xs">enables micro-climate weather planning and soil advisory maps</p>
+              <p className="text-white/40 text-xs">{t('profile:gpsProgress')}</p>
             </div>
 
             <button
@@ -539,33 +546,33 @@ export function OnboardingPage() {
               {gpsLoading ? (
                 <>
                   <Loader2 size={14} className="animate-spin text-white" />
-                  Locating via GPS...
+                  {t('profile:locatingGps')}
                 </>
               ) : latitude !== undefined ? (
                 <>
                   <Check size={14} />
-                  GPS Coords Acquired
+                  {t('profile:gpsCoordsAcquired')}
                 </>
               ) : (
                 <>
                   <Compass size={14} />
-                  Use Current Location (GPS)
+                  {t('profile:useCurrentGps')}
                 </>
               )}
             </button>
 
-            {gpsError && <p className="text-[10px] text-amber-400 italic text-center">{gpsError}</p>}
+            {gpsError && <p className="text-[10px] text-amber-400 italic text-center">{t('validation:gpsError')}</p>}
 
             <div className="pt-2 text-center text-white/30 text-[10px] font-bold uppercase tracking-widest">
-              — OR ENTER MANUALLY —
+              {t('onboarding.orEnterManually', '— OR ENTER MANUALLY —')}
             </div>
 
             <div className="space-y-3">
               <div>
-                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-1">State</label>
+                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-1">{t('profile:state')}</label>
                 <input
                   type="text"
-                  placeholder="e.g. Telangana"
+                  placeholder={t('profile:statePlaceholder', 'e.g. Telangana')}
                   value={stateName}
                   onChange={e => {
                     setStateName(e.target.value)
@@ -575,10 +582,10 @@ export function OnboardingPage() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-1">District</label>
+                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-1">{t('profile:district')}</label>
                 <input
                   type="text"
-                  placeholder="e.g. Warangal"
+                  placeholder={t('profile:districtPlaceholder', 'e.g. Warangal')}
                   value={districtName}
                   onChange={e => {
                     setDistrictName(e.target.value)
@@ -588,10 +595,10 @@ export function OnboardingPage() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-1">Village / Town</label>
+                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-1">{t('profile:village')}</label>
                 <input
                   type="text"
-                  placeholder="e.g. Hasanparthy"
+                  placeholder={t('profile:villagePlaceholder', 'e.g. Hasanparthy')}
                   value={villageName}
                   onChange={e => {
                     setVillageName(e.target.value)
@@ -610,16 +617,16 @@ export function OnboardingPage() {
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Sprout className="text-[#87A96B]" size={22} />
-                {t('onboarding.farmName', 'What should we call your farm?')}
+                {t('profile:farmName')}
               </h2>
-              <p className="text-white/40 text-xs">optional name to distinguish fields during future multi-farm splits</p>
+              <p className="text-white/40 text-xs">{t('onboarding.farmNameProgress', 'optional name to distinguish fields during future multi-farm splits')}</p>
             </div>
             
             <div>
-              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Farm Name (Optional)</label>
+              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">{t('profile:farmName')}</label>
               <input
                 type="text"
-                placeholder={t('onboarding.farmNamePlaceholder', 'e.g. Ramesh Farm, Home Farm')}
+                placeholder={t('profile:farmNamePlaceholder', 'e.g. Ramesh Farm, Home Farm')}
                 value={farmName}
                 onChange={e => setFarmName(e.target.value)}
                 className={inputClass}
@@ -634,34 +641,34 @@ export function OnboardingPage() {
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Layers className="text-[#87A96B]" size={22} />
-                {t('onboarding.farmSize', 'How much land do you farm?')}
+                {t('profile:farmSize')}
               </h2>
-              <p className="text-white/40 text-xs">used to scale recommended pesticide, seed, and fertilizer weights</p>
+              <p className="text-white/40 text-xs">{t('profile:farmSizeProgress')}</p>
             </div>
 
             <div className="flex gap-2">
               <div className="flex-1">
-                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-2">Land Value</label>
+                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-2">{t('onboarding.landValue', 'Land Value')}</label>
                 <input
                   type="number"
                   step="0.1"
                   min="0.1"
                   required
-                  placeholder="e.g. 5"
+                  placeholder={t('profile:areaValuePlaceholder', 'e.g. 5')}
                   value={farmAreaValue}
                   onChange={e => setFarmAreaValue(e.target.value)}
                   className={inputClass}
                 />
               </div>
               <div className="w-1/3">
-                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-2">Unit</label>
+                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-2">{t('onboarding.unit', 'Unit')}</label>
                 <select
                   value={farmAreaUnit}
                   onChange={e => setFarmAreaUnit(e.target.value)}
                   className="w-full bg-black/40 border border-white/10 rounded-2xl px-3 py-3.5 text-sm text-white focus:outline-none focus:border-primary-500 h-[50px] mt-0.5"
                 >
                   {AREA_UNITS.map(u => (
-                    <option key={u} value={u}>{u}</option>
+                    <option key={u} value={u}>{tEnum('areaUnit', u)}</option>
                   ))}
                 </select>
               </div>
@@ -669,7 +676,7 @@ export function OnboardingPage() {
 
             {farmAreaValue && (
               <p className="text-[10px] text-[#87A96B] font-semibold italic">
-                Normalized size: {farmAreaInAcres.toFixed(2)} Acres
+                {t('onboarding.normalizedSize', 'Normalized size: {{size}} Acres', { size: farmAreaInAcres.toFixed(2) })}
               </p>
             )}
           </div>
@@ -681,9 +688,9 @@ export function OnboardingPage() {
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <FlaskConical className="text-[#87A96B]" size={22} />
-                {t('onboarding.soilType', 'What type of soil do you have?')}
+                {t('profile:soilType')}
               </h2>
-              <p className="text-white/40 text-xs">NPK baseline estimates are matched against soil profiles</p>
+              <p className="text-white/40 text-xs">{t('profile:soilProgress')}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
@@ -705,7 +712,7 @@ export function OnboardingPage() {
                       : 'bg-white/2 border-white/5 text-white/70 hover:bg-white/5 hover:border-white/10'
                   }`}
                 >
-                  {soil}
+                  {tEnum('soilType', soil)}
                 </button>
               ))}
             </div>
@@ -718,9 +725,9 @@ export function OnboardingPage() {
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Droplets className="text-[#87A96B]" size={22} />
-                {t('onboarding.waterSource', 'How do you irrigate your farm?')}
+                {t('profile:waterSources')}
               </h2>
-              <p className="text-white/40 text-xs">select all methods that supply water to your crop plots</p>
+              <p className="text-white/40 text-xs">{t('profile:waterProgress')}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
@@ -745,7 +752,7 @@ export function OnboardingPage() {
                         : 'bg-white/2 border-white/5 text-white/70 hover:bg-white/5 hover:border-white/10'
                     }`}
                   >
-                    {src}
+                    {tEnum('waterSource', src)}
                   </button>
                 )
               })}
@@ -759,9 +766,9 @@ export function OnboardingPage() {
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Sprout className="text-[#87A96B]" size={22} />
-                {t('onboarding.cropSelection', 'Which crop are you growing?')}
+                {t('profile:cropName')}
               </h2>
-              <p className="text-white/40 text-xs">generate an agronomic calendar template for your first crop</p>
+              <p className="text-white/40 text-xs">{t('profile:cropProgress')}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -779,9 +786,9 @@ export function OnboardingPage() {
                       : 'bg-white/2 border-white/5 text-white/70 hover:bg-white/5'
                   }`}
                 >
-                  <span className="font-extrabold text-sm">{crop}</span>
+                  <span className="font-extrabold text-sm">{tEnum('cropType', crop)}</span>
                   <span className="text-[9px] opacity-40 mt-1">
-                    {cropTemplates[crop]?.variety || 'Standard Template'}
+                    {cropTemplates[crop]?.variety ? t('profile:customVariety') : t('onboarding.standardTemplate', 'Standard Template')}
                   </span>
                 </button>
               ))}
@@ -794,17 +801,17 @@ export function OnboardingPage() {
                     : 'bg-white/2 border-white/5 text-white/70 hover:bg-white/5'
                 }`}
               >
-                <div className="font-extrabold text-sm">Other Crop</div>
-                <div className="text-[9px] opacity-40 mt-1">Custom custom schedule</div>
+                <div className="font-extrabold text-sm">{t('profile:otherCrop')}</div>
+                <div className="text-[9px] opacity-40 mt-1">{t('onboarding.customSchedule', 'Custom schedule')}</div>
               </button>
             </div>
 
             {selectedCrop === 'Custom' && (
               <div className="mt-3">
-                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-2">Crop Name</label>
+                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-2">{t('profile:cropName')}</label>
                 <input
                   type="text"
-                  placeholder="e.g. Wheat, Green Gram"
+                  placeholder={t('profile:cropNamePlaceholder', 'e.g. Wheat, Green Gram')}
                   value={customCropName}
                   onChange={e => setCustomCropName(e.target.value)}
                   className={inputClass}
@@ -820,33 +827,38 @@ export function OnboardingPage() {
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Layers className="text-[#87A96B]" size={22} />
-                {t('onboarding.cropArea', 'How much area is under this crop?')}
+                {t('profile:cropArea')}
               </h2>
-              <p className="text-white/40 text-xs">must not exceed total farm size ({farmAreaValue} {farmAreaUnit})</p>
+              <p className="text-white/40 text-xs">
+                {t('onboarding.mustNotExceedFarm', 'must not exceed total farm size ({{value}} {{unit}})', {
+                  value: farmAreaValue,
+                  unit: tEnum('areaUnit', farmAreaUnit)
+                })}
+              </p>
             </div>
 
             <div className="flex gap-2">
               <div className="flex-1">
-                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-2">Crop Area Value</label>
+                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-2">{t('onboarding.cropAreaValue', 'Crop Area Value')}</label>
                 <input
                   type="number"
                   step="0.1"
                   min="0.1"
-                  placeholder="e.g. 2"
+                  placeholder={t('profile:areaValuePlaceholder', 'e.g. 5')}
                   value={cropAreaValue}
                   onChange={e => setCropAreaValue(e.target.value)}
                   className={inputClass}
                 />
               </div>
               <div className="w-1/3">
-                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-2">Unit</label>
+                <label className="block text-[10px] font-bold text-white/40 uppercase tracking-wider mb-2">{t('onboarding.unit', 'Unit')}</label>
                 <select
                   value={cropAreaUnit}
                   onChange={e => setCropAreaUnit(e.target.value)}
                   className="w-full bg-black/40 border border-white/10 rounded-2xl px-3 py-3.5 text-sm text-white focus:outline-none focus:border-primary-500 h-[50px] mt-0.5"
                 >
                   {AREA_UNITS.map(u => (
-                    <option key={u} value={u}>{u}</option>
+                    <option key={u} value={u}>{tEnum('areaUnit', u)}</option>
                   ))}
                 </select>
               </div>
@@ -855,10 +867,13 @@ export function OnboardingPage() {
             {cropAreaValue && (
               <div className="space-y-1 text-[10px] italic">
                 <p className="text-[#87A96B] font-semibold">
-                  Normalized crop area: {cropAreaInAcres.toFixed(2)} Acres
+                  {t('onboarding.normalizedCropArea', 'Normalized crop area: {{size}} Acres', { size: cropAreaInAcres.toFixed(2) })}
                 </p>
                 <p className="text-white/30 font-medium">
-                  Farm limit check: {cropAreaInAcres.toFixed(2)} / {farmAreaInAcres.toFixed(2)} Acres utilized
+                  {t('onboarding.farmLimitCheck', 'Farm limit check: {{crop}} / {{farm}} Acres utilized', {
+                    crop: cropAreaInAcres.toFixed(2),
+                    farm: farmAreaInAcres.toFixed(2)
+                  })}
                 </p>
               </div>
             )}
@@ -871,13 +886,13 @@ export function OnboardingPage() {
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <Calendar className="text-[#87A96B]" size={22} />
-                {t('onboarding.sowingDate', 'When did you sow this crop?')}
+                {t('profile:sowingDate')}
               </h2>
-              <p className="text-white/40 text-xs">sets the day zero reference point for your scheduling calendar</p>
+              <p className="text-white/40 text-xs">{t('profile:sowingProgress')}</p>
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Sowing Date</label>
+              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">{t('profile:sowingDate')}</label>
               <input
                 type="date"
                 required
@@ -895,9 +910,9 @@ export function OnboardingPage() {
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <TrendingUp className="text-[#87A96B]" size={22} />
-                {t('onboarding.cropStage', 'What stage is your crop currently in?')}
+                {t('profile:cropStage')}
               </h2>
-              <p className="text-white/40 text-xs">overrides calculated timelines with your active field observations</p>
+              <p className="text-white/40 text-xs">{t('profile:stageProgress')}</p>
             </div>
 
             <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
@@ -912,7 +927,7 @@ export function OnboardingPage() {
                       : 'bg-white/2 border-white/5 text-white/60 hover:bg-white/5'
                   }`}
                 >
-                  <span className="text-xs">{st}</span>
+                  <span className="text-xs">{tEnum('cropStage', st)}</span>
                   {selectedStage === st && <Check size={14} className="text-[#87A96B]" />}
                 </button>
               ))}
@@ -926,18 +941,18 @@ export function OnboardingPage() {
             <div className="space-y-2">
               <h2 className="text-xl font-bold text-white flex items-center gap-2">
                 <HelpCircle className="text-[#87A96B]" size={22} />
-                {t('onboarding.cropCondition', 'How is the crop condition?')}
+                {t('profile:cropCondition')}
               </h2>
-              <p className="text-white/40 text-xs">tunes daily AI commands and early hazard alert thresholds</p>
+              <p className="text-white/40 text-xs">{t('profile:conditionProgress')}</p>
             </div>
 
             <div className="grid grid-cols-1 gap-2.5">
               {[
-                { value: 'Healthy', label: 'Healthy (Green and growing well)' },
-                { value: 'Average', label: 'Average (Normal progress)' },
-                { value: 'Not Growing Well', label: 'Not Growing Well (Stunted shoots)' },
-                { value: 'Pest/Disease Problem', label: 'Pest/Disease Problem (Active damage)' },
-                { value: 'Not Sure', label: 'Not Sure (No distinct warning signs)' }
+                { value: 'Healthy' },
+                { value: 'Average' },
+                { value: 'Not Growing Well' },
+                { value: 'Pest/Disease Problem' },
+                { value: 'Not Sure' }
               ].map(cond => (
                 <button
                   key={cond.value}
@@ -949,7 +964,7 @@ export function OnboardingPage() {
                       : 'bg-white/2 border-white/5 text-white/70 hover:bg-white/5'
                   }`}
                 >
-                  <span className="text-xs">{cond.label}</span>
+                  <span className="text-xs">{tEnum('cropCondition', cond.value)}</span>
                   {cropCondition === cond.value && <Check size={14} className="text-[#87A96B]" />}
                 </button>
               ))}
@@ -970,7 +985,7 @@ export function OnboardingPage() {
               className="flex items-center justify-center rounded-2xl border border-white/10 hover:border-white/20 bg-white/5 px-4 py-3.5 text-xs font-bold text-white transition active:scale-[0.98] disabled:opacity-50"
             >
               <ChevronLeft size={16} />
-              {t('onboarding.back', 'Back')}
+              {t('common:back')}
             </button>
           )}
 
@@ -981,7 +996,7 @@ export function OnboardingPage() {
                 onClick={handleCompleteCropLater}
                 className="flex-1 flex items-center justify-center rounded-2xl border border-white/10 hover:bg-white/5 py-3 text-xs font-bold text-white/60 hover:text-white transition active:scale-[0.98]"
               >
-                {t('onboarding.completeLater', 'Complete Later')}
+                {t('profile:completeLater')}
               </button>
             )}
 
@@ -998,21 +1013,21 @@ export function OnboardingPage() {
               {saving ? (
                 <>
                   <Loader2 size={16} className="animate-spin text-white" />
-                  {step === 7 ? 'Creating Profile...' : 'Initializing Crop...'}
+                  {step === 7 ? t('onboarding.creatingProfile', 'Creating Profile...') : t('onboarding.initializingCrop', 'Initializing Crop...')}
                 </>
               ) : step === 7 ? (
                 <>
-                  {t('onboarding.continue', 'Continue')}
+                  {t('common:next')}
                   <ChevronRight size={16} />
                 </>
               ) : step === 12 ? (
                 <>
                   <Check size={16} />
-                  {t('onboarding.finish', 'Finish Setup')}
+                  {t('profile:finishSetup')}
                 </>
               ) : (
                 <>
-                  {t('onboarding.next', 'Next')}
+                  {t('common:next')}
                   <ChevronRight size={16} />
                 </>
               )}

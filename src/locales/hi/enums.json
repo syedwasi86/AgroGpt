@@ -1,0 +1,113 @@
+{
+  "soilType": {
+    "redSandyLoam": "लाल रेतीली दोमट मिट्टी",
+    "redSoil": "लाल मिट्टी",
+    "blackSoil": "काली मिट्टी",
+    "clayey": "चिकनी मिट्टी",
+    "claySoil": "चिकनी मिट्टी",
+    "loamy": "दोमट मिट्टी",
+    "loamySoil": "दोमट मिट्टी",
+    "sandy": "रेतीली मिट्टी",
+    "sandySoil": "रेतीली मिट्टी",
+    "dontKnow": "पता नहीं"
+  },
+  "waterSource": {
+    "borewell": "बोरवेल",
+    "canal": "नहर",
+    "rainfed": "वर्षा आधारित",
+    "openWell": "खुला कुआँ",
+    "dripIrrigation": "ड्रिप सिंचाई",
+    "sprinkler": "स्प्रिंकलर (फव्वारा)",
+    "river": "नदी",
+    "tankPond": "तालाब"
+  },
+  "areaUnit": {
+    "acre": "एकड़",
+    "acres": "एकड़",
+    "hectare": "हेक्टेयर",
+    "guntha": "गुंठा",
+    "cent": "सेंट",
+    "bigha": "बीघा",
+    "squareMeter": "वर्ग मीटर"
+  },
+  "cropType": {
+    "cotton": "कपास",
+    "rice": "धान",
+    "maize": "मक्का",
+    "tomato": "टमाटर",
+    "chilli": "मिर्च",
+    "wheat": "गेहूं",
+    "onion": "प्याज़",
+    "greenGramMoong": "हरा मूंग",
+    "sesame": "तिल",
+    "sorghum": "ज्वार",
+    "sunflower": "सूरजमुखी",
+    "paddyDhan": "धान",
+    "custom": "अन्य फसल"
+  },
+  "cropCondition": {
+    "healthy": "स्वस्थ",
+    "average": "औसत",
+    "notGrowingWell": "ठीक से नहीं बढ़ रहा",
+    "pestDiseaseProblem": "कीट/रोग की समस्या",
+    "notSure": "पक्का नहीं पता"
+  },
+  "ledgerCategory": {
+    "fertilizer": "खाद/उर्वरक",
+    "seeds": "बीज",
+    "diesel": "डीजल",
+    "pesticide": "कीटनाशक",
+    "labor": "मज़दूरी",
+    "harvesting": "कटाई",
+    "saleOfWheat": "गेहूं की बिक्री",
+    "saleOfCotton": "कपास की बिक्री",
+    "lease": "पट्टा",
+    "other": "अन्य"
+  },
+  "cropStage": {
+    "germination": "अंकुरण",
+    "germinationSeedling": "अंकुरण और पौधा",
+    "squaring": "स्क्वायरिंग (कलियाँ बनना)",
+    "floweringBollDevelopment": "फूल आना और डोडो का विकास",
+    "maturityBollOpening": "परिपक्वता और डोडो का खुलना",
+    "nurserySeedling": "नर्सरी और पौधा",
+    "transplantingTillering": "प्रत्यारोपण और कल्ले निकलना",
+    "panicleInitiationFlowering": "बाली निकलना और फूल आना",
+    "ripeningHarvest": "पकना और कटाई",
+    "establishmentSeedling": "स्थापना और पौधा",
+    "vegetativeGrowth": "वानस्पतिक वृद्धि",
+    "tasselingSilking": "नर मंजरी और भुट्टे के बाल निकलना",
+    "grainFillMaturity": "दाना भरना और परिपक्वता",
+    "establishment": "स्थापना",
+    "vegetativeStaking": "वानस्पतिक वृद्धि और सहारा देना",
+    "floweringFruiting": "फूल और फल आना",
+    "floweringPodSet": "फूल आना और फलियाँ बनना",
+    "podRipeningHarvest": "फलियों का पकना और कटाई",
+    "vegetative": "वानस्पतिक",
+    "flowering": "फूल आना",
+    "maturity": "परिपक्वता",
+    "harvest": "कटाई"
+  },
+  "mandiMarket": {
+    "bowenpally": "बोवेनपल्ली",
+    "nizamabad": "निजामाबाद",
+    "warangal": "वारंगल",
+    "vikarabad": "विकाराबाद"
+  },
+  "mandiVariety": {
+    "hybrid": "हाइब्रिड",
+    "gradeA": "ग्रेड ए",
+    "bunny": "बन्नी",
+    "common": "सामान्य",
+    "nasik": "नासिक",
+    "local": "स्थानीय",
+    "lokwan": "लोकवान",
+    "kalyanSona": "कल्याण सोना"
+  },
+  "diagnosis": {
+    "nitrogenDeficiency": "नाइट्रोजन की कमी",
+    "phosphorusDeficiency": "फास्फोरस की कमी",
+    "fungalBlightLeafSpot": "कवक झुलसा / पत्ती का धब्बा",
+    "aphidInfestationDetected": "एफिड कीट का प्रकोप"
+  }
+}

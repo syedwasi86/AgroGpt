@@ -20,7 +20,9 @@ import { dashboardRepository, type DashboardSnapshot } from './dashboardReposito
 import { askAgroGPT } from '../../ai/provider'
 import { saveAiQuery } from '../../lib/repository'
 import { useAuth } from '../../core/auth/AuthContext'
-
+import { useTranslation } from 'react-i18next'
+import { useEnumTranslation } from '../../hooks/useEnumTranslation'
+import { sanitizeEnumKey } from '../../hooks/useEnumTranslation'
 
 
 // ─── Main Dashboard Page ───────────────────────────────────────────────────────
@@ -28,6 +30,8 @@ import { useAuth } from '../../core/auth/AuthContext'
 export function DashboardPage() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { t, i18n } = useTranslation(['common', 'dashboard', 'enums', 'validation', 'profile', 'cropCalendar'])
+  const { tEnum } = useEnumTranslation()
 
   // State Management
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null)
@@ -64,13 +68,13 @@ export function DashboardPage() {
       setSnapshot(data)
     } catch (err: any) {
       console.error('Failed to load dashboard snapshot:', err)
-      setError('Could not aggregate farm data. Showing offline fallbacks.')
+      setError(t('dashboard:loadError', 'Could not aggregate farm data. Showing offline fallbacks.'))
     } finally {
       setLoading(false)
       setRefreshing(false)
       fetchInFlight.current = false
     }
-  }, [user?.id]) // stable — no component-state deps except user.id
+  }, [user?.id, t]) // stable — no component-state deps except user.id
 
   useEffect(() => {
     if (user?.id) {
@@ -99,7 +103,7 @@ export function DashboardPage() {
       setAskAnswer(res.text)
     } catch (err) {
       console.warn('AI offline response trigger, adding to offline queue:', err)
-      setAskError('Offline: Your question has been queued in your Digital Ledger sync pipeline.')
+      setAskError(t('validation:error', 'Offline: Your question has been queued in your Digital Ledger sync pipeline.'))
       await saveAiQuery(askInput)
     } finally {
       setAsking(false)
@@ -109,6 +113,55 @@ export function DashboardPage() {
   // Quick Action triggers
   const toggleAdviceKey = (key: 'todayAdvice' | 'waterAdvice' | 'pestAdvice' | 'fertilizerAdvice') => {
     setSelectedAdviceKey(prev => (prev === key ? null : key))
+  }
+
+  // Helper to translate dynamically generated focus feed titles
+  const translateFocusTitle = (title: string) => {
+    if (title.startsWith('Overdue: ')) {
+      const taskPart = title.substring(9)
+      return t('dashboard:overdueTask', 'Overdue: {{task}}', { task: t(`enums:taskTitle.${sanitizeEnumKey(taskPart)}`, taskPart) })
+    }
+    if (title.startsWith('Weather Delayed: ')) {
+      const taskPart = title.substring(17)
+      return t('dashboard:weatherDelayedTask', 'Weather Delayed: {{task}}', { task: t(`enums:taskTitle.${sanitizeEnumKey(taskPart)}`, taskPart) })
+    }
+    if (title.startsWith('Pest Warning: ')) {
+      const pestPart = title.substring(14)
+      return t('dashboard:pestWarningTitle', 'Pest Warning: {{pest}}', { pest: t(`enums:pestDiagnosis.${sanitizeEnumKey(pestPart)}`, pestPart) })
+    }
+    if (title.startsWith('Upcoming Phase: ')) {
+      const stagePart = title.substring(16)
+      return t('dashboard:upcomingPhase', 'Upcoming Phase: {{stage}}', { stage: tEnum('cropStage', stagePart) })
+    }
+    return t(`enums:taskTitle.${sanitizeEnumKey(title)}`, title)
+  }
+
+  // Helper to translate dynamically generated focus feed subtitles
+  const translateFocusSubtitle = (subtitle: string, id: string) => {
+    if (id.startsWith('overdue-high-')) {
+      const match = subtitle.match(/since\s+([0-9-]+)/)
+      const dateStr = match ? match[1] : ''
+      const formattedDate = dateStr ? new Date(dateStr).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short', year: 'numeric', numberingSystem: 'latn' }) : ''
+      return t('dashboard:overdueSubtitle', 'Critical task due since {{date}}. Click to resolve.', { date: formattedDate })
+    }
+    if (id.startsWith('delayed-')) {
+      const match = subtitle.match(/to\s+([0-9-]+)/)
+      const dateStr = match ? match[1] : ''
+      const formattedDate = dateStr ? new Date(dateStr).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short', year: 'numeric', numberingSystem: 'latn' }) : ''
+      return t('dashboard:delayedSubtitle', 'Rescheduled to {{date}} due to weather.', { date: formattedDate })
+    }
+    if (id.startsWith('pest-warning-')) {
+      const match = subtitle.match(/at\s+(\d+)%/)
+      const conf = match ? match[1] : ''
+      return t('dashboard:pestWarningSubtitle', 'Infection detected at {{conf}}% confidence. Review IPM actions.', { conf })
+    }
+    if (id.startsWith('transition-')) {
+      const match = subtitle.match(/on\s+([0-9-]+)/)
+      const dateStr = match ? match[1] : ''
+      const formattedDate = dateStr ? new Date(dateStr).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short', year: 'numeric', numberingSystem: 'latn' }) : ''
+      return t('dashboard:transitionSubtitle', 'Stage starts on {{date}}. Get inputs ready.', { date: formattedDate })
+    }
+    return subtitle
   }
 
   // Loading skeleton state
@@ -143,9 +196,9 @@ export function DashboardPage() {
         <div>
           <h1 className="text-3xl font-semibold tracking-tight text-white flex items-center gap-2">
             <LayoutDashboard className="text-primary-400" size={24} />
-            Command Center
+            {t('dashboard:title')}
           </h1>
-          <p className="subtle mt-1">Operational snapshot & system telemetry</p>
+          <p className="subtle mt-1">{t('dashboard:subtitle')}</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -153,19 +206,19 @@ export function DashboardPage() {
           {dashboardRepository.isOnline() ? (
             <span className="glass-chip border-green-500/30 bg-green-500/10 text-green-400">
               <Wifi size={13} className="animate-pulse" />
-              Online
+              {t('common:online')}
             </span>
           ) : (
             <span className="glass-chip border-amber-500/30 bg-amber-500/10 text-amber-400">
               <WifiOff size={13} />
-              Offline Mode
+              {t('common:offline')}
             </span>
           )}
 
           {/* Sync status / Cache notice */}
           {snapshot?.weather?.isCached && (
             <span className="text-xs text-white/40">
-              Cached: {new Date(snapshot.weather.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {t('dashboard:cachedTime', { time: new Date(snapshot.weather.updatedAt).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit', numberingSystem: 'latn' }) })}
             </span>
           )}
 
@@ -176,7 +229,7 @@ export function DashboardPage() {
             className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:border-stroke-2 hover:bg-glass-2 transition disabled:opacity-50"
           >
             <RefreshCw size={13} className={cn("text-white/70", refreshing && "animate-spin")} />
-            {refreshing ? 'Syncing...' : 'Sync'}
+            {refreshing ? t('profile:syncing') : t('profile:syncDatabase')}
           </button>
         </div>
       </div>
@@ -195,16 +248,16 @@ export function DashboardPage() {
               <Sprout className="text-primary-300" size={28} />
             </div>
             <div className="space-y-2">
-              <h2 className="text-xl font-semibold text-white">Add your first crop to activate farm intelligence</h2>
+              <h2 className="text-xl font-semibold text-white">{t('dashboard:emptyStateTitle')}</h2>
               <p className="subtle text-xs px-4">
-                The Farm Command Center is waiting for your seeding dates. Create a plan to enable readiness scores, weather adjustments, and customized recommendations.
+                {t('dashboard:emptyStateDesc')}
               </p>
             </div>
             <button
               onClick={() => navigate('/crop-calendar')}
               className="flex items-center gap-2 bg-primary-600 hover:bg-primary-500 text-white font-semibold py-3 px-6 rounded-2xl text-xs uppercase tracking-wider transition shadow-glowPrimary"
             >
-              Open Precision Planning
+              {t('dashboard:emptyStateBtn')}
               <ArrowUpRight size={14} />
             </button>
           </GlassCard>
@@ -223,33 +276,33 @@ export function DashboardPage() {
               <div className="space-y-4">
                 <div className="space-y-1">
                   <span className="text-xs uppercase font-bold tracking-widest text-primary-400">
-                    Live Diagnostics
+                    {t('dashboard:liveDiagnostics')}
                   </span>
                   <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                    Good morning, {snapshot?.farm?.name.split("'")[0] || 'Farmer'}
+                    {t('dashboard:greeting', { name: snapshot?.farm?.name.split("'")[0] || t('common:farmer', 'Farmer') })}
                   </h2>
                   <p className="subtle">
-                    {snapshot?.farm?.city} · {snapshot?.farm?.soilType}
+                    {snapshot?.farm?.city} · {tEnum('soilType', snapshot?.farm?.soilType)}
                   </p>
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="glass-chip border-stroke-2">
                     <Sprout size={13} className="text-primary-300" />
-                    {snapshot?.crop?.name} ({snapshot?.crop?.variety})
+                    {tEnum('cropType', snapshot?.crop?.name)} ({snapshot?.crop?.variety === 'Local Variety' ? t('profile:customVariety') : snapshot?.crop?.variety})
                   </span>
                   <span className="glass-chip flex items-center gap-1">
                     <Compass size={13} className="text-white/60" />
-                    <span>{snapshot?.crop?.currentStage} stage</span>
+                    <span>{tEnum('cropStage', snapshot?.crop?.currentStage)}</span>
                     {snapshot?.crop?.isFarmerSelectedStage && (
                       <span className="text-[9px] text-[#87A96B] font-bold bg-[#87A96B]/10 px-1.5 py-0.5 rounded-full border border-[#87A96B]/20">
-                        Farmer Selected
+                        {t('cropCalendar:farmerSelectedNotice', 'Farmer Selected')}
                       </span>
                     )}
                   </span>
                   <span className="glass-chip">
                     <Activity size={13} className="text-white/60" />
-                    {snapshot?.crop?.lifecycleProgress}% through cycle
+                    {t('dashboard:lifecycleProgress', '{{progress}}% through cycle', { progress: snapshot?.crop?.lifecycleProgress })}
                   </span>
                 </div>
               </div>
@@ -290,11 +343,11 @@ export function DashboardPage() {
                     />
                   </svg>
                   <div className="absolute flex flex-col items-center justify-center">
-                    <span className="text-2xl font-bold tracking-tight text-white">
+                    <span className="text-2xl font-bold tracking-tight text-white font-mono">
                       {snapshot?.readiness?.score}
                     </span>
                     <span className="text-[9px] uppercase font-bold tracking-widest text-white/40">
-                      Readiness
+                      {t('dashboard:readiness')}
                     </span>
                   </div>
                 </div>
@@ -303,18 +356,21 @@ export function DashboardPage() {
                 <div className="space-y-2 text-center sm:text-left max-w-xs">
                   <div>
                     <div className="text-sm font-semibold text-white">
-                      Readiness: {' '}
+                      {t('dashboard:readiness')}: {' '}
                       <span className={cn(
                         snapshot?.readiness?.status === 'Excellent' && "text-primary-400",
                         snapshot?.readiness?.status === 'Good' && "text-primary-300",
                         snapshot?.readiness?.status === 'Attention Needed' && "text-secondary-400",
                         snapshot?.readiness?.status === 'Critical' && "text-red-400"
                       )}>
-                        {snapshot?.readiness?.status}
+                        {snapshot?.readiness?.status === 'Excellent' && t('dashboard:excellent')}
+                        {snapshot?.readiness?.status === 'Good' && t('dashboard:good')}
+                        {snapshot?.readiness?.status === 'Attention Needed' && t('dashboard:attentionNeeded')}
+                        {snapshot?.readiness?.status === 'Critical' && t('dashboard:critical')}
                       </span>
                     </div>
                     <p className="text-[11px] text-white/50 mt-0.5">
-                      Updated weather & soil metrics verified
+                      {t('dashboard:readinessSub')}
                     </p>
                   </div>
                   
@@ -338,28 +394,28 @@ export function DashboardPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {/* Card 1: Active Crop */}
             <div className="rounded-3xl border border-white/5 bg-black/20 p-4 transition hover:bg-black/30">
-              <div className="text-xs font-semibold text-white/40">Active Crop</div>
+              <div className="text-xs font-semibold text-white/40">{t('profile:activeCropSummary')}</div>
               <div className="mt-2 text-base font-semibold text-white">
-                {snapshot?.crop?.name}
+                {tEnum('cropType', snapshot?.crop?.name)}
               </div>
               <div className="mt-1 text-[11px] text-white/60">
-                Variety: {snapshot?.crop?.variety}
+                {t('profile:variety')}: {snapshot?.crop?.variety === 'Local Variety' ? t('profile:customVariety') : snapshot?.crop?.variety}
               </div>
               <div className="mt-2 flex flex-col gap-1.5">
                 <div className="inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/50 w-fit">
                   <span className="h-1 w-1 rounded-full bg-primary-400" />
-                  {snapshot?.crop?.currentStage}
+                  {tEnum('cropStage', snapshot?.crop?.currentStage)}
                 </div>
                 {snapshot?.crop?.condition && (
                   <div className="text-[10px] text-white/40 font-bold uppercase flex items-center gap-1">
-                    Condition: <span className={cn(
+                    {t('profile:cropCondition')}: <span className={cn(
                       "font-black text-[11px]",
                       snapshot.crop.condition === 'Healthy' && "text-green-400",
                       snapshot.crop.condition === 'Average' && "text-yellow-400",
                       snapshot.crop.condition === 'Not Growing Well' && "text-orange-400",
                       snapshot.crop.condition === 'Pest/Disease Problem' && "text-red-400",
                       snapshot.crop.condition === 'Not Sure' && "text-white/60"
-                    )}>{snapshot.crop.condition}</span>
+                    )}>{tEnum('cropCondition', snapshot.crop.condition)}</span>
                   </div>
                 )}
               </div>
@@ -367,64 +423,64 @@ export function DashboardPage() {
 
             {/* Card 2: Soil Health */}
             <div className="rounded-3xl border border-white/5 bg-black/20 p-4 transition hover:bg-black/30">
-              <div className="text-xs font-semibold text-white/40">Soil Health</div>
+              <div className="text-xs font-semibold text-white/40">{t('dashboard:soilHealth')}</div>
               <div className="mt-2 text-base font-semibold text-white">
-                NPK Balanced
+                {t('dashboard:npkBalanced')}
               </div>
               <div className="mt-1 text-[11px] text-white/60">
-                N={snapshot?.readiness?.breakdown?.soil === 20 ? 'Optimal' : 'Adjust Dose'}
+                N={snapshot?.readiness?.breakdown?.soil === 20 ? t('dashboard:optimal') : t('dashboard:adjustDose')}
               </div>
               <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/50">
                 <span className="h-1 w-1 rounded-full bg-primary-400" />
-                Profile complete
+                {t('dashboard:profileComplete', 'Profile complete')}
               </div>
             </div>
 
             {/* Card 3: Water Source */}
             <div className="rounded-3xl border border-white/5 bg-black/20 p-4 transition hover:bg-black/30">
-              <div className="text-xs font-semibold text-white/40">Water Source</div>
-              <div className="mt-2 text-sm font-bold text-white truncate" title={snapshot?.farm?.irrigationSources?.join(', ') || 'Rainfed'}>
+              <div className="text-xs font-semibold text-white/40">{t('dashboard:waterSource', 'Water Source')}</div>
+              <div className="mt-2 text-sm font-bold text-white truncate" title={snapshot?.farm?.irrigationSources?.map(src => tEnum('waterSource', src)).join(', ') || t('enums:waterSource.rainfed', 'Rainfed')}>
                 {snapshot?.farm?.irrigationSources && snapshot.farm.irrigationSources.length > 0 
-                  ? snapshot.farm.irrigationSources.join(', ') 
-                  : 'Rainfed'}
+                  ? snapshot.farm.irrigationSources.map(src => tEnum('waterSource', src)).join(', ') 
+                  : t('enums:waterSource.rainfed', 'Rainfed')}
               </div>
-              <div className="mt-1 text-[11px] text-white/60">
-                ~4,200 L/ac ET rate
+              <div className="mt-1 text-[11px] text-white/60 font-mono">
+                {t('dashboard:etRate', '~4,200 L/ac ET rate')}
               </div>
               <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/50">
                 <span className="h-1 w-1 rounded-full bg-primary-400" />
-                Irrigation aligned
+                {t('dashboard:irrigationAligned', 'Irrigation aligned')}
               </div>
             </div>
 
             {/* Card 4: Pest Risk */}
             <div className="rounded-3xl border border-white/5 bg-black/20 p-4 transition hover:bg-black/30">
-              <div className="text-xs font-semibold text-white/40">Pest Risk</div>
+              <div className="text-xs font-semibold text-white/40">{t('dashboard:pestRisk')}</div>
               <div className="mt-2 text-base font-semibold text-white">
-                {snapshot?.readiness?.breakdown?.pest && snapshot.readiness.breakdown.pest >= 12 ? 'Low Risk' : 'Attention'}
+                {snapshot?.readiness?.breakdown?.pest && snapshot.readiness.breakdown.pest >= 12 ? t('dashboard:pestNoThresholds') : t('dashboard:pestScoutingAlert')}
               </div>
               <div className="mt-1 text-[11px] text-white/60">
-                Recent: {snapshot?.exploreMetrics?.fieldVision?.lastDiagnosis}
+                {t('dashboard:recent')}: {tEnum('pestDiagnosis', snapshot?.exploreMetrics?.fieldVision?.lastDiagnosis)}
               </div>
               <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/50">
                 <span className="h-1 w-1 rounded-full bg-primary-400" />
-                Scans analyzed
+                {t('dashboard:scansAnalyzed', 'Scans analyzed')}
               </div>
             </div>
 
             {/* Card 5: Operational Status */}
             <div className="rounded-3xl border border-white/5 bg-black/20 p-4 transition hover:bg-black/30 cursor-pointer" onClick={() => navigate('/crop-calendar')}>
-              <div className="text-xs font-semibold text-white/40">Operational Status</div>
+              <div className="text-xs font-semibold text-white/40">{t('dashboard:operationalStatus')}</div>
               <div className="mt-2 text-base font-semibold text-white flex items-center justify-between">
-                <span>{snapshot?.exploreMetrics?.precisionPlanning?.activeTasks} Pending</span>
+                <span className="font-mono">{snapshot?.exploreMetrics?.precisionPlanning?.activeTasks} {t('cropCalendar:pending')}</span>
                 <ArrowUpRight size={14} className="text-white/45" />
               </div>
-              <div className="mt-1 text-[11px] text-white/60">
-                Delays check: {snapshot?.alerts?.filter(a => a.type === 'info').length || 0} adjustments
+              <div className="mt-1 text-[11px] text-white/60 font-mono">
+                {t('dashboard:delaysCheck', 'Delays check')}: {snapshot?.alerts?.filter(a => a.type === 'info').length || 0}
               </div>
               <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/50">
                 <span className="h-1 w-1 rounded-full bg-primary-400" />
-                Sync active
+                {t('dashboard:syncActive', 'Sync active')}
               </div>
             </div>
           </div>
@@ -438,8 +494,8 @@ export function DashboardPage() {
               {/* Operations feed: Today's Focus */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-white">Today's Focus</h3>
-                  <span className="text-xs text-white/40">Priority Ranked feed</span>
+                  <h3 className="text-lg font-semibold text-white">{t('dashboard:todaysFocus')}</h3>
+                  <span className="text-xs text-white/40">{t('dashboard:focusSub')}</span>
                 </div>
                 
                 <div className="space-y-3">
@@ -463,17 +519,17 @@ export function DashboardPage() {
                           </div>
                           <div>
                             <div className="text-sm font-semibold text-white group-hover:text-primary-300 transition">
-                              {item.title}
+                              {translateFocusTitle(item.title)}
                             </div>
                             <div className="text-xs text-white/50 mt-1">
-                              {item.subtitle}
+                              {translateFocusSubtitle(item.subtitle, item.id)}
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 self-center shrink-0">
                           {item.priority === 'high' && (
                             <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-red-400 border border-red-500/20">
-                              Critical
+                              {t('cropCalendar:overdue')}
                             </span>
                           )}
                           <ChevronRight size={16} className="text-white/30 group-hover:text-white/80 transition" />
@@ -482,13 +538,11 @@ export function DashboardPage() {
                     ))
                   ) : (
                     <div className="rounded-2xl border border-white/5 bg-black/20 p-8 text-center text-xs text-white/40">
-                      No operational actions require focus today. All schedules are up-to-date!
+                      {t('dashboard:focusEmpty')}
                     </div>
                   )}
                 </div>
               </div>
-
-
 
             </div>
 
@@ -499,16 +553,16 @@ export function DashboardPage() {
               <GlassCard className="p-5 flex flex-col space-y-4" variant="strong">
                 <div className="flex items-center gap-2">
                   <Sparkles size={16} className="text-primary-300" />
-                  <h3 className="text-sm font-semibold text-white">AI Action Center</h3>
+                  <h3 className="text-sm font-semibold text-white">{t('dashboard:aiActionCenter')}</h3>
                 </div>
 
                 {/* Quick Prompts Chips */}
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { key: 'todayAdvice', label: 'What should I do today?' },
-                    { key: 'waterAdvice', label: 'Water requirement?' },
-                    { key: 'pestAdvice', label: 'Pest risk?' },
-                    { key: 'fertilizerAdvice', label: 'Fertilizer advice?' }
+                    { key: 'todayAdvice', label: t('dashboard:todayPrompt') },
+                    { key: 'waterAdvice', label: t('dashboard:waterPrompt') },
+                    { key: 'pestAdvice', label: t('dashboard:pestPrompt') },
+                    { key: 'fertilizerAdvice', label: t('dashboard:fertilizerPrompt') }
                   ].map(chip => (
                     <button
                       key={chip.key}
@@ -529,10 +583,10 @@ export function DashboardPage() {
                 {selectedAdviceKey && snapshot?.aiInsights && (
                   <div className="rounded-2xl border border-primary-500/20 bg-primary-500/5 p-3.5 text-xs text-white/80 leading-relaxed transition-all">
                     <div className="font-bold text-primary-300 uppercase tracking-wider text-[9px] mb-1">
-                      {selectedAdviceKey === 'todayAdvice' && 'Today Focus Advice'}
-                      {selectedAdviceKey === 'waterAdvice' && 'Hydration Forecast'}
-                      {selectedAdviceKey === 'pestAdvice' && 'IPM early warnings'}
-                      {selectedAdviceKey === 'fertilizerAdvice' && 'Stage-specific NPK dosages'}
+                      {selectedAdviceKey === 'todayAdvice' && t('dashboard:todayAdvice')}
+                      {selectedAdviceKey === 'waterAdvice' && t('dashboard:waterAdvice')}
+                      {selectedAdviceKey === 'pestAdvice' && t('dashboard:pestAdvice')}
+                      {selectedAdviceKey === 'fertilizerAdvice' && t('dashboard:fertilizerAdvice')}
                     </div>
                     {snapshot.aiInsights[selectedAdviceKey]}
                   </div>
@@ -542,7 +596,7 @@ export function DashboardPage() {
                 <form onSubmit={handleAskAgroGPT} className="relative mt-2">
                   <input
                     type="text"
-                    placeholder="Ask AgroGPT about soil NPK, pests..."
+                    placeholder={t('dashboard:askAgroPlaceholder')}
                     value={askInput}
                     onChange={(e) => setAskInput(e.target.value)}
                     className="w-full rounded-2xl border border-white/10 bg-black/40 py-2.5 pl-4 pr-10 text-xs text-white placeholder-white/30 focus:border-stroke-2 focus:outline-none"
@@ -560,7 +614,7 @@ export function DashboardPage() {
                 {(askAnswer || askError) && (
                   <div className="rounded-2xl border border-white/5 bg-white/5 p-3 text-xs leading-relaxed text-white/70 space-y-1">
                     <div className="font-bold text-white/40 uppercase tracking-widest text-[9px]">
-                      Answer Feed
+                      {t('dashboard:answerFeed')}
                     </div>
                     {askError ? (
                       <p className="text-amber-400/90">{askError}</p>
@@ -570,73 +624,73 @@ export function DashboardPage() {
                   </div>
                 )}
               </GlassCard>
+            </div>
 
-              {/* Farm Intelligence Grid */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-white">Farm Intelligence</h3>
-                <div className="space-y-4">
-                  
-                  {/* Weather Intelligence Card */}
-                  <div className="rounded-3xl border border-white/5 bg-black/20 p-4 space-y-2">
-                    <div className="flex items-center justify-between text-xs text-white/40">
-                      <span>Weather Forecast</span>
-                      <span>Open-Meteo</span>
-                    </div>
-                    <div className="text-sm font-semibold text-white">
-                      {Math.round(snapshot?.weather?.temperature ?? 31)}°C · {snapshot?.weather?.condition}
-                    </div>
-                    <p className="text-[11px] text-white/60 leading-relaxed">
-                      {snapshot?.weather?.weatherCode && snapshot.weather.weatherCode >= 51 ? (
-                        'High precipitation code. Suspend foliar insecticide spray passes. Inspect drainage lines.'
-                      ) : (
-                        'Optimal temperature values. Safe spray window: early morning (6–8 AM) with minimal wind drift.'
-                      )}
-                    </p>
-                  </div>
+          </div>
 
-                  {/* Irrigation Intelligence Card */}
-                  <div className="rounded-3xl border border-white/5 bg-black/20 p-4 space-y-2">
-                    <div className="flex items-center justify-between text-xs text-white/40">
-                      <span>Irrigation Analysis</span>
-                      <span>Hydration index</span>
-                    </div>
-                    <div className="text-sm font-semibold text-white">
-                      ~4,200 Liters/ac·day
-                    </div>
-                    <p className="text-[11px] text-white/60 leading-relaxed">
-                      Based on current {snapshot?.weather?.humidity}% humidity. Root moisture is sufficient. Maintain split daily schedules to avoid root waterlogging.
-                    </p>
-                  </div>
-
-                  {/* Pest Intelligence Card */}
-                  <div className="rounded-3xl border border-white/5 bg-black/20 p-4 space-y-2">
-                    <div className="flex items-center justify-between text-xs text-white/40">
-                      <span>Pest Intelligence</span>
-                      <span>Early warning</span>
-                    </div>
-                    <div className="text-sm font-semibold text-white">
-                      {snapshot?.readiness?.breakdown?.pest && snapshot.readiness.breakdown.pest >= 12 ? 'No Active Pest Thresholds' : 'Scouting Alert'}
-                    </div>
-                    <p className="text-[11px] text-white/60 leading-relaxed">
-                      Night temperature above 24°C favors thrip spore spreads. Install yellow sticky cards and scout lower foliage weekly.
-                    </p>
-                  </div>
-
-                  {/* Market Signal Card */}
-                  <div className="rounded-3xl border border-white/5 bg-black/20 p-4 space-y-2">
-                    <div className="flex items-center justify-between text-xs text-white/40">
-                      <span>Market & Soil Signal</span>
-                      <span>Mandi trend</span>
-                    </div>
-                    <div className="text-sm font-semibold text-white">
-                      {snapshot?.exploreMetrics?.marketInsights?.marketTrend}
-                    </div>
-                    <p className="text-[11px] text-white/60 leading-relaxed">
-                      Crop rotation: seed {snapshot?.exploreMetrics?.marketInsights?.recommendedCrop} next to replenish soil nutrients and save fertilization costs.
-                    </p>
-                  </div>
-
+          {/* 5.5 Farm Intelligence Section (horizontal on large screens, vertical on mobile) */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-white">{t('dashboard:farmIntelligence')}</h3>
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              
+              {/* Weather Intelligence Card */}
+              <div className="rounded-3xl border border-white/5 bg-black/20 p-4 space-y-2">
+                <div className="flex items-center justify-between text-xs text-white/40">
+                  <span>{t('dashboard:weatherForecast')}</span>
+                  <span>{t('dashboard:weatherProvider')}</span>
                 </div>
+                <div className="text-sm font-semibold text-white font-mono">
+                  {Math.round(snapshot?.weather?.temperature ?? 31)}°C · {snapshot?.weather?.condition}
+                </div>
+                <p className="text-[11px] text-white/60 leading-relaxed">
+                  {snapshot?.weather?.weatherCode && snapshot.weather.weatherCode >= 51 ? (
+                    t('dashboard:weatherConditionHighRain')
+                  ) : (
+                    t('dashboard:weatherConditionOptimal')
+                  )}
+                </p>
+              </div>
+
+              {/* Irrigation Intelligence Card */}
+              <div className="rounded-3xl border border-white/5 bg-black/20 p-4 space-y-2">
+                <div className="flex items-center justify-between text-xs text-white/40">
+                  <span>{t('dashboard:irrigationAnalysis')}</span>
+                  <span>{t('dashboard:hydrationIndex')}</span>
+                </div>
+                <div className="text-sm font-semibold text-white font-mono">
+                  {t('dashboard:etRate')}
+                </div>
+                <p className="text-[11px] text-white/60 leading-relaxed">
+                  {t('dashboard:irrigationDesc', { humidity: snapshot?.weather?.humidity })}
+                </p>
+              </div>
+
+              {/* Pest Intelligence Card */}
+              <div className="rounded-3xl border border-white/5 bg-black/20 p-4 space-y-2">
+                <div className="flex items-center justify-between text-xs text-white/40">
+                  <span>{t('dashboard:pestIntelligence')}</span>
+                  <span>{t('dashboard:pestWarningSub')}</span>
+                </div>
+                <div className="text-sm font-semibold text-white">
+                  {snapshot?.readiness?.breakdown?.pest && snapshot.readiness.breakdown.pest >= 12 ? t('dashboard:pestNoThresholds') : t('dashboard:pestScoutingAlert')}
+                </div>
+                <p className="text-[11px] text-white/60 leading-relaxed">
+                  {t('dashboard:pestDesc')}
+                </p>
+              </div>
+
+              {/* Market Signal Card */}
+              <div className="rounded-3xl border border-white/5 bg-black/20 p-4 space-y-2">
+                <div className="flex items-center justify-between text-xs text-white/40">
+                  <span>{t('dashboard:marketSignal')}</span>
+                  <span>{t('dashboard:mandiTrend')}</span>
+                </div>
+                <div className="text-sm font-semibold text-white">
+                  {snapshot?.exploreMetrics?.marketInsights?.marketTrend}
+                </div>
+                <p className="text-[11px] text-white/60 leading-relaxed">
+                  {t('dashboard:rotationDesc', { recommendedCrop: tEnum('cropType', snapshot?.exploreMetrics?.marketInsights?.recommendedCrop) })}
+                </p>
               </div>
 
             </div>
@@ -649,7 +703,7 @@ export function DashboardPage() {
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
           <Compass size={18} className="text-primary-400" />
-          Explore AgroGPT
+          {t('dashboard:exploreAgro')}
         </h3>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           
@@ -661,16 +715,16 @@ export function DashboardPage() {
             <div>
               <div className="flex items-center justify-between">
                 <div className="text-sm font-semibold text-white group-hover:text-primary-300 transition">
-                  Crop Calendar
+                  {t('dashboard:cropCalendar')}
                 </div>
                 <ArrowUpRight size={14} className="text-white/40 group-hover:text-white transition" />
               </div>
               <p className="text-xs text-white/50 mt-1">
-                Precision calendars, milestones, and weather adjustment workflows.
+                {t('dashboard:cropCalendarDesc')}
               </p>
             </div>
-            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-white/65">
-              <span>Active Tasks:</span>
+            <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-white/65 font-mono">
+              <span>{t('dashboard:activeTasks')}</span>
               <span className="font-semibold text-white">
                 {snapshot?.exploreMetrics?.precisionPlanning?.activeTasks}
               </span>
@@ -685,19 +739,19 @@ export function DashboardPage() {
             <div>
               <div className="flex items-center justify-between">
                 <div className="text-sm font-semibold text-white group-hover:text-primary-300 transition">
-                  Field Vision
+                  {t('dashboard:fieldVision')}
                 </div>
                 <ArrowUpRight size={14} className="text-white/40 group-hover:text-white transition" />
               </div>
               <p className="text-xs text-white/50 mt-1">
-                Disease detection scans, camera analytics, and organic treatments.
+                {t('dashboard:fieldVisionDesc')}
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-white/65">
               <span className="truncate max-w-[100px]">
-                {snapshot?.exploreMetrics?.fieldVision?.lastDiagnosis}
+                {tEnum('pestDiagnosis', snapshot?.exploreMetrics?.fieldVision?.lastDiagnosis)}
               </span>
-              <span className="font-semibold text-white">
+              <span className="font-semibold text-white font-mono">
                 {snapshot?.exploreMetrics?.fieldVision?.confidence ? (
                   `${Math.round(snapshot.exploreMetrics.fieldVision.confidence * 100)}%`
                 ) : 'N/A'}
@@ -713,18 +767,18 @@ export function DashboardPage() {
             <div>
               <div className="flex items-center justify-between">
                 <div className="text-sm font-semibold text-white group-hover:text-primary-300 transition">
-                  Market & Mandi
+                  {t('dashboard:marketMandi')}
                 </div>
                 <ArrowUpRight size={14} className="text-white/40 group-hover:text-white transition" />
               </div>
               <p className="text-xs text-white/50 mt-1">
-                Harvest quality grading advice, price predictions, and rotations.
+                {t('dashboard:marketMandiDesc')}
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-white/65">
-              <span>Rec Next:</span>
+              <span>{t('dashboard:recNext')}</span>
               <span className="font-semibold text-white truncate max-w-[90px]">
-                {snapshot?.exploreMetrics?.marketInsights?.recommendedCrop}
+                {tEnum('cropType', snapshot?.exploreMetrics?.marketInsights?.recommendedCrop)}
               </span>
             </div>
           </div>
@@ -737,21 +791,21 @@ export function DashboardPage() {
             <div>
               <div className="flex items-center justify-between">
                 <div className="text-sm font-semibold text-white group-hover:text-primary-300 transition">
-                  Digital Khata
+                  {t('dashboard:digitalLedger')}
                 </div>
                 <ArrowUpRight size={14} className="text-white/40 group-hover:text-white transition" />
               </div>
               <p className="text-xs text-white/50 mt-1">
-                Voice bookkeeping logs, categorizations, and profit summaries.
+                {t('dashboard:digitalLedgerDesc')}
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-white/65">
-              <span>Net Profit:</span>
+              <span>{t('dashboard:netProfit')}</span>
               <span className={cn(
-                "font-semibold",
+                "font-semibold font-mono",
                 (snapshot?.exploreMetrics?.digitalLedger?.netProfit ?? 0) >= 0 ? "text-green-400" : "text-red-400"
               )}>
-                ₹{(snapshot?.exploreMetrics?.digitalLedger?.netProfit ?? 0).toLocaleString()}
+                ₹{(snapshot?.exploreMetrics?.digitalLedger?.netProfit ?? 0).toLocaleString(i18n.language, { numberingSystem: 'latn' })}
               </span>
             </div>
           </div>

@@ -72,19 +72,21 @@ function resolveLanguageInstruction(): { code: string; name: string } {
 
 export function localInference(prompt: string): string {
   const s = prompt.toLowerCase()
+  const offlineText = i18next.t('common:offline', { defaultValue: 'Offline' }).split(' ')[0]
+  const offlinePrefix = `[${offlineText}] `
   if (s.includes('today') || s.includes('action')) {
-    return '[Offline] Daily action: Scout 10 plants at sunrise for early thrips/leaf curl. If threshold crossed, apply neem oil spray in the 6–8 AM window; otherwise delay pesticide and maintain steady irrigation.'
+    return offlinePrefix + i18next.t('common:aiMock.dailyAction')
   }
   if (s.includes('water') || s.includes('irrig')) {
-    return '[Offline] Irrigation: For red sandy loam, use shorter intervals with moderate volume. Prefer early morning; avoid waterlogging and check moisture 5–7 cm below surface before the next cycle.'
+    return offlinePrefix + i18next.t('common:aiMock.irrigation')
   }
   if (s.includes('fertil') || s.includes('npk')) {
-    return '[Offline] Nutrition: Split fertilizer into smaller doses aligned with crop stage. Over-nitrogen can increase pest pressure; adjust gradually and prefer soil-moisture-aware application.'
+    return offlinePrefix + i18next.t('common:aiMock.nutrition')
   }
   if (s.includes('pest') || s.includes('risk')) {
-    return '[Offline] Pest risk: Warm nights + humidity increase thrips/aphid risk. Use sticky traps and inspect undersides of young leaves. Escalate to IPM spray only if 2-day risk stays medium/high.'
+    return offlinePrefix + i18next.t('common:aiMock.pestRisk')
   }
-  return '[Offline] I can help with pests, irrigation, fertilizer, and finance. You are currently offline. Basic model loaded.'
+  return offlinePrefix + i18next.t('common:aiMock.defaultHelpOffline')
 }
 
 // ── RAG context fetch ────────────────────────────────────────────────────────
@@ -277,16 +279,16 @@ export async function askAgroGPT(
 function buildOnlineMockResponse(prompt: string): string {
   const s = prompt.toLowerCase()
   if (s.includes('today') || s.includes('action')) {
-    return 'Daily action: Scout 10 plants at sunrise for early thrips/leaf curl. If threshold crossed, apply neem oil spray in the 6–8 AM window; otherwise delay pesticide and maintain steady irrigation.'
+    return i18next.t('common:aiMock.dailyAction')
   }
   if (s.includes('water') || s.includes('irrig')) {
-    return 'Irrigation: For red sandy loam, use shorter intervals with moderate volume. Prefer early morning; avoid waterlogging and check moisture 5–7 cm below surface before the next cycle.'
+    return i18next.t('common:aiMock.irrigation')
   }
   if (s.includes('fertil') || s.includes('npk')) {
-    return 'Nutrition: Split fertilizer into smaller doses aligned with crop stage. Over-nitrogen can increase pest pressure; adjust gradually and prefer soil-moisture-aware application.'
+    return i18next.t('common:aiMock.nutrition')
   }
   if (s.includes('pest') || s.includes('risk')) {
-    return 'Pest risk: Warm nights + humidity increase thrips/aphid risk. Use sticky traps and inspect undersides of young leaves. Escalate to IPM spray only if 2-day risk stays medium/high.'
+    return i18next.t('common:aiMock.pestRisk')
   }
-  return 'I can help with pests, irrigation, fertilizer, and finance. Configure VITE_GEMINI_API_KEY in .env.local to connect Gemini 1.5 Flash.'
+  return i18next.t('common:aiMock.defaultHelp')
 }

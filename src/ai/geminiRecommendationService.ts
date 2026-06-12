@@ -4,6 +4,7 @@ import type {
   SeverityLevel 
 } from '../features/field-vision/types';
 import i18next from 'i18next';
+import { sanitizeEnumKey } from '../hooks/useEnumTranslation';
 
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
@@ -39,38 +40,57 @@ export function getAIFallbackResponse(
 ): AIRecommendationResponse {
   const isHealthy = disease.toLowerCase().includes('healthy') || kbData?.id.endsWith('_healthy');
 
+  const transCrop = i18next.t(`enums:cropType.${sanitizeEnumKey(crop)}`, { defaultValue: crop });
+  const transDisease = i18next.t(`enums:diagnosis.${sanitizeEnumKey(disease)}`, { defaultValue: disease });
+
   if (isHealthy) {
     return {
-      summary: `Your ${crop} crop is looking healthy! Continue maintaining proper field management.`,
-      urgency: 'Routine monitoring only. No immediate treatment needed.',
-      preventionTips: kbData?.prevention.slice(0, 2) || ['Use certified disease-free seeds.', 'Ensure proper soil drainage.'],
-      weatherRiskNote: 'Keep checking soil moisture during dry and wet periods alike.',
-      expertAdvice: 'No expert guidance needed at this time.',
-      priorityActions: ['Regularly inspect crop foliage for new changes.', 'Ensure standard crop hydration.'],
-      next48HourRisk: 'Low weather risk. Weather is favorable for healthy growth.'
+      summary: i18next.t('fieldVision:fallbackHealthySummary', { defaultValue: 'Your {{crop}} crop is looking healthy! Continue maintaining proper field management.', crop: transCrop }),
+      urgency: i18next.t('fieldVision:fallbackHealthyUrgency', { defaultValue: 'Routine monitoring only. No immediate treatment needed.' }),
+      preventionTips: kbData?.prevention.slice(0, 2) || [
+        i18next.t('fieldVision:fallbackHealthyPrev1', { defaultValue: 'Use certified disease-free seeds.' }),
+        i18next.t('fieldVision:fallbackHealthyPrev2', { defaultValue: 'Ensure proper soil drainage.' })
+      ],
+      weatherRiskNote: i18next.t('fieldVision:fallbackHealthyWeather', { defaultValue: 'Keep checking soil moisture during dry and wet periods alike.' }),
+      expertAdvice: i18next.t('fieldVision:fallbackHealthyExpert', { defaultValue: 'No expert guidance needed at this time.' }),
+      priorityActions: [
+        i18next.t('fieldVision:fallbackHealthyAction1', { defaultValue: 'Regularly inspect crop foliage for new changes.' }),
+        i18next.t('fieldVision:fallbackHealthyAction2', { defaultValue: 'Ensure standard crop hydration.' })
+      ],
+      next48HourRisk: i18next.t('fieldVision:fallbackHealthyRisk', { defaultValue: 'Low weather risk. Weather is favorable for healthy growth.' })
     };
   }
 
   const baseSummary = kbData 
     ? kbData.farmerFriendlyExplanation 
-    : `Your ${crop} crop has been diagnosed with ${disease}.`;
+    : i18next.t('fieldVision:fallbackDiseasedSummary', { defaultValue: 'Your {{crop}} crop has been diagnosed with {{disease}}.', crop: transCrop, disease: transDisease });
+
+  const urgencyText = severity === 'high' 
+    ? i18next.t('fieldVision:fallbackUrgencyHigh', { defaultValue: 'High priority. Widespread crop damage could occur if not treated immediately.' })
+    : severity === 'medium'
+    ? i18next.t('fieldVision:fallbackUrgencyMedium', { defaultValue: 'Medium priority. Actions should be taken within the next few days.' })
+    : i18next.t('fieldVision:fallbackUrgencyLow', { defaultValue: 'Low priority. Keep a close eye on the plant and perform preventive measures.' });
+
+  const expertAdviceText = severity === 'high'
+    ? i18next.t('fieldVision:fallbackDiseasedExpertHigh', { defaultValue: 'We recommend consulting a local agricultural extension officer to verify local spray effectiveness.' })
+    : i18next.t('fieldVision:fallbackDiseasedExpertLow', { defaultValue: 'Standard local practices are sufficient.' });
 
   return {
     summary: baseSummary,
-    urgency: severity === 'high' 
-      ? 'High priority. Widespread crop damage could occur if not treated immediately.'
-      : severity === 'medium'
-      ? 'Medium priority. Actions should be taken within the next few days.'
-      : 'Low priority. Keep a close eye on the plant and perform preventive measures.',
-    preventionTips: kbData?.prevention.slice(0, 3) || ['Rotate crops.', 'Use clean farm tools.'],
+    urgency: urgencyText,
+    preventionTips: kbData?.prevention.slice(0, 3) || [
+      i18next.t('fieldVision:fallbackDiseasedPrev1', { defaultValue: 'Rotate crops.' }),
+      i18next.t('fieldVision:fallbackDiseasedPrev2', { defaultValue: 'Use clean farm tools.' })
+    ],
     weatherRiskNote: kbData?.spreadConditions 
       ? `Spreads under: Humidity: ${kbData.spreadConditions.humidity || 'N/A'}, Temp: ${kbData.spreadConditions.temperature || 'N/A'}`
-      : 'Monitor weather reports for high humidity conditions.',
-    expertAdvice: severity === 'high' 
-      ? 'We recommend consulting a local agricultural extension officer to verify local spray effectiveness.'
-      : 'Standard local practices are sufficient.',
-    priorityActions: kbData?.immediateActions[severity].slice(0, 3) || ['Isolate infected areas.', 'Avoid high moisture conditions.'],
-    next48HourRisk: 'Infection is active in the field. Favorable humidity levels could trigger rapid progression.'
+      : i18next.t('fieldVision:fallbackDiseasedWeather', { defaultValue: 'Monitor weather reports for high humidity conditions.' }),
+    expertAdvice: expertAdviceText,
+    priorityActions: kbData?.immediateActions[severity].slice(0, 3) || [
+      i18next.t('fieldVision:fallbackDiseasedAction1', { defaultValue: 'Isolate infected areas.' }),
+      i18next.t('fieldVision:fallbackDiseasedAction2', { defaultValue: 'Avoid high moisture conditions.' })
+    ],
+    next48HourRisk: i18next.t('fieldVision:fallbackDiseasedRisk', { defaultValue: 'Infection is active in the field. Favorable humidity levels could trigger rapid progression.' })
   };
 }
 

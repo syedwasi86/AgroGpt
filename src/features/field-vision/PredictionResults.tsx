@@ -9,13 +9,14 @@ import {
   Info,
   UserCheck
 } from 'lucide-react';
-import i18next from 'i18next';
 import { cn } from '../../core/utils/cn';
 import { getDiseaseKnowledge } from '../../knowledge-Base/diseaseLookup';
 import { generateRecommendation } from '../../engine/recommendationEngine';
 import { calculateSeverity } from '../../engine/severityEngine';
 import { getSeverityQuestions } from './severityQuestions';
 import type { DiseaseKnowledgeBaseEntry, SeverityLevel } from './types';
+import { useTranslation } from 'react-i18next';
+import { useEnumTranslation } from '../../hooks/useEnumTranslation';
 
 interface Props {
   crop: string;
@@ -34,6 +35,8 @@ export function PredictionResults({
   onFeedback, 
   onGetAIRecommendations 
 }: Props) {
+  const { t, i18n } = useTranslation(['common', 'fieldVision', 'enums']);
+  const { tEnum } = useEnumTranslation();
   const [kbData, setKbData] = useState<DiseaseKnowledgeBaseEntry | null>(null);
   const [loadingKB, setLoadingKB] = useState(true);
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -109,7 +112,7 @@ export function PredictionResults({
   const recResponse = generateRecommendation(crop, disease, confidence, severity, kbData);
 
   // Resolve localized display name
-  const langCode = i18next.resolvedLanguage ?? i18next.language ?? 'en';
+  const langCode = i18n.language || 'en';
   const resolvedLang = langCode.split('-')[0];
   const displayName = kbData?.displayName?.[resolvedLang] || kbData?.displayName?.en || disease.replace(/_/g, ' ');
 
@@ -117,7 +120,7 @@ export function PredictionResults({
     return (
       <div className="flex flex-col items-center justify-center py-12 text-white/60 animate-pulse">
         <RefreshCw className="animate-spin mb-4" size={32} />
-        <p className="text-sm">Loading agricultural knowledge base...</p>
+        <p className="text-sm">{t('fieldVision.loadingKb', 'Loading agricultural knowledge base...')}</p>
       </div>
     );
   }
@@ -140,7 +143,7 @@ export function PredictionResults({
           </div>
           <div>
             <div className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">
-              Detected Condition
+              {t('fieldVision.detectedCondition', 'Detected Condition')}
             </div>
             <h2 className="text-xl font-bold text-white capitalize">{displayName}</h2>
             {kbData?.scientificName && (
@@ -153,7 +156,7 @@ export function PredictionResults({
       {/* AI Confidence Meter */}
       <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4">
         <div className="flex justify-between items-center mb-2">
-          <div className="text-sm font-medium text-white/70">AI Confidence Score</div>
+          <div className="text-sm font-medium text-white/70">{t('fieldVision.aiConfidenceScore', 'AI Confidence Score')}</div>
           <div className="text-sm font-bold text-white">{confidence}%</div>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-black/40 mb-2">
@@ -173,37 +176,43 @@ export function PredictionResults({
         <div className="mb-6 rounded-2xl border border-stroke-2 bg-secondary/5 p-5">
           <div className="flex items-center gap-2 mb-3 text-secondary">
             <HelpCircle size={18} />
-            <h3 className="text-sm font-bold uppercase tracking-wider">Quick Field Assessment</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wider">{t('fieldVision.quickFieldAssessment', 'Quick Field Assessment')}</h3>
           </div>
           <p className="text-xs text-white/60 mb-5 leading-relaxed">
-            Please answer these questions based on what you see in the field to help calculate the infection severity.
+            {t('fieldVision.quickFieldAssessmentDesc', 'Please answer these questions based on what you see in the field to help calculate the infection severity.')}
           </p>
 
           <div className="space-y-5 mb-5">
             {questions.map((q) => {
               const currentScore = answers[q.id];
+              const qKey = `severityQuestions.${crop}_${disease}.${q.id}`;
+              const translatedQuestion = t(`fieldVision:${qKey}.question`, q.question);
               return (
                 <div key={q.id} className="border-b border-white/5 pb-4 last:border-0 last:pb-0">
-                  <p className="text-sm font-semibold text-white/90 mb-2">{q.question}</p>
+                  <p className="text-sm font-semibold text-white/90 mb-2">{translatedQuestion}</p>
                   <div className="flex flex-col gap-2">
-                    {q.options.map((opt, idx) => (
-                      <label 
-                        key={idx} 
-                        className={cn(
-                          "flex items-center gap-3 px-4 py-2.5 rounded-xl border border-white/5 bg-white/5 cursor-pointer text-xs transition-all hover:bg-white/10",
-                          currentScore === opt.score && "border-primary-500/50 bg-primary-950/20 text-primary-300 font-medium"
-                        )}
-                      >
-                        <input
-                          type="radio"
-                          name={q.id}
-                          checked={currentScore === opt.score}
-                          onChange={() => handleOptionChange(q.id, opt.score)}
-                          className="accent-primary-500"
-                        />
-                        <span>{opt.label}</span>
-                      </label>
-                    ))}
+                    {q.options.map((opt, idx) => {
+                      const optKey = `severityQuestions.${crop}_${disease}.${q.id}.options.${idx}`;
+                      const translatedOptLabel = t(`fieldVision:${optKey}`, opt.label);
+                      return (
+                        <label 
+                          key={idx} 
+                          className={cn(
+                            "flex items-center gap-3 px-4 py-2.5 rounded-xl border border-white/5 bg-white/5 cursor-pointer text-xs transition-all hover:bg-white/10",
+                            currentScore === opt.score && "border-primary-500/50 bg-primary-950/20 text-primary-300 font-medium"
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name={q.id}
+                            checked={currentScore === opt.score}
+                            onChange={() => handleOptionChange(q.id, opt.score)}
+                            className="accent-primary-500"
+                          />
+                          <span>{translatedOptLabel}</span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -215,7 +224,7 @@ export function PredictionResults({
             disabled={Object.keys(answers).length < questions.length}
             className="w-full rounded-xl bg-primary-600 py-3 text-sm font-bold text-white shadow-glowPrimary transition-all hover:bg-primary-500 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Calculate Severity & View Recommendations
+            {t('fieldVision.calculateSeverityBtn', 'Calculate Severity & View Recommendations')}
           </button>
         </div>
       ) : (
@@ -225,7 +234,7 @@ export function PredictionResults({
           {/* Severity Banner */}
           {!isHealthy && (
             <div className="flex justify-between items-center p-4 rounded-xl border border-white/10 bg-white/5">
-              <div className="text-xs font-semibold text-white/50 uppercase tracking-wider">Field Severity Level</div>
+              <div className="text-xs font-semibold text-white/50 uppercase tracking-wider">{t('fieldVision.fieldSeverity', 'Field Severity')}</div>
               <div className="flex items-center gap-3">
                 <span className={cn(
                   "px-3 py-1 rounded-full text-xs font-bold capitalize border",
@@ -233,7 +242,7 @@ export function PredictionResults({
                   severity === 'medium' ? "bg-yellow-500/10 text-yellow-400 border-yellow-500/30" :
                   "bg-green-500/10 text-green-400 border-green-500/30"
                 )}>
-                  {severity} severity
+                  {t('fieldVision.severityValue', '{{severity}} Severity', { severity: t(`fieldVision.${severity}`, severity) })}
                 </span>
                 
                 {hasQuestions && (
@@ -241,7 +250,7 @@ export function PredictionResults({
                     onClick={() => setIsSeverityAssessed(false)} 
                     className="flex items-center gap-1 text-[11px] font-bold text-primary-300 hover:text-primary-200 transition-all uppercase tracking-wider"
                   >
-                    <RefreshCw size={12} /> Re-assess
+                    <RefreshCw size={12} /> {t('fieldVision.reAssess', 'Re-assess')}
                   </button>
                 )}
               </div>
@@ -252,7 +261,7 @@ export function PredictionResults({
           {kbData && (
             <div className="p-4 rounded-xl border border-white/5 bg-white/5 text-xs">
               <div className="flex items-center gap-2 mb-2 text-white/60 font-semibold">
-                <Info size={14} /> Explanation
+                <Info size={14} /> {t('fieldVision.explanation', 'Explanation')}
               </div>
               <p className="text-white/80 leading-relaxed">{kbData.farmerFriendlyExplanation}</p>
             </div>
@@ -275,8 +284,8 @@ export function PredictionResults({
             <div className="p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-200 text-xs flex items-center gap-3">
               <UserCheck className="text-yellow-400 flex-shrink-0" size={18} />
               <div>
-                <span className="font-semibold block mb-0.5">Agronomist Consultation Advised</span>
-                <span>It is recommended to seek direct advice from a local crop specialist for verified treatment.</span>
+                <span className="font-semibold block mb-0.5">{t('fieldVision.expertConsultation', 'Agronomist Consultation Advised')}</span>
+                <span>{t('fieldVision.expertConsultationDesc', 'It is recommended to seek direct advice from a local crop specialist for verified treatment.')}</span>
               </div>
             </div>
           )}
@@ -287,7 +296,7 @@ export function PredictionResults({
             {/* Immediate Actions */}
             <div className="rounded-2xl border border-stroke-3 bg-secondary/10 p-5 relative overflow-hidden">
                <div className="text-xs font-bold text-secondary mb-3 flex items-center gap-2 uppercase tracking-wider">
-                 <ChevronRight size={14} /> Immediate Actions
+                 <ChevronRight size={14} /> {t('fieldVision.immediateActions', 'Immediate Actions')}
                </div>
                <ul className="list-disc pl-5 space-y-2 text-white/90 text-sm leading-relaxed">
                  {recResponse.recommendations.immediateActions.map((action, idx) => (
@@ -299,48 +308,48 @@ export function PredictionResults({
             {/* Organic Treatments */}
             <div className="rounded-2xl border border-stroke-3 bg-white/5 p-5 relative overflow-hidden">
                <div className="text-xs font-bold text-primary-300 mb-3 flex items-center gap-2 uppercase tracking-wider">
-                 <ChevronRight size={14} /> Organic Treatments
+                 <ChevronRight size={14} /> {t('fieldVision.organicTreatments', 'Organic Control')}
                </div>
                {recResponse.recommendations.organicTreatments.length > 0 ? (
                  <ul className="list-disc pl-5 space-y-2 text-white/90 text-sm leading-relaxed">
-                   {recResponse.recommendations.organicTreatments.map((t, idx) => (
-                     <li key={idx}>{t}</li>
+                   {recResponse.recommendations.organicTreatments.map((tVal, idx) => (
+                     <li key={idx}>{tVal}</li>
                    ))}
                  </ul>
                ) : (
-                 <p className="text-xs text-white/50 italic">No specific organic treatments listed.</p>
+                 <p className="text-xs text-white/50 italic">{t('fieldVision.noOrganicTreatments', 'No specific organic treatments listed.')}</p>
                )}
             </div>
 
             {/* Chemical Treatments (ONLY FOR DISEASES) */}
             {!isHealthy && recResponse.recommendations.chemicalTreatments.length > 0 && (
-              <div className="rounded-2xl border border-stroke-3 bg-red-500/10 p-5 relative overflow-hidden">
-                 <div className="text-xs font-bold text-red-400 mb-3 flex items-center gap-2 uppercase tracking-wider">
-                   <ChevronRight size={14} /> Chemical Treatments
-                 </div>
-                 <div className="space-y-4">
-                   {recResponse.recommendations.chemicalTreatments.map((chem, idx) => (
-                     <div key={idx} className="border-b border-white/5 pb-3 last:border-0 last:pb-0">
-                       <p className="text-sm font-bold text-white">{chem.activeIngredient}</p>
-                       <div className="grid grid-cols-2 gap-2 mt-1.5 text-xs text-white/70">
-                         <div><span className="text-white/40">Dosage:</span> {chem.dosage}</div>
-                         {chem.sprayInterval && (
-                           <div><span className="text-white/40">Interval:</span> {chem.sprayInterval}</div>
-                         )}
-                       </div>
-                       {chem.notes && (
-                         <p className="text-[11px] text-white/40 mt-1"><span className="font-semibold">Note:</span> {chem.notes}</p>
-                       )}
-                     </div>
-                   ))}
-                 </div>
-              </div>
+               <div className="rounded-2xl border border-stroke-3 bg-red-500/10 p-5 relative overflow-hidden">
+                  <div className="text-xs font-bold text-red-400 mb-3 flex items-center gap-2 uppercase tracking-wider">
+                    <ChevronRight size={14} /> {t('fieldVision.chemicalTreatments', 'Approved Chemical Control')}
+                  </div>
+                  <div className="space-y-4">
+                    {recResponse.recommendations.chemicalTreatments.map((chem, idx) => (
+                      <div key={idx} className="border-b border-white/5 pb-3 last:border-0 last:pb-0">
+                        <p className="text-sm font-bold text-white">{chem.activeIngredient}</p>
+                        <div className="grid grid-cols-2 gap-2 mt-1.5 text-xs text-white/70">
+                          <div><span className="text-white/40">{t('fieldVision.dosageLabel', 'Dosage:')}</span> {chem.dosage}</div>
+                          {chem.sprayInterval && (
+                            <div><span className="text-white/40">{t('fieldVision.intervalLabel', 'Interval:')}</span> {chem.sprayInterval}</div>
+                          )}
+                        </div>
+                        {chem.notes && (
+                          <p className="text-[11px] text-white/40 mt-1"><span className="font-semibold">{t('fieldVision.noteLabel', 'Note:')}</span> {chem.notes}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+               </div>
             )}
 
             {/* Preventive Best Practices */}
             <div className="rounded-2xl border border-stroke-3 bg-blue-500/10 p-5 relative overflow-hidden">
                <div className="text-xs font-bold text-blue-400 mb-3 flex items-center gap-2 uppercase tracking-wider">
-                 <ChevronRight size={14} /> Prevention Guidelines
+                 <ChevronRight size={14} /> {t('fieldVision.preventionGuidelines', 'Prevention Guidelines')}
                </div>
                <ul className="list-disc pl-5 space-y-2 text-white/90 text-sm leading-relaxed">
                  {recResponse.recommendations.prevention.map((prev, idx) => (
@@ -351,16 +360,16 @@ export function PredictionResults({
 
             {/* Monitoring Advice */}
             {recResponse.recommendations.monitoringAdvice.length > 0 && (
-              <div className="rounded-2xl border border-stroke-3 bg-white/5 p-5 relative overflow-hidden">
-                 <div className="text-xs font-bold text-white/60 mb-3 flex items-center gap-2 uppercase tracking-wider">
-                   <ChevronRight size={14} /> Monitoring Advice
-                 </div>
-                 <ul className="list-disc pl-5 space-y-2 text-white/90 text-sm leading-relaxed">
-                   {recResponse.recommendations.monitoringAdvice.map((m, idx) => (
-                     <li key={idx}>{m}</li>
-                   ))}
-                 </ul>
-              </div>
+               <div className="rounded-2xl border border-stroke-3 bg-white/5 p-5 relative overflow-hidden">
+                  <div className="text-xs font-bold text-white/60 mb-3 flex items-center gap-2 uppercase tracking-wider">
+                    <ChevronRight size={14} /> {t('fieldVision.monitoringAdvice', 'Monitoring Advice')}
+                  </div>
+                  <ul className="list-disc pl-5 space-y-2 text-white/90 text-sm leading-relaxed">
+                    {recResponse.recommendations.monitoringAdvice.map((m, idx) => (
+                      <li key={idx}>{m}</li>
+                    ))}
+                  </ul>
+               </div>
             )}
           </div>
 
@@ -369,7 +378,9 @@ export function PredictionResults({
             onClick={() => onGetAIRecommendations(severity, kbData)}
             className="w-full rounded-xl border border-primary-500/50 bg-primary-600/20 py-3 text-sm font-bold text-primary-300 transition-all hover:bg-primary-600/30"
           >
-            {isOffline ? 'Get Local AI Recommendations (Offline)' : 'Get AI Recommendations'}
+            {isOffline 
+              ? t('fieldVision.getAiRecOffline', 'Get Local AI Recommendations (Offline)') 
+              : t('fieldVision.getAiRec', 'Get AI Recommendations')}
           </button>
         </div>
       )}
@@ -377,25 +388,25 @@ export function PredictionResults({
       {/* Was this diagnosis correct? feedback */}
       {!feedbackGiven ? (
         <div className="mt-6 border-t border-white/10 pt-4">
-          <p className="text-center text-sm text-white/70 mb-3">Was this diagnosis correct?</p>
+          <p className="text-center text-sm text-white/70 mb-3">{t('fieldVision.helpfulQuestion', 'Was this diagnosis correct?')}</p>
           <div className="flex gap-4 justify-center">
             <button 
               onClick={() => handleFeedback(true)} 
               className="px-6 py-2 rounded-full bg-green-500/20 text-green-300 hover:bg-green-500/30 text-sm font-semibold transition-all"
             >
-              Yes
+              {t('common.yes', 'Yes')}
             </button>
             <button 
               onClick={() => handleFeedback(false)} 
               className="px-6 py-2 rounded-full bg-red-500/20 text-red-300 hover:bg-red-500/30 text-sm font-semibold transition-all"
             >
-              No
+              {t('common.no', 'No')}
             </button>
           </div>
         </div>
       ) : (
         <div className="mt-6 border-t border-white/10 pt-4 text-center text-sm text-primary-400">
-          Thank you for your feedback!
+          {t('fieldVision.feedbackThanks', 'Thank you for your feedback!')}
         </div>
       )}
     </div>

@@ -23,7 +23,7 @@ export function SettingsPage() {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
   const [loggingOut, setLoggingOut] = useState(false)
-  const { t, i18n } = useTranslation()
+  const { t, i18n } = useTranslation(['common', 'profile', 'validation'])
   
   const [formData, setFormData] = useState({
     notificationsEnabled: false,
@@ -102,7 +102,7 @@ export function SettingsPage() {
       }
     } catch (err) {
       console.warn(err)
-      setLocationError(t('settings.locationError', 'Geolocation access denied or timed out.'))
+      setLocationError(t('profile:locationError'))
     } finally {
       setLocating(false)
     }
@@ -132,7 +132,7 @@ export function SettingsPage() {
       void i18n.changeLanguage(formData.language)
     }
 
-    alert(t('settings.savedSuccessfully', 'Settings saved successfully!'))
+    alert(t('validation:savedSuccess'))
   }
 
   useEffect(() => {
@@ -163,8 +163,8 @@ export function SettingsPage() {
   }
 
   const lastSyncDate = settings?.last_sync && settings.last_sync !== '1970-01-01T00:00:00.000Z'
-    ? new Date(settings.last_sync).toLocaleString() 
-    : t('settings.neverSynced', 'Never')
+    ? new Date(settings.last_sync).toLocaleString(i18n.language, { numberingSystem: 'latn' }) 
+    : t('profile:neverSynced')
 
   const handleLogout = async () => {
     setLoggingOut(true)
@@ -180,8 +180,8 @@ export function SettingsPage() {
   return (
     <div className={`space-y-6 transition-all duration-700 ${loggingOut ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
       <div>
-        <h1 className="agro-h1">{t('settings.title', 'Settings')}</h1>
-        <p className="subtle mt-2">{t('settings.subtitle', 'Control your app preferences and data.')}</p>
+        <h1 className="agro-h1">{t('profile:settingsTitle')}</h1>
+        <p className="subtle mt-2">{t('profile:settingsSubtitle')}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -189,14 +189,14 @@ export function SettingsPage() {
         <GlassCard className="p-6" variant="strong">
           <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
             <Settings size={20} className="text-[#87A96B]" />
-            {t('settings.appPreferences', 'App Preferences')}
+            {t('profile:appPreferences')}
           </h2>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4">
               <div>
-                <div className="text-sm font-semibold text-white">{t('settings.enableNotifications', 'Enable Notifications')}</div>
-                <div className="text-xs text-white/50 mt-1">{t('settings.notificationsSub', 'Get alerts for weather and market updates.')}</div>
+                <div className="text-sm font-semibold text-white">{t('profile:enableNotifications')}</div>
+                <div className="text-xs text-white/50 mt-1">{t('profile:notificationsSub')}</div>
               </div>
               <input 
                 type="checkbox" 
@@ -207,20 +207,20 @@ export function SettingsPage() {
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <label className="mb-2 block text-sm font-semibold text-white">{t('settings.theme', 'Theme')}</label>
+              <label className="mb-2 block text-sm font-semibold text-white">{t('profile:theme')}</label>
               <select 
                 className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-[#87A96B] transition"
                 value={formData.theme} 
                 onChange={e => setFormData({ ...formData, theme: e.target.value })}
               >
-                <option value="light">{t('settings.themeLight', 'Light')}</option>
-                <option value="dark">{t('settings.themeDark', 'Dark')}</option>
-                <option value="system">{t('settings.themeSystem', 'System')}</option>
+                <option value="light">{t('profile:themeLight')}</option>
+                <option value="dark">{t('profile:themeDark')}</option>
+                <option value="system">{t('profile:themeSystem')}</option>
               </select>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <label className="mb-2 block text-sm font-semibold text-white">{t('settings.language', 'Language')}</label>
+              <label className="mb-2 block text-sm font-semibold text-white">{t('common:language')}</label>
               <select 
                 className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-[#87A96B] transition"
                 value={formData.language} 
@@ -238,63 +238,63 @@ export function SettingsPage() {
         <GlassCard className="p-6" variant="strong">
           <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
             <MapPin size={20} className="text-[#87A96B]" />
-            {t('settings.farmLocation', 'Farm Location')}
+            {t('profile:farmLocation')}
           </h2>
-          <p className="subtle mb-4">{t('settings.farmLocationSub', "Manage your farm's geographic details and coordinates.")}</p>
+          <p className="subtle mb-4">{t('profile:farmLocationSub')}</p>
 
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div>
-                <label className="mb-2 block text-xs font-semibold text-white/60">{t('settings.village', 'Village / Town')}</label>
+                <label className="mb-2 block text-xs font-semibold text-white/60">{t('profile:village')}</label>
                 <input
                   type="text"
                   value={formData.village}
                   onChange={e => setFormData({ ...formData, village: e.target.value })}
                   className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-[#87A96B] transition"
-                  placeholder={t('settings.villagePlaceholder', 'Village')}
+                  placeholder={t('profile:villagePlaceholder')}
                 />
               </div>
               <div>
-                <label className="mb-2 block text-xs font-semibold text-white/60">{t('settings.district', 'District')}</label>
+                <label className="mb-2 block text-xs font-semibold text-white/60">{t('profile:district')}</label>
                 <input
                   type="text"
                   value={formData.district}
                   onChange={e => setFormData({ ...formData, district: e.target.value })}
                   className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-[#87A96B] transition"
-                  placeholder={t('settings.districtPlaceholder', 'District')}
+                  placeholder={t('profile:districtPlaceholder')}
                 />
               </div>
               <div>
-                <label className="mb-2 block text-xs font-semibold text-white/60">{t('settings.state', 'State')}</label>
+                <label className="mb-2 block text-xs font-semibold text-white/60">{t('profile:state')}</label>
                 <input
                   type="text"
                   value={formData.state}
                   onChange={e => setFormData({ ...formData, state: e.target.value })}
                   className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-[#87A96B] transition"
-                  placeholder={t('settings.statePlaceholder', 'State')}
+                  placeholder={t('profile:statePlaceholder')}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-xs font-semibold text-white/60">{t('settings.latitude', 'Latitude')}</label>
+                <label className="mb-2 block text-xs font-semibold text-white/60">{t('profile:latitude')}</label>
                 <input
                   type="text"
                   value={formData.latitude}
                   onChange={e => setFormData({ ...formData, latitude: e.target.value })}
                   className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-[#87A96B] transition font-mono"
-                  placeholder={t('settings.latitudePlaceholder', 'Latitude (e.g. 17.3850)')}
+                  placeholder={t('profile:latitudePlaceholder')}
                 />
               </div>
               <div>
-                <label className="mb-2 block text-xs font-semibold text-white/60">{t('settings.longitude', 'Longitude')}</label>
+                <label className="mb-2 block text-xs font-semibold text-white/60">{t('profile:longitude')}</label>
                 <input
                   type="text"
                   value={formData.longitude}
                   onChange={e => setFormData({ ...formData, longitude: e.target.value })}
                   className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-[#87A96B] transition font-mono"
-                  placeholder={t('settings.longitudePlaceholder', 'Longitude (e.g. 78.4867)')}
+                  placeholder={t('profile:longitudePlaceholder')}
                 />
               </div>
             </div>
@@ -306,7 +306,7 @@ export function SettingsPage() {
                 className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 hover:border-white/20 transition"
               >
                 <Globe size={18} className="text-blue-400" />
-                {showMap ? t('settings.hideMap', 'Hide Map') : t('settings.viewMap', 'View Map')}
+                {showMap ? t('profile:hideMap') : t('profile:viewMap')}
               </button>
               <button
                 type="button"
@@ -315,7 +315,7 @@ export function SettingsPage() {
                 className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 hover:border-white/20 transition disabled:opacity-50"
               >
                 <RefreshCw size={18} className={`text-green-400 ${locating ? 'animate-spin' : ''}`} />
-                {locating ? t('settings.refreshing', 'Refreshing...') : t('settings.refreshLocation', 'Refresh Location')}
+                {locating ? t('profile:refreshing') : t('profile:refreshLocation')}
               </button>
             </div>
 
@@ -331,7 +331,7 @@ export function SettingsPage() {
                   fallback={
                     <div className="flex h-full items-center justify-center text-sm text-white/30">
                       <Loader2 size={24} className="animate-spin text-green-400 mr-2" />
-                      {t('settings.loadingMap', 'Loading map modules...')}
+                      {t('profile:loadingMap')}
                     </div>
                   }
                 >
@@ -351,7 +351,7 @@ export function SettingsPage() {
 
           <div className="pt-6 mt-6 border-t border-white/10">
             <button type="submit" className="flex items-center gap-2 rounded-2xl bg-[#2E7D32] px-6 py-3 text-sm font-semibold text-white shadow-glowPrimary hover:opacity-90 transition">
-              <Save size={18} /> {t('settings.saveSettings', 'Save Settings')}
+              <Save size={18} /> {t('profile:saveSettings')}
             </button>
           </div>
         </GlassCard>
@@ -361,23 +361,23 @@ export function SettingsPage() {
       <GlassCard className="p-6" variant="strong">
         <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
           <User size={20} className="text-[#87A96B]" />
-          {t('settings.account', 'Account')}
+          {t('profile:account')}
         </h2>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4">
             <div>
-              <div className="text-sm font-semibold text-white">{t('settings.syncStatus', 'Sync Status')}</div>
+              <div className="text-sm font-semibold text-white">{t('profile:syncStatus')}</div>
               <div className="text-xs text-white/50 mt-1">
-                {t('settings.lastSyncTime', 'Last synced')}: <span className="text-white font-mono">{lastSyncDate}</span>
+                {t('profile:lastSyncTime')}: <span className="text-white font-mono">{lastSyncDate}</span>
               </div>
             </div>
             <div className="text-right">
-              {isOffline && <span className="inline-flex items-center rounded-full bg-yellow-400/10 px-2.5 py-0.5 text-xs font-medium text-yellow-400 border border-yellow-400/20">{t('settings.offlineMode', 'Offline Mode')}</span>}
-              {!isOffline && syncStatus === 'success' && <span className="inline-flex items-center rounded-full bg-green-400/10 px-2.5 py-0.5 text-xs font-medium text-green-400 border border-green-400/20">{t('settings.syncSuccess', 'Sync Successful!')}</span>}
-              {!isOffline && syncStatus === 'error' && <span className="inline-flex items-center rounded-full bg-red-400/10 px-2.5 py-0.5 text-xs font-medium text-red-400 border border-red-400/20">{t('settings.syncFailed', 'Sync Failed')}</span>}
-              {!isOffline && syncStatus === 'idle' && !syncing && <span className="inline-flex items-center rounded-full bg-blue-400/10 px-2.5 py-0.5 text-xs font-medium text-blue-400 border border-blue-400/20">Synced</span>}
-              {syncing && <span className="inline-flex items-center rounded-full bg-blue-400/10 px-2.5 py-0.5 text-xs font-medium text-blue-400 border border-blue-400/20">{t('settings.syncing', 'Syncing...')}</span>}
+              {isOffline && <span className="inline-flex items-center rounded-full bg-yellow-400/10 px-2.5 py-0.5 text-xs font-medium text-yellow-400 border border-yellow-400/20">{t('profile:offlineMode')}</span>}
+              {!isOffline && syncStatus === 'success' && <span className="inline-flex items-center rounded-full bg-green-400/10 px-2.5 py-0.5 text-xs font-medium text-green-400 border border-green-400/20">{t('profile:syncSuccess')}</span>}
+              {!isOffline && syncStatus === 'error' && <span className="inline-flex items-center rounded-full bg-red-400/10 px-2.5 py-0.5 text-xs font-medium text-red-400 border border-red-400/20">{t('profile:syncFailed')}</span>}
+              {!isOffline && syncStatus === 'idle' && !syncing && <span className="inline-flex items-center rounded-full bg-green-400/10 px-2.5 py-0.5 text-xs font-medium text-green-400 border border-green-400/20">{t('profile:syncSuccess')}</span>}
+              {syncing && <span className="inline-flex items-center rounded-full bg-blue-400/10 px-2.5 py-0.5 text-xs font-medium text-blue-400 border border-blue-400/20">{t('profile:syncing')}</span>}
             </div>
           </div>
 
@@ -389,7 +389,7 @@ export function SettingsPage() {
               className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition disabled:opacity-50"
             >
               <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} /> 
-              {syncing ? t('settings.syncing', 'Syncing...') : t('settings.syncNow', 'Sync Now')}
+              {syncing ? t('profile:syncing') : t('profile:syncNow')}
             </button>
             
             <button 
@@ -399,7 +399,7 @@ export function SettingsPage() {
               className="flex items-center gap-2 rounded-2xl bg-red-500/10 border border-red-500/20 px-6 py-3 text-sm font-semibold text-red-500 hover:bg-red-500/20 transition disabled:opacity-50"
             >
               <LogOut size={18} className={loggingOut ? 'animate-pulse' : ''} /> 
-              {loggingOut ? t('settings.loggingOut', 'Logging out securely...') : t('settings.logout', 'Log Out')}
+              {loggingOut ? t('profile:loggingOut') : t('profile:logout')}
             </button>
           </div>
         </div>
@@ -409,16 +409,16 @@ export function SettingsPage() {
       <GlassCard className="p-6" variant="strong">
         <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
           <Info size={20} className="text-[#87A96B]" />
-          {t('settings.about', 'About')}
+          {t('profile:about')}
         </h2>
 
         <div className="space-y-3.5 text-sm">
           <div className="flex justify-between border-b border-white/5 pb-2">
-            <span className="text-white/50">{t('settings.appVersion', 'App Version')}</span>
+            <span className="text-white/50">{t('profile:appVersion')}</span>
             <span className="font-semibold text-white font-mono">{__APP_VERSION__}</span>
           </div>
           <div className="flex justify-between pb-2">
-            <span className="text-white/50">{t('settings.buildVersion', 'Build Version')}</span>
+            <span className="text-white/50">{t('profile:buildVersion')}</span>
             <span className="font-semibold text-white font-mono">{__BUILD_VERSION__}</span>
           </div>
         </div>

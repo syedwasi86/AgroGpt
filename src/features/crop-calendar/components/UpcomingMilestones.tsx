@@ -3,16 +3,21 @@ import { formatUtcToLocal } from '../utils/dateUtils'
 import { cn } from '../../../core/utils/cn'
 import type { MilestoneItem } from '../selectors'
 import { TimelineMarker } from '../shared/ui/TimelineMarker'
+import { useTranslation } from 'react-i18next'
+import { useEnumTranslation } from '../../../hooks/useEnumTranslation'
 
 interface UpcomingMilestonesProps {
   milestones: MilestoneItem[]
 }
 
 export function UpcomingMilestones({ milestones }: UpcomingMilestonesProps) {
+  const { t } = useTranslation(['common', 'cropCalendar'])
+  const { tEnum } = useEnumTranslation()
+
   if (milestones.length === 0) {
     return (
       <div className="p-5 border border-white/5 bg-white/2 rounded-2xl text-center text-white/30 text-xs font-semibold">
-        No upcoming milestones. Crop lifecycle has reached maturity.
+        {t('cropCalendar.milestones.noMilestones', 'No upcoming milestones. Crop lifecycle has reached maturity.')}
       </div>
     )
   }
@@ -22,9 +27,9 @@ export function UpcomingMilestones({ milestones }: UpcomingMilestonesProps) {
       {milestones.slice(0, 4).map((milestone, idx) => {
         const isNext = idx === 0
         const relativeText = 
-          milestone.relativeDays === 0 ? 'Starts today' :
-          milestone.relativeDays === 1 ? 'Expected tomorrow' :
-          `Expected in ${milestone.relativeDays} days`
+          milestone.relativeDays === 0 ? t('cropCalendar.milestones.startsToday', 'Starts today') :
+          milestone.relativeDays === 1 ? t('cropCalendar.milestones.expectedTomorrow', 'Expected tomorrow') :
+          t('cropCalendar.milestones.expectedDays', 'Expected in {{days}} days', { days: milestone.relativeDays })
 
         return (
           <div key={idx} className="relative group">
@@ -49,7 +54,7 @@ export function UpcomingMilestones({ milestones }: UpcomingMilestonesProps) {
                 </div>
                 <div>
                   <h5 className="font-bold text-white text-xs leading-none">
-                    {milestone.name}
+                    {tEnum('cropStage', milestone.name)}
                   </h5>
                   <p className={cn(
                     "text-[11px] font-semibold mt-1",

@@ -3,8 +3,9 @@ import { GlassCard } from '../../../components/GlassCard'
 import { AdvisoryRow } from '../shared/ui/AdvisoryRow'
 import { EmptyState } from '../shared/ui/EmptyState'
 import { formatUtcToLocal } from '../utils/dateUtils'
-import { CloudRain, Wind, AlertTriangle, Sun, Thermometer, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react'
+import { CloudRain, Wind, AlertTriangle, Sun, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react'
 import type { WeatherAlert } from '../engines/weatherAdjustmentEngine'
+import { useTranslation } from 'react-i18next'
 
 interface WeatherAdvisoryProps {
   alerts: WeatherAlert[]
@@ -12,28 +13,33 @@ interface WeatherAdvisoryProps {
 
 const typeConfig = {
   irrigation_delay: {
-    category: 'Irrigation Advisory',
+    categoryKey: 'irrigation_delay',
+    defaultCategory: 'Irrigation Advisory',
     icon: <CloudRain size={16} />,
     severity: 'warning' as const
   },
   spray_warning: {
-    category: 'Spray Advisory',
+    categoryKey: 'spray_warning',
+    defaultCategory: 'Spray Advisory',
     icon: <Wind size={16} />,
     severity: 'danger' as const
   },
   disease_warning: {
-    category: 'Disease Advisory',
+    categoryKey: 'disease_warning',
+    defaultCategory: 'Disease Advisory',
     icon: <AlertTriangle size={16} />,
     severity: 'warning' as const
   },
   heat_stress: {
-    category: 'Heat Advisory',
+    categoryKey: 'heat_stress',
+    defaultCategory: 'Heat Advisory',
     icon: <Sun size={16} />,
     severity: 'danger' as const
   }
 }
 
 export function WeatherAdvisory({ alerts }: WeatherAdvisoryProps) {
+  const { t } = useTranslation(['common', 'cropCalendar'])
   const [showAll, setShowAll] = useState(false)
   const hasAlerts = alerts.length > 0
 
@@ -43,8 +49,8 @@ export function WeatherAdvisory({ alerts }: WeatherAdvisoryProps) {
     <GlassCard className="p-6 border-white/5 bg-[#121412]/80 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] rounded-3xl" variant="strong">
       {!hasAlerts ? (
         <EmptyState
-          message="Weather conditions are stable"
-          description="Local forecast predicts optimal humidity, wind, and temperature conditions for all farming operations."
+          message={t('cropCalendar.weatherStable', 'Weather conditions are stable')}
+          description={t('cropCalendar.weatherStableDesc', 'Local forecast predicts optimal humidity, wind, and temperature conditions for all farming operations.')}
           icon={<ShieldCheck size={28} className="text-[#87A96B]" />}
         />
       ) : (
@@ -52,15 +58,18 @@ export function WeatherAdvisory({ alerts }: WeatherAdvisoryProps) {
           <div className="max-h-[380px] overflow-y-auto pr-1 space-y-3 custom-scrollbar">
             {visibleAlerts.map((alert, idx) => {
               const config = typeConfig[alert.type] || {
-                category: 'Field Advisory',
+                categoryKey: 'field_advisory',
+                defaultCategory: 'Field Advisory',
                 icon: <AlertTriangle size={16} />,
                 severity: 'info' as const
               }
 
+              const localizedCategory = t(`cropCalendar.advisory.${config.categoryKey}`, config.defaultCategory)
+
               return (
                 <AdvisoryRow
                   key={idx}
-                  category={config.category}
+                  category={localizedCategory}
                   message={alert.message}
                   dateDetails={formatUtcToLocal(alert.date)}
                   severity={config.severity}
@@ -78,12 +87,12 @@ export function WeatherAdvisory({ alerts }: WeatherAdvisoryProps) {
               {showAll ? (
                 <>
                   <ChevronUp size={14} />
-                  Collapse Advisories
+                  {t('cropCalendar.collapseAdvisories', 'Collapse Advisories')}
                 </>
               ) : (
                 <>
                   <ChevronDown size={14} />
-                  View More Advisories ({alerts.length - 2} hidden)
+                  {t('cropCalendar.viewMoreAdvisories', 'View More Advisories ({{count}} hidden)', { count: alerts.length - 2 })}
                 </>
               )}
             </button>

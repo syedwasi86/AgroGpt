@@ -1,0 +1,113 @@
+{
+  "soilType": {
+    "redSandyLoam": "ఎర్ర ఇసుక రేగడి నేల",
+    "redSoil": "ఎర్ర నేల",
+    "blackSoil": "నల్ల రేగడి నేల",
+    "clayey": "బంకమట్టి నేల",
+    "claySoil": "బంకమట్టి నేల",
+    "loamy": "లోమీ నేల",
+    "loamySoil": "లోమీ నేల",
+    "sandy": "ఇసుక నేల",
+    "sandySoil": "ఇసుక నేల",
+    "dontKnow": "తెలియదు"
+  },
+  "waterSource": {
+    "borewell": "బోరుబావి",
+    "canal": "కాలువ",
+    "rainfed": "వర్షాధారం",
+    "openWell": "బావి",
+    "dripIrrigation": "బిందు సేద్యం (డ్రిప్)",
+    "sprinkler": "స్ప్రింక్లర్",
+    "river": "నది",
+    "tankPond": "చెరువు"
+  },
+  "areaUnit": {
+    "acre": "ఎకరం",
+    "acres": "ఎకరాలు",
+    "hectare": "హెక్టార్",
+    "guntha": "గుంట",
+    "cent": "సెంట్",
+    "bigha": "బిగా",
+    "squareMeter": "చదరపు మీటర్"
+  },
+  "cropType": {
+    "cotton": "పత్తి",
+    "rice": "వరి",
+    "maize": "మొక్కజొన్న",
+    "tomato": "టమోటా",
+    "chilli": "మిర్చి",
+    "wheat": "గోధుమ",
+    "onion": "ఉల్లిపాయ",
+    "greenGramMoong": "పెసలు",
+    "sesame": "నువ్వులు",
+    "sorghum": "జొన్నలు",
+    "sunflower": "పొద్దుతిరుగుడు",
+    "paddyDhan": "వరి (ధాన్యం)",
+    "custom": "ఇతర పంట"
+  },
+  "cropCondition": {
+    "healthy": "ఆరోగ్యంగా ఉంది",
+    "average": "సాధారణం",
+    "notGrowingWell": "సరిగ్గా పెరగడం లేదు",
+    "pestDiseaseProblem": "పురుగు/తెగులు సమస్య",
+    "notSure": "ఖచ్చితంగా తెలియదు"
+  },
+  "ledgerCategory": {
+    "fertilizer": "ఎరువులు",
+    "seeds": "విత్తనాలు",
+    "diesel": "డీజిల్",
+    "pesticide": "పురుగుమందులు",
+    "labor": "కూలీలు",
+    "harvesting": "కోత",
+    "saleOfWheat": "గోధుమల అమ్మకం",
+    "saleOfCotton": "పత్తి అమ్మకం",
+    "lease": "కౌలు",
+    "other": "ఇతరాలు"
+  },
+  "cropStage": {
+    "germination": "మొలకెత్తడం",
+    "germinationSeedling": "మొలకెత్తడం మరియు మొలక దశ",
+    "squaring": "మొగ్గ దశ",
+    "floweringBollDevelopment": "పూత మరియు కాయల దశ",
+    "maturityBollOpening": "పక్వానికి రావడం మరియు పత్తి కాయలు విచ్చుకోవడం",
+    "nurserySeedling": "నర్సరీ మరియు మొలక దశ",
+    "transplantingTillering": "నాట్లు వేయడం మరియు పిలక దశ",
+    "panicleInitiationFlowering": "వెన్ను దశ మరియు పూత దశ",
+    "ripeningHarvest": "గింజ పక్వానికి రావడం మరియు కోత దశ",
+    "establishmentSeedling": "స్థిరపడటం మరియు మొలక దశ",
+    "vegetativeGrowth": "శాఖీయ వృద్ధి దశ",
+    "tasselingSilking": "పూత మరియు కంకి దశ",
+    "grainFillMaturity": "గింజ పాలుపోసుకోవడం మరియు పక్వానికి రావడం",
+    "establishment": "స్థిరపడటం",
+    "vegetativeStaking": "శాఖీయ వృద్ధి మరియు మద్దతు ఇవ్వడం",
+    "floweringFruiting": "పూత మరియు కాయ దశ",
+    "floweringPodSet": "పూత మరియు కాయ ఏర్పడటం",
+    "podRipeningHarvest": "కాయలు పక్వానికి రావడం మరియు కోత",
+    "vegetative": "శాఖీయ దశ",
+    "flowering": "పూత దశ",
+    "maturity": "పక్వానికి రావడం",
+    "harvest": "కోత"
+  },
+  "mandiMarket": {
+    "bowenpally": "బోవెన్‌పల్లి",
+    "nizamabad": "నిజామాబాద్",
+    "warangal": "వరంగల్",
+    "vikarabad": "వికారాబాద్"
+  },
+  "mandiVariety": {
+    "hybrid": "హైబ్రిడ్",
+    "gradeA": "గ్రేడ్ ఎ",
+    "bunny": "బన్ని",
+    "common": "సాధారణ",
+    "nasik": "నాసిక్",
+    "local": "స్థానిక",
+    "lokwan": "లోక్‌వాన్",
+    "kalyanSona": "కళ్యాణ్ సోనా"
+  },
+  "diagnosis": {
+    "nitrogenDeficiency": "నత్రజని లోపం",
+    "phosphorusDeficiency": "భాస్వరం లోపం",
+    "fungalBlightLeafSpot": "శిలీంధ్ర తెగులు / ఆకుమచ్చ తెగులు",
+    "aphidInfestationDetected": "పేనుబంక పురుగుల ఉధృతి"
+  }
+}

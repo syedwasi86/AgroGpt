@@ -1,6 +1,7 @@
 import { TaskCard } from './TaskCard'
 import { Calendar, ShieldAlert } from 'lucide-react'
 import type { FarmTaskRecord } from '../../../lib/db'
+import { useTranslation } from 'react-i18next'
 
 interface TaskListProps {
   tasks: FarmTaskRecord[]
@@ -17,6 +18,7 @@ export function TaskList({
   onSaveNotes,
   title
 }: TaskListProps) {
+  const { t } = useTranslation(['common', 'cropCalendar'])
   const hasOverdue = overdueTasks.length > 0
   const hasTasks = tasks.length > 0
 
@@ -27,7 +29,7 @@ export function TaskList({
         <div className="bg-red-500/5 border border-red-500/20 rounded-3xl p-5">
           <div className="flex items-center gap-2 text-red-400 font-bold uppercase tracking-wider text-xs mb-3">
             <ShieldAlert size={16} className="animate-bounce" />
-            Overdue Tasks
+            {t('cropCalendar.overdue', 'Overdue')}
           </div>
           <div className="space-y-3">
             {overdueTasks.map(task => (
@@ -61,8 +63,8 @@ export function TaskList({
           !hasOverdue && (
             <div className="h-48 border border-white/5 bg-white/2 rounded-3xl flex flex-col items-center justify-center text-center p-6 text-white/30">
               <Calendar size={36} className="mb-3 opacity-30" />
-              <p className="text-sm font-semibold">No tasks scheduled for this period.</p>
-              <p className="text-xs text-white/20 mt-1">Enjoy the day, your crop calendar is clean!</p>
+              <p className="text-sm font-semibold">{t('cropCalendar.noTasksScheduled', 'No operations scheduled.')}</p>
+              <p className="text-xs text-white/20 mt-1">{t('cropCalendar.calendarClean', 'Enjoy the day, your crop calendar is clean!')}</p>
             </div>
           )
         )}

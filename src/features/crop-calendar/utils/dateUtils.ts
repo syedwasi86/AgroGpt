@@ -66,6 +66,7 @@ export function formatUtcToLocal(dateStr: string, locale = 'en-IN'): string {
   return d.toLocaleDateString(locale, {
     day: 'numeric',
     month: 'short',
-    year: 'numeric'
+    year: 'numeric',
+    numberingSystem: 'latn'
   })
 }

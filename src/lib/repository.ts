@@ -1,5 +1,6 @@
-import { db, type TransactionRecord, type ScanRecord, type AiQueryRecord, initializeUserPreferences, initializeUserProfile } from './db'
+import { db, type TransactionRecord, type ScanRecord, type AiQueryRecord, initializeUserPreferences } from './db'
 import { generateCropSchedule } from '../features/crop-calendar/engines/scheduleGenerator'
+import { profileRepository } from './profileRepository'
 
 let initPromise: Promise<void> | null = null
 
@@ -9,79 +10,13 @@ export function initDatabase(): Promise<void> {
       await db.open()
       await deduplicateActivePlans()
       await initializeUserPreferences()
-      await initializeUserProfile()
     })()
   }
   return initPromise
 }
 
 export async function seedDefaultsIfEmpty(): Promise<void> {
-  const plansCount = await db.crop_plans.count()
-
-  if (plansCount === 0) {
-    const now = new Date().toISOString()
-    const sowingDate = now.slice(0, 10)
-    try {
-      const { plan, stages, tasks } = generateCropSchedule({
-        cropType: 'Cotton',
-        variety: 'G. hirsutum',
-        sowingDate,
-        area: 2,
-        crop_area_value: 2,
-        crop_area_unit: 'Acre',
-        crop_area_acres: 2,
-        crop_condition: 'Healthy',
-        created_by_onboarding: false
-      })
-
-      await db.transaction('rw', [db.crop_plans, db.crop_stages, db.farm_tasks], async () => {
-        await db.crop_plans.add(plan)
-        for (const stage of stages) {
-          await db.crop_stages.add(stage)
-        }
-        for (const task of tasks) {
-          await db.farm_tasks.add(task)
-        }
-      })
-
-      // Update profiles if exists
-      const profile = await db.profiles.toArray().then(a => a[0])
-      if (profile) {
-        await db.profiles.update(profile.id, {
-          active_crop_plan_id: plan.id,
-          primary_crop: 'Cotton',
-          updated_at: now
-        })
-      }
-    } catch (e) {
-      console.error('Failed to seed default crop plan:', e)
-    }
-  }
-
-  const txCount = await db.transactions.count()
-  if (txCount === 0) {
-    const now = new Date().toISOString()
-    const activePlan = await db.crop_plans.where('status').equals('active').first()
-    const planId = activePlan?.id || null
-    
-    const samples: Omit<TransactionRecord, 'id' | 'created_at' | 'updated_at'>[] = [
-      { type: 'income', category: 'Cotton sale (advance)', amount: 18000, transaction_date: now, note: 'Cotton', notes: 'Cotton sale (advance)', plan_id: planId, deleted_at: null },
-      { type: 'expense', category: 'Fertilizer (DAP + urea)', amount: 5400, transaction_date: now, note: 'Cotton', notes: 'Fertilizer (DAP + urea)', plan_id: planId, deleted_at: null },
-      { type: 'expense', category: 'Diesel', amount: 1900, transaction_date: now, note: 'Cotton', notes: 'Diesel', plan_id: planId, deleted_at: null },
-      { type: 'income', category: 'Subsidy credit', amount: 2200, transaction_date: now, note: 'Cotton', notes: 'Subsidy credit', plan_id: planId, deleted_at: null },
-      { type: 'expense', category: 'Labor (weeding)', amount: 3200, transaction_date: now, note: 'Cotton', notes: 'Labor (weeding)', plan_id: planId, deleted_at: null },
-    ]
-    await db.transaction('rw', db.transactions, async () => {
-      for (const row of samples) {
-        await db.transactions.add({
-          ...row,
-          id: crypto.randomUUID(),
-          created_at: now,
-          updated_at: now,
-        })
-      }
-    })
-  }
+  // Disabled as per user request: no default seedings should be done
 }
 
 export async function getTransactions(): Promise<TransactionRecord[]> {

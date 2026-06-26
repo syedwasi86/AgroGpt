@@ -1,4 +1,5 @@
 import { cn } from '../../../../core/utils/cn'
+import { useTranslation } from 'react-i18next'
 
 interface StatusBadgeProps {
   type: 'priority' | 'status'
@@ -7,6 +8,7 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ type, value, className }: StatusBadgeProps) {
+  const { t } = useTranslation(['common', 'cropCalendar', 'fieldVision'])
   const normalizedValue = value.toLowerCase()
 
   let styles = 'bg-gray-500/10 text-gray-400 border-gray-500/20'
@@ -37,7 +39,7 @@ export function StatusBadge({ type, value, className }: StatusBadgeProps) {
       styles,
       className
     )}>
-      {value}
+      {t(`cropCalendar.${normalizedValue}`, t(`fieldVision.${normalizedValue}`, value))}
     </span>
   )
 }

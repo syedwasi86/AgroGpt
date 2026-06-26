@@ -1,0 +1,113 @@
+{
+  "soilType": {
+    "redSandyLoam": "Red Sandy Loam",
+    "redSoil": "Red Soil",
+    "blackSoil": "Black Soil",
+    "clayey": "Clayey",
+    "claySoil": "Clay Soil",
+    "loamy": "Loamy",
+    "loamySoil": "Loamy Soil",
+    "sandy": "Sandy",
+    "sandySoil": "Sandy Soil",
+    "dontKnow": "Don't Know"
+  },
+  "waterSource": {
+    "borewell": "Borewell",
+    "canal": "Canal",
+    "rainfed": "Rainfed",
+    "openWell": "Open Well",
+    "dripIrrigation": "Drip Irrigation",
+    "sprinkler": "Sprinkler",
+    "river": "River",
+    "tankPond": "Tank/Pond"
+  },
+  "areaUnit": {
+    "acre": "Acre",
+    "acres": "Acres",
+    "hectare": "Hectare",
+    "guntha": "Guntha",
+    "cent": "Cent",
+    "bigha": "Bigha",
+    "squareMeter": "Square Meter"
+  },
+  "cropType": {
+    "cotton": "Cotton",
+    "rice": "Rice",
+    "maize": "Maize",
+    "tomato": "Tomato",
+    "chilli": "Chilli",
+    "wheat": "Wheat",
+    "onion": "Onion",
+    "greenGramMoong": "Green gram (Moong)",
+    "sesame": "Sesame",
+    "sorghum": "Sorghum",
+    "sunflower": "Sunflower",
+    "paddyDhan": "Paddy (Dhan)",
+    "custom": "Other Crop"
+  },
+  "cropCondition": {
+    "healthy": "Healthy",
+    "average": "Average",
+    "notGrowingWell": "Not Growing Well",
+    "pestDiseaseProblem": "Pest/Disease Problem",
+    "notSure": "Not Sure"
+  },
+  "ledgerCategory": {
+    "fertilizer": "Fertilizer",
+    "seeds": "Seeds",
+    "diesel": "Diesel",
+    "pesticide": "Pesticide",
+    "labor": "Labor",
+    "harvesting": "Harvesting",
+    "saleOfWheat": "Sale of Wheat",
+    "saleOfCotton": "Sale of Cotton",
+    "lease": "Lease",
+    "other": "Other"
+  },
+  "cropStage": {
+    "germination": "Germination",
+    "germinationSeedling": "Germination & Seedling",
+    "squaring": "Squaring",
+    "floweringBollDevelopment": "Flowering & Boll Development",
+    "maturityBollOpening": "Maturity & Boll Opening",
+    "nurserySeedling": "Nursery & Seedling",
+    "transplantingTillering": "Transplanting & Tillering",
+    "panicleInitiationFlowering": "Panicle Initiation & Flowering",
+    "ripeningHarvest": "Ripening & Harvest",
+    "establishmentSeedling": "Establishment & Seedling",
+    "vegetativeGrowth": "Vegetative Growth",
+    "tasselingSilking": "Tasseling & Silking",
+    "grainFillMaturity": "Grain Fill & Maturity",
+    "establishment": "Establishment",
+    "vegetativeStaking": "Vegetative & Staking",
+    "floweringFruiting": "Flowering & Fruiting",
+    "floweringPodSet": "Flowering & Pod Set",
+    "podRipeningHarvest": "Pod Ripening & Harvest",
+    "vegetative": "Vegetative",
+    "flowering": "Flowering",
+    "maturity": "Maturity",
+    "harvest": "Harvest"
+  },
+  "mandiMarket": {
+    "bowenpally": "Bowenpally",
+    "nizamabad": "Nizamabad",
+    "warangal": "Warangal",
+    "vikarabad": "Vikarabad"
+  },
+  "mandiVariety": {
+    "hybrid": "Hybrid",
+    "gradeA": "Grade A",
+    "bunny": "Bunny",
+    "common": "Common",
+    "nasik": "Nasik",
+    "local": "Local",
+    "lokwan": "Lokwan",
+    "kalyanSona": "Kalyan Sona"
+  },
+  "diagnosis": {
+    "nitrogenDeficiency": "Nitrogen Deficiency",
+    "phosphorusDeficiency": "Phosphorus Deficiency",
+    "fungalBlightLeafSpot": "Fungal Blight / Leaf Spot",
+    "aphidInfestationDetected": "Aphid Infestation Detected"
+  }
+}

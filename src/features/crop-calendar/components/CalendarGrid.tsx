@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '../../../core/utils/cn'
 import type { FarmTaskRecord } from '../../../lib/db'
+import { useTranslation } from 'react-i18next'
 
 interface CalendarGridProps {
   tasks: FarmTaskRecord[]
@@ -10,6 +11,9 @@ interface CalendarGridProps {
 }
 
 export function CalendarGrid({ tasks, selectedDate, onSelectDate }: CalendarGridProps) {
+  const { i18n } = useTranslation()
+  const lang = i18n.language || 'en'
+
   const [currentYear, setCurrentYear] = useState(new Date().getUTCFullYear())
   const [currentMonth, setCurrentMonth] = useState(new Date().getUTCMonth()) // 0-indexed
 
@@ -64,11 +68,6 @@ export function CalendarGrid({ tasks, selectedDate, onSelectDate }: CalendarGrid
     return days
   }, [currentMonth, currentYear])
 
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ]
-
   const handlePrevMonth = () => {
     if (currentMonth === 0) {
       setCurrentMonth(11)
@@ -111,14 +110,29 @@ export function CalendarGrid({ tasks, selectedDate, onSelectDate }: CalendarGrid
     )
   }
 
-  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const monthYearString = useMemo(() => {
+    return new Intl.DateTimeFormat(lang, { 
+      month: 'long', 
+      year: 'numeric',
+      numberingSystem: 'latn' 
+    }).format(new Date(Date.UTC(currentYear, currentMonth, 1)))
+  }, [currentMonth, currentYear, lang])
+
+  const weekdays = useMemo(() => {
+    const formatter = new Intl.DateTimeFormat(lang, { weekday: 'short', numberingSystem: 'latn' })
+    return Array.from({ length: 7 }, (_, i) => {
+      // 2026-06-14 is a Sunday
+      const d = new Date(Date.UTC(2026, 5, 14 + i))
+      return formatter.format(d)
+    })
+  }, [lang])
 
   return (
     <div className="border border-white/5 bg-[#121412]/80 backdrop-blur-xl p-5 rounded-3xl">
       {/* Calendar Header */}
       <div className="flex justify-between items-center mb-5">
         <h4 className="text-white font-extrabold text-lg">
-          {monthNames[currentMonth]} {currentYear}
+          {monthYearString}
         </h4>
         <div className="flex gap-2">
           <button

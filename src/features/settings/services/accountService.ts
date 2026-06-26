@@ -1,16 +1,17 @@
 import { db, type ProfileRecord, type UserSettingsRecord } from '@/lib/db'
+import { profileRepository } from '@/lib/profileRepository'
+import { supabase } from '@/core/auth/supabaseClient'
 
 export async function saveProfile(data: Partial<ProfileRecord>) {
-  const existing = await db.profiles.toArray().then(a => a[0])
+  const existing = await profileRepository.getCurrentProfile()
   if (existing) {
-    return db.profiles.update(existing.id, {
-      ...data,
-      updated_at: new Date().toISOString()
-    })
+    return profileRepository.updateProfile(existing.id, data)
   } else {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user?.id) throw new Error('No user session')
     const now = new Date().toISOString()
     return db.profiles.put({
-      id: crypto.randomUUID(), // Or get auth user ID if available
+      id: session.user.id,
       phone: '',
       city: '',
       soil_type: '',
@@ -38,7 +39,6 @@ export async function saveSettings(data: Partial<UserSettingsRecord>) {
     return db.user_settings.put({
       id: crypto.randomUUID(),
       notifications_enabled: false,
-      biometric_enabled: false,
       last_sync: new Date(0).toISOString(),
       font_size: 'medium',
       theme: 'dark',

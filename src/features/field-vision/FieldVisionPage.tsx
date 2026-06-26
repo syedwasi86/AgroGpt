@@ -4,6 +4,7 @@ import { Upload, Camera, Search, Leaf, RefreshCw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../../core/utils/cn'
 import { db } from '../../lib/db'
+import { profileRepository } from '../../lib/profileRepository'
 import { CropSelector } from './CropSelector'
 import { PredictionResults } from './PredictionResults'
 import { runInference, type PredictionResult } from './inferenceEngine'
@@ -18,6 +19,7 @@ const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 
 function WebcamModal({ onClose, onCapture }: { onClose: () => void, onCapture: (dataUrl: string) => void }) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const { t } = useTranslation(['common', 'fieldVision'])
 
   useEffect(() => {
     let stream: MediaStream | null = null
@@ -31,7 +33,7 @@ function WebcamModal({ onClose, onCapture }: { onClose: () => void, onCapture: (
           // Fallback to any available camera (fixes laptop "OverconstrainedError")
           stream = await navigator.mediaDevices.getUserMedia({ video: true })
         } catch {
-          alert("Camera not available or permission denied. Please click 'Allow' when the browser asks for camera access.")
+          alert(t('fieldVision.cameraUnavailableMessage', "Camera not available or permission denied. Please click 'Allow' when the browser asks for camera access."))
           onClose()
           return
         }
@@ -47,7 +49,7 @@ function WebcamModal({ onClose, onCapture }: { onClose: () => void, onCapture: (
     return () => {
       if (stream) stream.getTracks().forEach(t => t.stop())
     }
-  }, [onClose])
+  }, [onClose, t])
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
@@ -57,12 +59,16 @@ function WebcamModal({ onClose, onCapture }: { onClose: () => void, onCapture: (
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
             <div className="w-48 h-64 border-2 border-primary-500/50 rounded-full opacity-60 flex flex-col items-center justify-center relative shadow-[0_0_20px_rgba(76,175,80,0.3)]">
               <div className="w-1 h-full bg-primary-500/30 absolute left-1/2 -translate-x-1/2"></div>
-              <span className="text-primary-300 text-xs font-bold bg-black/40 px-2 py-1 rounded absolute bottom-4">Align leaf here</span>
+              <span className="text-primary-300 text-xs font-bold bg-black/40 px-2 py-1 rounded absolute bottom-4">
+                {t('fieldVision.alignLeaf', 'Align leaf here')}
+              </span>
             </div>
           </div>
         </div>
         <div className="p-4 flex gap-4 justify-center bg-black/50">
-          <button onClick={onClose} className="px-6 py-2 rounded-xl bg-white/10 text-white font-semibold transition-all hover:bg-white/20">Cancel</button>
+          <button onClick={onClose} className="px-6 py-2 rounded-xl bg-white/10 text-white font-semibold transition-all hover:bg-white/20">
+            {t('common.cancel', 'Cancel')}
+          </button>
           <button onClick={() => {
             if (videoRef.current) {
               const canvas = document.createElement('canvas')
@@ -76,7 +82,7 @@ function WebcamModal({ onClose, onCapture }: { onClose: () => void, onCapture: (
               }
             }
           }} className="px-6 py-2 rounded-xl bg-primary-600 text-white font-semibold flex items-center gap-2 transition-all hover:bg-primary-500">
-            <Camera size={18} /> Capture
+            <Camera size={18} /> {t('fieldVision.capture', 'Capture')}
           </button>
         </div>
       </div>
@@ -86,7 +92,7 @@ function WebcamModal({ onClose, onCapture }: { onClose: () => void, onCapture: (
 
 
 export function FieldVisionPage() {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['common', 'fieldVision'])
   const [selectedCrop, setSelectedCrop] = useState<string>('')
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [imageElement, setImageElement] = useState<HTMLImageElement | null>(null)
@@ -101,6 +107,11 @@ export function FieldVisionPage() {
   const [cachedWeather, setCachedWeather] = useState<WeatherData | null>(null)
   const [environmentalRisk, setEnvironmentalRisk] = useState<SeverityLevel | null>(null)
   const [assessedSeverity, setAssessedSeverity] = useState<SeverityLevel>('low')
+
+  const translateWeatherCondition = (condition: string) => {
+    const key = condition.toLowerCase().replace(' ', '');
+    return t(`common.weather.${key}`, condition);
+  };
 
   const handleWebcamCapture = (dataUrl: string) => {
     setSelectedImage(dataUrl)
@@ -123,11 +134,17 @@ export function FieldVisionPage() {
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
 
-    db.profiles.toArray().then(profiles => {
-      if (profiles[0] && profiles[0].primary_crop) {
-        setSelectedCrop(profiles[0].primary_crop)
+    profileRepository.getCurrentProfile().then(profile => {
+      if (!profile) {
+        console.error('Active profile missing during crop selection loading.')
+        return
       }
-    }).catch(() => { })
+      if (profile.primary_crop) {
+        setSelectedCrop(profile.primary_crop)
+      }
+    }).catch((err) => {
+      console.error('Failed to load profile in FieldVisionPage:', err)
+    })
 
     return () => {
       window.removeEventListener('online', handleOnline)
@@ -172,7 +189,7 @@ export function FieldVisionPage() {
 
     const prediction = await runInference(selectedCrop, imageElement)
     if (!prediction) {
-      alert('Model not installed yet or inference failed.')
+      alert(t('fieldVision.modelNotInstalled', 'Model not installed yet or inference failed.'))
       setAnalyzing(false)
       return
     }
@@ -233,8 +250,11 @@ export function FieldVisionPage() {
     setLoadingAi(true)
     setAiRecommendation(null)
     try {
-      const profile = await db.profiles.toArray().then(a => a[0])
-      const soilType = profile?.soil_type || 'N/A'
+      const profile = await profileRepository.getCurrentProfile()
+      if (!profile) {
+        throw new Error('Profile not found. Cannot retrieve recommendations.')
+      }
+      const soilType = profile.soil_type || 'N/A'
 
       // Use cached weather if available, else fetch it on demand
       let tempC = 'N/A'
@@ -308,7 +328,7 @@ export function FieldVisionPage() {
 
         {selectedCrop === 'Other' && (
           <div className="w-full max-w-sm mb-6 p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 text-yellow-200 text-sm text-center font-medium">
-            Field Vision currently supports only Chili, Cotton, Maize, Rice, and Tomato. More crops coming soon.
+            {t('fieldVision.otherCropMessage', 'Field Vision currently supports only Chili, Cotton, Maize, Rice, and Tomato. More crops coming soon.')}
           </div>
         )}
 
@@ -317,9 +337,9 @@ export function FieldVisionPage() {
             <div className="mb-6 grid h-20 w-20 place-items-center rounded-full border border-white/10 bg-white/5">
               <Camera size={32} className="text-white/60" />
             </div>
-            <div className="agro-h2 mb-2">Upload Crop Image</div>
+            <div className="agro-h2 mb-2">{t('fieldVision.uploadCropImage', 'Upload Crop Image')}</div>
             <p className="subtle mb-6 max-w-sm">
-              Take a clear photo of the affected leaf or crop area. Good lighting yields better AI results.
+              {t('fieldVision.uploadCropImageDesc', 'Take a clear photo of the affected leaf or crop area. Good lighting yields better AI results.')}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 w-full justify-center">
@@ -341,7 +361,7 @@ export function FieldVisionPage() {
                   className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-stroke-2 bg-primary-700/20 px-6 py-3 font-semibold text-white shadow-glowPrimary transition-all hover:border-stroke-3 hover:bg-primary-700/30 disabled:opacity-50 disabled:shadow-none"
                 >
                   <Camera size={18} />
-                  Take Picture
+                  {t('fieldVision.takePicture', 'Take Picture')}
                 </button>
               </div>
               <div className="relative overflow-hidden flex-1 max-w-[200px]">
@@ -358,7 +378,7 @@ export function FieldVisionPage() {
                   className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 font-semibold text-white transition-all hover:bg-white/10 disabled:opacity-50 disabled:shadow-none"
                 >
                   <Upload size={18} />
-                  Upload File
+                  {t('fieldVision.uploadFile', 'Upload File')}
                 </button>
               </div>
             </div>
@@ -383,10 +403,10 @@ export function FieldVisionPage() {
                     </div>
                   </div>
                   <div className="text-lg font-bold text-white tracking-wide animate-pulse">
-                    Analyzing Crop...
+                    {t('fieldVision.analyzingCrop', 'Analyzing Crop...')}
                   </div>
                   <div className="mt-2 text-sm text-primary-300">
-                    Running neural network models
+                    {t('fieldVision.runningNn', 'Running neural network models')}
                   </div>
                   {/* Scanner line animation */}
                   <div className="absolute left-0 right-0 h-1 bg-primary-400/80 shadow-[0_0_15px_rgba(76,175,80,0.8)] animate-scan-line"></div>
@@ -412,7 +432,7 @@ export function FieldVisionPage() {
                   disabled={analyzing}
                   className="w-full inline-flex justify-center items-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-semibold text-white/80 transition-all hover:bg-white/10 disabled:opacity-50"
                 >
-                  <Camera size={16} /> Retake
+                  <Camera size={16} /> {t('fieldVision.retake', 'Retake')}
                 </button>
               </div>
               <div className="relative overflow-hidden flex-1 min-w-[120px]">
@@ -428,7 +448,7 @@ export function FieldVisionPage() {
                   disabled={analyzing}
                   className="w-full inline-flex justify-center items-center gap-2 rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-semibold text-white/80 transition-all hover:bg-white/10 disabled:opacity-50"
                 >
-                  <Upload size={16} /> Upload
+                  <Upload size={16} /> {t('fieldVision.upload', 'Upload')}
                 </button>
               </div>
               <button
@@ -437,7 +457,7 @@ export function FieldVisionPage() {
                 disabled={analyzing || !!result || selectedCrop === 'Other'}
                 className="flex-1 rounded-xl border border-stroke-2 bg-primary-700/20 py-3 text-sm font-bold text-white shadow-glowPrimary transition-all hover:border-stroke-3 hover:bg-primary-700/30 disabled:opacity-50"
               >
-                {result ? 'Analysis Complete' : 'Analyze Image'}
+                {result ? t('fieldVision.analysisComplete', 'Analysis Complete') : t('fieldVision.analyzeImage', 'Analyze Image')}
               </button>
             </div>
           </div>
@@ -464,7 +484,7 @@ export function FieldVisionPage() {
               {loadingAi && (
                 <div className="flex items-center gap-3 text-primary-300 text-sm justify-center py-6 animate-pulse">
                   <RefreshCw className="animate-spin text-primary-400" size={20} />
-                  <span>Consulting AI Agricultural Field Advisor...</span>
+                  <span>{t('fieldVision.consultingAdvisor', 'Consulting AI Agricultural Field Advisor...')}</span>
                 </div>
               )}
 
@@ -473,10 +493,10 @@ export function FieldVisionPage() {
                   {/* Title Bar */}
                   <div className="flex items-center justify-between border-b border-white/10 pb-4">
                     <h3 className="text-lg font-bold text-primary-400 flex items-center gap-2">
-                      🌱 AI Advisory & Field Insights
+                      🌱 {t('fieldVision.aiAdvisory', 'AI Advisory & Field Insights')}
                     </h3>
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-primary-500/20 text-primary-300 px-2 py-0.5 rounded border border-primary-500/30">
-                      Advisory Layer Active
+                      {t('fieldVision.advisoryActive', 'Advisory Layer Active')}
                     </span>
                   </div>
 
@@ -486,40 +506,48 @@ export function FieldVisionPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white/5 p-4 rounded-xl border border-white/5">
                       {/* 1. Model Confidence */}
                       <div className="flex flex-col items-center text-center p-2.5 rounded-lg bg-black/20 border border-white/5">
-                        <span className="text-[10px] text-white/40 uppercase tracking-wider font-semibold mb-1">AI Confidence</span>
+                        <span className="text-[10px] text-white/40 uppercase tracking-wider font-semibold mb-1">
+                          {t('fieldVision.modelConfidence', 'AI Confidence')}
+                        </span>
                         <span className="text-base font-bold text-primary-300">{result.confidence}%</span>
                       </div>
 
                       {/* 2. Assessed Field Severity */}
                       <div className="flex flex-col items-center text-center p-2.5 rounded-lg bg-black/20 border border-white/5">
-                        <span className="text-[10px] text-white/40 uppercase tracking-wider font-semibold mb-1">Field Severity</span>
+                        <span className="text-[10px] text-white/40 uppercase tracking-wider font-semibold mb-1">
+                          {t('fieldVision.fieldSeverity', 'Field Severity')}
+                        </span>
                         <span className={cn(
                           "text-base font-bold capitalize",
                           assessedSeverity === 'high' ? "text-red-400" :
                             assessedSeverity === 'medium' ? "text-yellow-400" :
                               "text-green-400"
                         )}>
-                          {assessedSeverity}
+                          {t(`fieldVision.${assessedSeverity}`, assessedSeverity)}
                         </span>
                       </div>
 
                       {/* 3. Environmental Spread Risk */}
                       <div className="flex flex-col items-center text-center p-2.5 rounded-lg bg-black/20 border border-white/5">
-                        <span className="text-[10px] text-white/40 uppercase tracking-wider font-semibold mb-1">Environmental Spread Risk</span>
+                        <span className="text-[10px] text-white/40 uppercase tracking-wider font-semibold mb-1">
+                          {t('fieldVision.environmentalSpreadRisk', 'Environmental Spread Risk')}
+                        </span>
                         <span className={cn(
                           "text-base font-bold capitalize",
                           environmentalRisk === 'high' ? "text-red-400" :
                             environmentalRisk === 'medium' ? "text-yellow-400" :
                               "text-green-400"
                         )}>
-                          {environmentalRisk || 'Calculating...'}
+                          {environmentalRisk ? t(`fieldVision.${environmentalRisk}`, environmentalRisk) : t('fieldVision.calculating', 'Calculating...')}
                         </span>
                       </div>
                     </div>
 
                     {/* Next 48-Hour Spread Warning */}
                     <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-xs text-red-200">
-                      <span className="font-semibold block text-red-400 text-[10px] uppercase tracking-wider mb-1">Next 48-Hour Spread Warning</span>
+                      <span className="font-semibold block text-red-400 text-[10px] uppercase tracking-wider mb-1">
+                        {t('fieldVision.spreadWarning', 'Next 48-Hour Spread Warning')}
+                      </span>
                       <p className="leading-relaxed font-medium">
                         {aiRecommendation.next48HourRisk}
                       </p>
@@ -528,24 +556,26 @@ export function FieldVisionPage() {
                     {/* Weather Context Details */}
                     {cachedWeather && (
                       <div className="bg-white/5 p-4 rounded-xl border border-white/5 text-xs text-white/70">
-                        <span className="font-semibold block text-white/50 mb-2 uppercase tracking-wider text-[10px]">Weather Context Telemetry</span>
+                        <span className="font-semibold block text-white/50 mb-2 uppercase tracking-wider text-[10px]">
+                          {t('fieldVision.weatherTelemetry', 'Weather Context Telemetry')}
+                        </span>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                           <div className="p-2 rounded bg-black/10">
-                            <span className="block text-white/40 mb-0.5">Temp</span>
+                            <span className="block text-white/40 mb-0.5">{t('fieldVision.temp', 'Temp')}</span>
                             <span className="font-bold text-white text-sm">{cachedWeather.temperature}°C</span>
                           </div>
                           <div className="p-2 rounded bg-black/10">
-                            <span className="block text-white/40 mb-0.5">Humidity</span>
+                            <span className="block text-white/40 mb-0.5">{t('fieldVision.humidity', 'Humidity')}</span>
                             <span className="font-bold text-white text-sm">{cachedWeather.humidity}%</span>
                           </div>
                           <div className="p-2 rounded bg-black/10">
-                            <span className="block text-white/40 mb-0.5">Wind Speed</span>
+                            <span className="block text-white/40 mb-0.5">{t('fieldVision.windSpeed', 'Wind Speed')}</span>
                             <span className="font-bold text-white text-sm">{cachedWeather.windSpeed} km/h</span>
                           </div>
                           <div className="p-2 rounded bg-black/10">
-                            <span className="block text-white/40 mb-0.5">Condition</span>
+                            <span className="block text-white/40 mb-0.5">{t('fieldVision.condition', 'Condition')}</span>
                             <span className="font-bold text-white text-sm">
-                              {getWeatherCondition(cachedWeather.weatherCode)}
+                              {translateWeatherCondition(getWeatherCondition(cachedWeather.weatherCode))}
                             </span>
                           </div>
                         </div>
@@ -555,7 +585,9 @@ export function FieldVisionPage() {
                     {/* Concise Advisory Summary */}
                     <div className="bg-white/5 p-4 rounded-xl border border-white/5 relative overflow-hidden">
                       <div className="absolute top-0 left-0 h-full w-1 bg-primary-500"></div>
-                      <span className="text-xs text-white/40 uppercase tracking-wider font-semibold block mb-1">Advisory Summary</span>
+                      <span className="text-xs text-white/40 uppercase tracking-wider font-semibold block mb-1">
+                        {t('fieldVision.advisorySummary', 'Advisory Summary')}
+                      </span>
                       <p className="leading-relaxed italic">
                         "{aiRecommendation.summary}"
                       </p>
@@ -564,7 +596,9 @@ export function FieldVisionPage() {
                     {/* Priority Actions Checklist */}
                     {aiRecommendation.priorityActions && aiRecommendation.priorityActions.length > 0 && (
                       <div className="rounded-xl border border-primary-500/20 bg-primary-950/20 p-5">
-                        <h4 className="font-bold text-primary-300 mb-3 text-xs uppercase tracking-wider">Priority Actions</h4>
+                        <h4 className="font-bold text-primary-300 mb-3 text-xs uppercase tracking-wider">
+                          {t('fieldVision.priorityActions', 'Priority Actions')}
+                        </h4>
                         <ul className="space-y-2.5">
                           {aiRecommendation.priorityActions.map((action, idx) => (
                             <li key={idx} className="flex items-start gap-2.5 text-xs">
@@ -583,7 +617,9 @@ export function FieldVisionPage() {
                       {/* Prevention */}
                       {aiRecommendation.preventionTips.length > 0 && (
                         <div>
-                          <h4 className="font-bold text-blue-400 mb-1.5 text-xs uppercase tracking-wider">Prevention Tips</h4>
+                          <h4 className="font-bold text-blue-400 mb-1.5 text-xs uppercase tracking-wider">
+                            {t('fieldVision.preventionTips', 'Prevention Tips')}
+                          </h4>
                           <ul className="list-disc pl-5 space-y-1 text-xs leading-relaxed text-white/80">
                             {aiRecommendation.preventionTips.map((item, idx) => (
                               <li key={idx}>{item}</li>
@@ -595,7 +631,9 @@ export function FieldVisionPage() {
                       {/* Weather Risk Note */}
                       {aiRecommendation.weatherRiskNote && (
                         <div className="border-t border-white/5 pt-3 text-xs text-white/60">
-                          <span className="font-semibold text-white/40 block mb-0.5 uppercase tracking-wider text-[9px]">Additional Weather-Spread Analysis</span>
+                          <span className="font-semibold text-white/40 block mb-0.5 uppercase tracking-wider text-[9px]">
+                            {t('fieldVision.weatherRiskAnalysis', 'Additional Weather-Spread Analysis')}
+                          </span>
                           {aiRecommendation.weatherRiskNote}
                         </div>
                       )}

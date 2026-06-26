@@ -3,6 +3,8 @@ import { GlassCard } from '../../../components/GlassCard'
 import { formatUtcToLocal } from '../utils/dateUtils'
 import { cn } from '../../../core/utils/cn'
 import type { CropStageRecord } from '../../../lib/db'
+import { useTranslation } from 'react-i18next'
+import { useEnumTranslation } from '../../../hooks/useEnumTranslation'
 
 interface StageTimelineProps {
   stages: CropStageRecord[]
@@ -29,10 +31,13 @@ export function StageTimeline({
   nextStageEstimate,
   isFarmerSelectedStage
 }: StageTimelineProps) {
+  const { t } = useTranslation(['common', 'cropCalendar'])
+  const { tEnum } = useEnumTranslation()
+
   if (stages.length === 0) return null
 
   const getStageIcon = (name: string, index: number) => {
-    const lname = name.toLowerCase()
+    const lname = (name || '').toLowerCase()
     if (lname.includes('seed') || lname.includes('germ') || lname.includes('nur')) return iconMap.sprout
     if (lname.includes('veg') || lname.includes('till') || lname.includes('stake')) return iconMap.leaf
     if (lname.includes('flower') || lname.includes('bloom') || lname.includes('fruiting') || lname.includes('squar')) return iconMap.flower
@@ -52,12 +57,18 @@ export function StageTimeline({
       <GlassCard className="p-6 md:p-8 border-white/5 bg-[#121412]/80 lg:bg-[#121412]/90 backdrop-blur-xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] rounded-3xl" variant="strong">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 border-b border-white/5 pb-4">
           <div>
-            <span className="text-[10px] font-bold text-[#87A96B] tracking-[0.2em] uppercase">Crop Journey</span>
+            <span className="text-[10px] font-bold text-[#87A96B] tracking-[0.2em] uppercase">
+              {t('cropCalendar.cropJourney', 'Crop Journey')}
+            </span>
             <h2 className="text-xl md:text-2xl font-black text-white leading-tight mt-0.5 flex items-center flex-wrap gap-2">
-              <span>{currentStage ? currentStage.name : 'Crop Lifecycle'} Stage</span>
+              <span>
+                {currentStage 
+                  ? t('cropCalendar.stageTitle', '{{stage}} Stage', { stage: tEnum('cropStage', currentStage.name || currentStage.stage_name || '') })
+                  : t('cropCalendar.cropLifecycle', 'Crop Lifecycle')}
+              </span>
               {isFarmerSelectedStage && (
                 <span className="text-[9px] text-[#87A96B] font-bold bg-[#87A96B]/10 px-2 py-0.5 rounded-full border border-[#87A96B]/20">
-                  Farmer Selected
+                  {t('cropCalendar.farmerSelectedNotice', 'Farmer Selected')}
                 </span>
               )}
             </h2>
@@ -67,7 +78,7 @@ export function StageTimeline({
             <div className="bg-white/5 border border-white/10 px-3.5 py-1.5 rounded-2xl flex items-center gap-2">
               <span className="w-1.5 h-1.5 bg-[#87A96B] rounded-full animate-pulse" />
               <span>
-                <strong className="text-white font-extrabold">{daysInStage}</strong> Days in Stage
+                {t('cropCalendar.daysInCurrentStage', 'Days in current stage: {{days}}', { days: daysInStage })}
               </span>
             </div>
 
@@ -75,7 +86,10 @@ export function StageTimeline({
               <div className="bg-[#87A96B]/10 border border-[#87A96B]/20 text-[#87A96B] px-3.5 py-1.5 rounded-2xl flex items-center gap-1.5">
                 <ArrowRight size={14} />
                 <span>
-                  Next: {nextStageEstimate.name} in <strong className="font-extrabold">{nextStageEstimate.days} days</strong>
+                  {t('cropCalendar.nextStageEstimateText', 'Next: {{stage}} in {{days}} days', {
+                    stage: tEnum('cropStage', nextStageEstimate.name),
+                    days: nextStageEstimate.days
+                  })}
                 </span>
               </div>
             )}
@@ -124,7 +138,7 @@ export function StageTimeline({
                           ? "bg-[#6A8E5C] border-white/10 text-white" 
                           : "bg-[#232723] border-white/5 text-white/30"
                     )}>
-                      {getStageIcon(stage.name, idx)}
+                      {getStageIcon(stage.name || stage.stage_name || '', idx)}
                     </div>
                   </div>
                 )
@@ -148,7 +162,7 @@ export function StageTimeline({
                     "truncate w-full text-center",
                     isCurrent ? "text-[#87A96B] font-black" : "text-white/40"
                   )}>
-                    {stage.name}
+                    {tEnum('cropStage', stage.name || stage.stage_name || '')}
                   </span>
                   <span className="text-white/20 mt-0.5 font-semibold block lowercase whitespace-nowrap">
                     {formatUtcToLocal(stage.start_date)}

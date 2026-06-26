@@ -4,6 +4,7 @@ import { formatUtcToLocal } from '../utils/dateUtils'
 import { cn } from '../../../core/utils/cn'
 import type { FarmTaskRecord } from '../../../lib/db'
 import { StatusBadge } from '../shared/ui/StatusBadge'
+import { useTranslation } from 'react-i18next'
 
 interface TaskCardProps {
   task: FarmTaskRecord
@@ -22,6 +23,7 @@ const typeIconMap = {
 }
 
 export function TaskCard({ task, onToggleCompletion, onSaveNotes }: TaskCardProps) {
+  const { t } = useTranslation(['common', 'cropCalendar'])
   const [notes, setNotes] = useState(task.notes || '')
   const [isEditingNotes, setIsEditingNotes] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -53,12 +55,12 @@ export function TaskCard({ task, onToggleCompletion, onSaveNotes }: TaskCardProp
       {isRescheduled && (
         <div className="absolute top-0 right-0 px-3 py-1 bg-orange-500/20 text-orange-400 text-[9px] font-bold rounded-bl-xl border-b border-l border-orange-500/30 uppercase tracking-wider flex items-center gap-1">
           <AlertTriangle size={10} />
-          Weather Delay
+          {t('cropCalendar.weatherDelay', 'Weather Delay')}
         </div>
       )}
 
       {task.sync_status === 'pending' && (
-        <div className="absolute top-0 left-0 w-2 h-2 rounded-full bg-yellow-500 m-2" title="Pending Sync" />
+        <div className="absolute top-0 left-0 w-2 h-2 rounded-full bg-yellow-500 m-2" title={t('common.pendingSync', 'Pending Sync')} />
       )}
 
       <div className="flex justify-between items-start gap-4 mb-3">
@@ -106,7 +108,7 @@ export function TaskCard({ task, onToggleCompletion, onSaveNotes }: TaskCardProp
 
           <div className={cn("px-2 py-0.5 rounded-full border flex items-center gap-1 text-[9px] bg-white/5 border-white/10 text-white/50")}>
             {typeIconMap[task.task_type] || typeIconMap.other}
-            <span>{task.task_type}</span>
+            <span>{t(`cropCalendar.taskType.${task.task_type}`, task.task_type)}</span>
           </div>
         </div>
 
@@ -121,7 +123,7 @@ export function TaskCard({ task, onToggleCompletion, onSaveNotes }: TaskCardProp
           <div className="flex items-center gap-2">
             <input
               type="text"
-              placeholder="Add operation notes..."
+              placeholder={t('cropCalendar.notesPlaceholder', 'Add operation notes...')}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="bg-black/40 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-white/20 flex-1 focus:outline-none focus:border-[#87A96B]/50"
@@ -140,9 +142,12 @@ export function TaskCard({ task, onToggleCompletion, onSaveNotes }: TaskCardProp
             className="text-[11px] text-white/40 italic cursor-pointer hover:text-white/60 flex items-center gap-1.5 transition-all"
           >
             {task.notes ? (
-              <span className="text-white/60 font-semibold not-italic">Notes: {task.notes}</span>
+              <span className="text-white/60 font-semibold not-italic">
+                {t('cropCalendar.notesLabel', 'Notes: ')}
+                {task.notes}
+              </span>
             ) : (
-              <span>+ Add completion notes (e.g. fertilizer brand, dosage)</span>
+              <span>{t('cropCalendar.addNotesHint', '+ Add completion notes (e.g. fertilizer brand, dosage)')}</span>
             )}
           </div>
         )}

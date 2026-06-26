@@ -1,0 +1,23 @@
+{
+  "phoneRequired": "Phone number is required.",
+  "nameRequired": "Name is required.",
+  "loginFailed": "Login failed",
+  "googleFailed": "Google login failed",
+  "invalidNumber": "Please enter a valid number.",
+  "farmSizeError": "Please enter a valid farm size greater than 0.",
+  "soilRequired": "Please select a soil type.",
+  "waterRequired": "Please select at least one irrigation/water source.",
+  "cropAreaRequired": "Please enter a valid crop area size.",
+  "cropAreaExceeds": "Crop area ({{cropAcres}} Acres) cannot exceed total farm size ({{farmAcres}} Acres).",
+  "sowingDateRequired": "Sowing date is required.",
+  "cropNameRequired": "Please enter a crop name.",
+  "languageRequired": "Please select a language.",
+  "gpsDenied": "Location permission denied. Please enter manually.",
+  "gpsSuccess": "Location found!",
+  "gpsError": "Unable to retrieve coordinates. Please select manually.",
+  "savedSuccess": "Settings saved successfully!",
+  "npkRangeError": "Soil nutrient values must be between 0 and 1000 ppm.",
+  "deleteConfirm": "Are you sure you want to delete this?",
+  "invalidAmount": "Please enter a valid amount.",
+  "categoryRequired": "Please enter a category or note."
+}

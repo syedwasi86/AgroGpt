@@ -13,51 +13,57 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { Auth } from './pages/Auth'
 import { ProfilePage } from './features/settings/ProfilePage'
 import { SettingsPage } from './features/settings/SettingsPage'
-import { useEffect } from 'react'
-import { backgroundSync } from './core/api/syncEngine'
+import { useEffect, useRef } from 'react'
+import { pushChanges, pullUpdates } from './core/api/syncEngine'
 import { useAuth } from './core/auth/AuthContext'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './lib/db'
 import { AppLoader } from './components/AppLoader'
 import { OnboardingPage } from './features/onboarding/OnboardingPage'
 import { CropProvider } from './core/context/CropContext'
+import { useConnectivity } from './hooks/useConnectivity'
 
 function ProtectedShell() {
-  const { user } = useAuth()
+  const { session } = useAuth()
+  const connectivity = useConnectivity()
+  const wasOffline = useRef(false)
 
-  const shellData = useLiveQuery(async () => {
-    if (!user?.id) return null
-    const profile = await db.profiles.get(user.id)
-    const plansCount = await db.crop_plans.count()
-    return { profile, hasCropPlan: plansCount > 0 }
-  }, [user])
-
+  // Track the transition from offline/local-only -> online
   useEffect(() => {
-    if (shellData?.profile && !shellData.profile.onboarding_completed && shellData.hasCropPlan) {
-      console.log('[ProtectedShell] User has crop plans. Auto-completing onboarding flag.')
-      db.profiles.update(shellData.profile.id, {
-        onboarding_completed: true,
-        updated_at: new Date().toISOString(),
-        sync_status: 'pending'
-      }).then(() => {
-        backgroundSync().catch(e => console.warn('Sync after onboarding bypass failed:', e))
-      })
+    const isNowOnline = connectivity === 'online'
+    const isNowOffline = connectivity === 'offline' || connectivity === 'local-only'
+
+    if (wasOffline.current && isNowOnline && session) {
+      console.log('[ProtectedShell] Reconnection detected. Initiating recovery sync sequence (push then pull).')
+      
+      pushChanges(session)
+        .then(() => pullUpdates(session))
+        .catch(err => {
+          console.error('[ProtectedShell] Offline-to-online recovery sync failed:', err)
+        })
     }
-  }, [shellData])
 
-  if (shellData === undefined) {
-    return <AppLoader message="Loading workspace..." subMessage="Fetching profile" />
-  }
+    if (isNowOffline) {
+      wasOffline.current = true
+    } else if (isNowOnline) {
+      wasOffline.current = false
+    }
+  }, [connectivity, session])
 
-  const { profile, hasCropPlan } = shellData || { profile: null, hasCropPlan: false }
+  const profileQuery = useLiveQuery(async () => {
+    if (!session?.user?.id) return { isLoaded: true, data: null };
+    const data = await db.profiles.get(session.user.id);
+    return { isLoaded: true, data: data || null };
+  }, [session?.user?.id]);
 
-  const onboardingCompleted = profile?.onboarding_completed === true
-  const hasActiveCropPlan = !!profile?.active_crop_plan_id || hasCropPlan
+  // 1. If profileQuery is undefined, Dexie is still fetching.
+  if (!profileQuery) return <AppLoader />;
 
-  // If the user has not completed onboarding and has no crop plans, forcefully redirect to onboarding
-  if (!onboardingCompleted && !hasActiveCropPlan) {
-    return <Navigate to="/onboarding" replace />
-  }
+  // 2. If it is loaded but data is null, the user hasn't onboarded.
+  if (profileQuery.isLoaded && !profileQuery.data) return <Navigate to="/onboarding" replace />;
+
+  // 3. If onboarding is not completed
+  if (profileQuery.data && !profileQuery.data.onboarding_completed) return <Navigate to="/onboarding" replace />;
 
   return (
     <CropProvider>
@@ -70,18 +76,6 @@ function ProtectedShell() {
 }
 
 export default function App() {
-  useEffect(() => {
-    const handleOnline = async () => {
-      try {
-        await backgroundSync()
-      } catch (err) {
-        console.error('Auto-sync on reconnect failed:', err)
-      }
-    }
-
-    window.addEventListener('online', handleOnline)
-    return () => window.removeEventListener('online', handleOnline)
-  }, [])
 
   return (
     <AuthProvider>

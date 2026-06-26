@@ -105,7 +105,7 @@ export function selectDaysUntilNextStage(
   const nextStage = stages[currentIdx + 1]
   const days = daysBetweenUtc(currentDateUtc, nextStage.start_date)
   return {
-    name: nextStage.name,
+    name: nextStage.name || nextStage.stage_name || '',
     days: Math.max(0, days)
   }
 }
@@ -132,7 +132,7 @@ export function selectUpcomingMilestones(
   stages.forEach(stage => {
     if (stage.start_date > currentDateUtc) {
       milestones.push({
-        name: `${stage.name} Stage`,
+        name: `${stage.name || stage.stage_name || ''} Stage`,
         relativeDays: Math.max(0, daysBetweenUtc(currentDateUtc, stage.start_date)),
         dateStr: stage.start_date,
         isHarvest: false

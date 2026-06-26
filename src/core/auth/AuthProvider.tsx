@@ -3,29 +3,24 @@ import type { ReactNode } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from './supabaseClient'
 import { db } from '../../lib/db'
-import { initialSync, backgroundSync } from '../api/syncEngine'
-import { seedDefaultsIfEmpty } from '../../lib/repository'
+import { initialSync, backgroundSync, pullUpdates, pushChanges } from '../api/syncEngine'
 import i18n from '../i18n'
-import { AppLoader } from '../../components/AppLoader'
 import { AuthContext } from './AuthContext'
-import type { AuthStatus } from './AuthContext'
-
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
-  const [status, setStatusState] = useState<AuthStatus>('BOOTING')
-  const statusRef = useRef<AuthStatus>('BOOTING')
-
-  const setStatus = (newStatus: AuthStatus) => {
-    statusRef.current = newStatus
-    setStatusState(newStatus)
-  }
-
+  const [isLoading, setIsLoading] = useState(true)
   const [busy, setBusy] = useState(false)
 
+  const isInitialBoot = useRef(true)
+  const userRef = useRef<User | null>(null)
   const initialSyncCompletedRef = useRef(false)
   const authSyncInProgress = useRef(false)
+
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
 
   // Explicit Atomic Check — no blind upsert, strict existence test
   async function ensureProfileExists(user: User): Promise<void> {
@@ -103,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const runAuthSequence = async (sess: Session) => {
+  const runAuthSequence = async (sess: Session, clearTables = false) => {
     if (authSyncInProgress.current) {
       console.log('[AuthProvider] Auth sync already in progress. Skipping.')
       return
@@ -112,33 +107,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     authSyncInProgress.current = true
 
     try {
-      // Clean up guest database tables on login to prevent duplicate key/constraint race conditions
-      const isSignup = localStorage.getItem('is_signup') === 'true'
-      if (!isSignup) {
-        console.log('[AuthProvider] Login detected. Clearing local guest tables before hydration...')
-        const tablesToClear = ['profiles', 'crop_plans', 'crop_stages', 'farm_tasks', 'transactions', 'scans', 'ai_queries', 'weather_adjustments']
+      if (clearTables) {
+        // Clean up guest database tables on login/signup to prevent duplicate key/constraint race conditions and clear default guest/dummy data
+        console.log('[AuthProvider] Auth sequence detected. Clearing local guest tables before hydration/creation...')
+        const tablesToClear = ['profiles', 'crop_plans', 'crop_stages', 'farm_tasks', 'transactions', 'scans', 'ai_queries', 'weather_adjustments', 'dashboard_cache']
         for (const tName of tablesToClear) {
           await db.table(tName).clear().catch((e: any) => console.warn(`Error clearing table ${tName}:`, e))
         }
       }
 
-      setStatus('PROFILE_CHECK')
       await ensureProfileExists(sess.user)
 
       // One Initial Sync Per Session
       if (!initialSyncCompletedRef.current) {
-        setStatus('INITIAL_SYNC')
         await initialSync(sess)
         initialSyncCompletedRef.current = true
-
-        // Enable background push sync after hydration completes
-        backgroundSync(sess).catch(e => console.warn('Background sync error:', e))
       }
-
-      setStatus('READY')
     } catch (e) {
       console.error('Auth sequence failed:', e)
-      setStatus('READY_WITH_WARNING')
     } finally {
       authSyncInProgress.current = false
     }
@@ -146,74 +132,102 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true
+    let authListener: any = null
 
-    async function initAuth() {
-      setStatus('AUTH_CHECK')
+    async function initialize() {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { session: fetchedSession } } = await supabase.auth.getSession()
         if (!mounted) return
 
-        setSession(session)
-        setUser(session?.user ?? null)
+        setSession(fetchedSession)
+        setUser(fetchedSession?.user ?? null)
 
-        if (session) {
-          await runAuthSequence(session)
-        } else {
-          // Guest mode: seed defaults if empty
-          await seedDefaultsIfEmpty().catch(e => console.warn('Failed to seed defaults in guest mode:', e))
-          setStatus('READY')
+        if (fetchedSession) {
+          console.log('[AuthProvider] Boot session found. Hydrating via pullUpdates before dropping loader...')
+          try {
+            await pullUpdates(fetchedSession)
+            initialSyncCompletedRef.current = true
+          } catch (syncErr) {
+            console.error('[AuthProvider] Boot pullUpdates failed:', syncErr)
+          }
+          await runAuthSequence(fetchedSession, false)
         }
       } catch (err) {
-        console.error('[AuthProvider] Critical auth init error:', err)
-        if (mounted) setStatus('ERROR')
+        console.error('[AuthProvider] Error during auth initialization:', err)
+      } finally {
+        if (mounted) {
+          setIsLoading(false)
+          isInitialBoot.current = false
+
+          // Set up the listener AFTER getSession resolves to avoid duplicate initial runs
+          const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+            console.log('[AuthProvider] Auth state change:', event)
+            if (!mounted) return
+
+            if (event === 'TOKEN_REFRESHED') {
+              return
+            }
+
+            // Avoid duplicate triggers for the same user if we already did it during initialization or previous event
+            if (event === 'SIGNED_IN' && userRef.current?.id === currentSession?.user?.id) {
+              console.log('[AuthProvider] Ignoring duplicate SIGNED_IN event for the same user.')
+              return
+            }
+
+            if (event === 'INITIAL_SESSION') {
+              console.log('[AuthProvider] INITIAL_SESSION event detected. Sync already completed on boot. Updating state.')
+              setSession(currentSession)
+              setUser(currentSession?.user ?? null)
+              setIsLoading(false)
+              return
+            }
+
+            if (event === 'SIGNED_IN') {
+              setSession(currentSession)
+              setUser(currentSession?.user ?? null)
+              setIsLoading(false)
+
+              if (currentSession) {
+                const clearTables = !isInitialBoot.current
+                await runAuthSequence(currentSession, clearTables)
+              }
+            } else if (event === 'SIGNED_OUT') {
+              if (isInitialBoot.current) {
+                console.log('[AuthProvider] SIGNED_OUT event ignored during boot/refresh phase.')
+                return
+              }
+
+              console.log('[AuthProvider] SIGNED_OUT event detected. Wiping local data...')
+              initialSyncCompletedRef.current = false
+              setSession(null)
+              setUser(null)
+              setIsLoading(false)
+              try {
+                await Promise.all(db.tables.map(table => table.clear()))
+                localStorage.removeItem('yield_user')
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                  const key = localStorage.key(i)
+                  if (key && key.startsWith('sb-')) {
+                    localStorage.removeItem(key)
+                  }
+                }
+              } catch (e) {
+                console.error('Error clearing local data on sign out:', e)
+              }
+            }
+          })
+          authListener = subscription
+        }
       }
     }
 
-    initAuth()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[AuthProvider] Auth state change:', event)
-      if (!mounted) return
-
-      if (event === 'TOKEN_REFRESHED') {
-        console.log('[AuthProvider] Ignoring TOKEN_REFRESHED event.')
-        return
-      }
-
-      if (event === 'SIGNED_IN' && (statusRef.current === 'READY' || statusRef.current === 'READY_WITH_WARNING')) {
-        console.log('[AuthProvider] Ignoring duplicate SIGNED_IN event because app is already READY.')
-        return
-      }
-
-      setSession(session)
-      setUser(session?.user ?? null)
-
-      if (session && event === 'SIGNED_IN') {
-        await runAuthSequence(session)
-      } else if (event === 'SIGNED_OUT') {
-        initialSyncCompletedRef.current = false
-        try {
-          await Promise.all(db.tables.map(table => table.clear()))
-          localStorage.removeItem('yield_user')
-          for (let i = localStorage.length - 1; i >= 0; i--) {
-            const key = localStorage.key(i)
-            if (key && key.startsWith('sb-')) {
-              localStorage.removeItem(key)
-            }
-          }
-        } catch (e) {
-          console.error('Error clearing local data on sign out:', e)
-        }
-        // Seed guest defaults after sign out
-        await seedDefaultsIfEmpty().catch(e => console.warn('Failed to seed defaults in guest mode:', e))
-        setStatus('READY')
-      }
-      // INITIAL_SESSION is intentionally ignored for sync logic
-    })
+    initialize()
 
     return () => {
       mounted = false
-      subscription.unsubscribe()
+      if (authListener) {
+        authListener.unsubscribe()
+      }
     }
   }, [])
 
@@ -266,6 +280,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setBusy(true)
+
+    // 1. Pre-flight push of any pending changes, safely caught
+    try {
+      if (session) {
+        console.log('[AuthProvider] signOut - Pushing pending local changes before clearing database...')
+        await pushChanges(session)
+      }
+    } catch (pushErr) {
+      console.warn('[AuthProvider] Pre-flight pushChanges failed during signOut (offline/timeout):', pushErr)
+    }
+
     setSession(null)
     setUser(null)
 
@@ -281,7 +306,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
       // Always tell Supabase to invalidate the token
-      supabase.auth.signOut().catch(e => console.warn('Supabase signout skipped/failed:', e))
+      await supabase.auth.signOut().catch(e => console.warn('Supabase signout skipped/failed:', e))
       return { error: null }
     } catch (error: unknown) {
       console.error('Logout cleanup error:', error)
@@ -295,20 +320,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{
       session,
       user,
-      status,
+      isLoading,
       busy,
       signInWithGoogle,
       signInWithPhone,
       verifyOtp,
       signOut,
     }}>
-      {(status === 'BOOTING' || status === 'AUTH_CHECK' || status === 'PROFILE_CHECK' || status === 'INITIAL_SYNC') && (
-        <AppLoader
-          message={status === 'INITIAL_SYNC' ? 'Syncing your farm data...' : 'Authenticating...'}
-          subMessage="Establishing a secure offline-first workspace"
-        />
-      )}
-      {(status === 'READY' || status === 'READY_WITH_WARNING' || status === 'ERROR') && children}
+      {children}
     </AuthContext.Provider>
   )
 }

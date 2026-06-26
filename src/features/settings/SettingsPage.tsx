@@ -1,58 +1,138 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense, useRef } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../lib/db'
 import { saveSettings } from './services/accountService'
 import { GlassCard } from '../../components/GlassCard'
-import { Save, RefreshCw, LogOut } from 'lucide-react'
+import { Save, RefreshCw, LogOut, MapPin, Globe, Loader2, User, Settings, Info } from 'lucide-react'
 import { backgroundSync } from '../../core/api/syncEngine'
+import { getUserLocation } from '../../core/utils/geolocation'
+
+const FarmMap = lazy(() => import('../../components/maps/FarmMap').then(m => ({ default: m.FarmMap })))
 import { useAuth } from '../../core/auth/AuthContext'
 import { useTranslation } from 'react-i18next'
+import { profileRepository } from '../../lib/profileRepository'
 
 export function SettingsPage() {
+  const { signOut, user } = useAuth()
   const settings = useLiveQuery(() => db.user_settings.toArray().then(a => a[0]))
-  const profile = useLiveQuery(() => db.profiles.toArray().then(a => a[0]))
+  const profile = useLiveQuery(async () => {
+    if (!user?.id) return null
+    return (await db.profiles.get(user.id)) || null
+  }, [user])
   const [syncing, setSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [isOffline, setIsOffline] = useState(!navigator.onLine)
   const [loggingOut, setLoggingOut] = useState(false)
-  const { signOut } = useAuth()
-  const { i18n } = useTranslation()
+  const { t, i18n } = useTranslation(['common', 'profile', 'validation'])
   
   const [formData, setFormData] = useState({
     notificationsEnabled: false,
-    biometricEnabled: false,
-    language: 'en'
+    theme: 'dark',
+    language: 'en',
+    village: '',
+    district: '',
+    state: '',
+    latitude: '',
+    longitude: ''
   })
 
+  const [showMap, setShowMap] = useState(false)
+  const [locating, setLocating] = useState(false)
+  const [locationError, setLocationError] = useState<string | null>(null)
+
+  const hasInitialized = useRef(false)
+
   useEffect(() => {
-    if (settings || profile) {
+    if (settings && profile && !hasInitialized.current) {
       setFormData({
-        notificationsEnabled: settings?.notifications_enabled || false,
-        biometricEnabled: settings?.biometric_enabled || false,
-        language: profile?.preferred_language || 'en'
+        notificationsEnabled: settings.notifications_enabled || false,
+        theme: settings.theme || 'dark',
+        language: profile.preferred_language || 'en',
+        village: profile.village || '',
+        district: profile.district || '',
+        state: profile.state || '',
+        latitude: profile.latitude !== undefined ? String(profile.latitude) : '',
+        longitude: profile.longitude !== undefined ? String(profile.longitude) : ''
       })
+      hasInitialized.current = true
     }
   }, [settings, profile])
+
+  const handlePositionChange = (pos: [number, number]) => {
+    setFormData(prev => ({
+      ...prev,
+      latitude: pos[0].toFixed(6),
+      longitude: pos[1].toFixed(6)
+    }))
+  }
+
+  const handleRefreshLocation = async () => {
+    setLocating(true)
+    setLocationError(null)
+    try {
+      const coords = await getUserLocation()
+      const lat = coords.latitude
+      const lon = coords.longitude
+      
+      setFormData(prev => ({
+        ...prev,
+        latitude: lat.toFixed(6),
+        longitude: lon.toFixed(6)
+      }))
+
+      if (navigator.onLine) {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`)
+          if (res.ok) {
+            const data = await res.json()
+            const state = data.address?.state || ''
+            const district = data.address?.state_district || data.address?.county || ''
+            const village = data.address?.village || data.address?.town || data.address?.city || ''
+
+            setFormData(prev => ({
+              ...prev,
+              state: state || prev.state,
+              district: district || prev.district,
+              village: village || prev.village
+            }))
+          }
+        } catch (e) {
+          console.warn('GPS geocode failed offline:', e)
+        }
+      }
+    } catch (err) {
+      console.warn(err)
+      setLocationError(t('profile:locationError'))
+    } finally {
+      setLocating(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     await saveSettings({
       notifications_enabled: formData.notificationsEnabled,
-      biometric_enabled: formData.biometricEnabled
+      theme: formData.theme
     })
 
     if (profile?.id) {
-      await db.profiles.update(profile.id, {
+      const latVal = formData.latitude.trim() ? parseFloat(formData.latitude) : undefined
+      const lonVal = formData.longitude.trim() ? parseFloat(formData.longitude) : undefined
+
+      await profileRepository.updateProfile(profile.id, {
         preferred_language: formData.language,
-        version: (profile.version || 1) + 1,
-        updated_at: new Date().toISOString(),
-        sync_status: 'pending'
+        village: formData.village || undefined,
+        district: formData.district || undefined,
+        state: formData.state || undefined,
+        latitude: latVal,
+        longitude: lonVal,
+        version: (profile.version || 1) + 1
       })
       void i18n.changeLanguage(formData.language)
     }
 
-    alert('Settings saved successfully!')
+    alert(t('validation:savedSuccess'))
   }
 
   useEffect(() => {
@@ -83,14 +163,13 @@ export function SettingsPage() {
   }
 
   const lastSyncDate = settings?.last_sync && settings.last_sync !== '1970-01-01T00:00:00.000Z'
-    ? new Date(settings.last_sync).toLocaleString() 
-    : 'Never'
+    ? new Date(settings.last_sync).toLocaleString(i18n.language, { numberingSystem: 'latn' }) 
+    : t('profile:neverSynced')
 
   const handleLogout = async () => {
     setLoggingOut(true)
     try {
       await signOut()
-      // Force a full page reload to flush all React memory and ensure a clean slate
       window.location.href = '/auth'
     } catch (error) {
       console.error('Logout error:', error)
@@ -101,84 +180,247 @@ export function SettingsPage() {
   return (
     <div className={`space-y-6 transition-all duration-700 ${loggingOut ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
       <div>
-        <div className="agro-h1">Settings</div>
-        <p className="subtle mt-2">Control your app preferences and data.</p>
+        <h1 className="agro-h1">{t('profile:settingsTitle')}</h1>
+        <p className="subtle mt-2">{t('profile:settingsSubtitle')}</p>
       </div>
 
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* CARD 1 — APP PREFERENCES */}
+        <GlassCard className="p-6" variant="strong">
+          <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
+            <Settings size={20} className="text-[#87A96B]" />
+            {t('profile:appPreferences')}
+          </h2>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div>
+                <div className="text-sm font-semibold text-white">{t('profile:enableNotifications')}</div>
+                <div className="text-xs text-white/50 mt-1">{t('profile:notificationsSub')}</div>
+              </div>
+              <input 
+                type="checkbox" 
+                checked={formData.notificationsEnabled}
+                onChange={e => setFormData({ ...formData, notificationsEnabled: e.target.checked })}
+                className="h-5 w-5 accent-[#87A96B] rounded border-white/10 bg-black/20" 
+              />
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <label className="mb-2 block text-sm font-semibold text-white">{t('profile:theme')}</label>
+              <select 
+                className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-[#87A96B] transition"
+                value={formData.theme} 
+                onChange={e => setFormData({ ...formData, theme: e.target.value })}
+              >
+                <option value="light">{t('profile:themeLight')}</option>
+                <option value="dark">{t('profile:themeDark')}</option>
+                <option value="system">{t('profile:themeSystem')}</option>
+              </select>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <label className="mb-2 block text-sm font-semibold text-white">{t('common:language')}</label>
+              <select 
+                className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-[#87A96B] transition"
+                value={formData.language} 
+                onChange={e => setFormData({ ...formData, language: e.target.value })}
+              >
+                <option value="en">English</option>
+                <option value="hi">हिन्दी (Hindi)</option>
+                <option value="te">తెలుగు (Telugu)</option>
+              </select>
+            </div>
+          </div>
+        </GlassCard>
+
+        {/* CARD 2 — FARM LOCATION */}
+        <GlassCard className="p-6" variant="strong">
+          <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
+            <MapPin size={20} className="text-[#87A96B]" />
+            {t('profile:farmLocation')}
+          </h2>
+          <p className="subtle mb-4">{t('profile:farmLocationSub')}</p>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div>
+                <label className="mb-2 block text-xs font-semibold text-white/60">{t('profile:village')}</label>
+                <input
+                  type="text"
+                  value={formData.village}
+                  onChange={e => setFormData({ ...formData, village: e.target.value })}
+                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-[#87A96B] transition"
+                  placeholder={t('profile:villagePlaceholder')}
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-semibold text-white/60">{t('profile:district')}</label>
+                <input
+                  type="text"
+                  value={formData.district}
+                  onChange={e => setFormData({ ...formData, district: e.target.value })}
+                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-[#87A96B] transition"
+                  placeholder={t('profile:districtPlaceholder')}
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-semibold text-white/60">{t('profile:state')}</label>
+                <input
+                  type="text"
+                  value={formData.state}
+                  onChange={e => setFormData({ ...formData, state: e.target.value })}
+                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-[#87A96B] transition"
+                  placeholder={t('profile:statePlaceholder')}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-xs font-semibold text-white/60">{t('profile:latitude')}</label>
+                <input
+                  type="text"
+                  value={formData.latitude}
+                  onChange={e => setFormData({ ...formData, latitude: e.target.value })}
+                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-[#87A96B] transition font-mono"
+                  placeholder={t('profile:latitudePlaceholder')}
+                />
+              </div>
+              <div>
+                <label className="mb-2 block text-xs font-semibold text-white/60">{t('profile:longitude')}</label>
+                <input
+                  type="text"
+                  value={formData.longitude}
+                  onChange={e => setFormData({ ...formData, longitude: e.target.value })}
+                  className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-[#87A96B] transition font-mono"
+                  placeholder={t('profile:longitudePlaceholder')}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowMap(!showMap)}
+                className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 hover:border-white/20 transition"
+              >
+                <Globe size={18} className="text-blue-400" />
+                {showMap ? t('profile:hideMap') : t('profile:viewMap')}
+              </button>
+              <button
+                type="button"
+                onClick={handleRefreshLocation}
+                disabled={locating}
+                className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 hover:border-white/20 transition disabled:opacity-50"
+              >
+                <RefreshCw size={18} className={`text-green-400 ${locating ? 'animate-spin' : ''}`} />
+                {locating ? t('profile:refreshing') : t('profile:refreshLocation')}
+              </button>
+            </div>
+
+            {locationError && (
+              <p className="mt-2 text-xs text-red-400 bg-red-400/10 border border-red-400/20 px-4 py-2 rounded-xl">
+                {locationError}
+              </p>
+            )}
+
+            {showMap && (
+              <div className="h-72 overflow-hidden rounded-3xl border border-white/5 bg-black/20 mt-4 transition-all duration-300">
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center text-sm text-white/30">
+                      <Loader2 size={24} className="animate-spin text-green-400 mr-2" />
+                      {t('profile:loadingMap')}
+                    </div>
+                  }
+                >
+                  <FarmMap
+                    key={`${formData.latitude}-${formData.longitude}`}
+                    initialCenter={[
+                      formData.latitude ? parseFloat(formData.latitude) : 17.385,
+                      formData.longitude ? parseFloat(formData.longitude) : 78.4867
+                    ]}
+                    farmName={profile?.farm_name}
+                    onPositionChange={handlePositionChange}
+                  />
+                </Suspense>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-6 mt-6 border-t border-white/10">
+            <button type="submit" className="flex items-center gap-2 rounded-2xl bg-[#2E7D32] px-6 py-3 text-sm font-semibold text-white shadow-glowPrimary hover:opacity-90 transition">
+              <Save size={18} /> {t('profile:saveSettings')}
+            </button>
+          </div>
+        </GlassCard>
+      </form>
+
+      {/* CARD 3 — ACCOUNT */}
       <GlassCard className="p-6" variant="strong">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          
+        <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
+          <User size={20} className="text-[#87A96B]" />
+          {t('profile:account')}
+        </h2>
+
+        <div className="space-y-4">
           <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4">
             <div>
-              <div className="text-sm font-semibold text-white">Enable Notifications</div>
-              <div className="text-xs text-white/50 mt-1">Get alerts for weather and market prices.</div>
+              <div className="text-sm font-semibold text-white">{t('profile:syncStatus')}</div>
+              <div className="text-xs text-white/50 mt-1">
+                {t('profile:lastSyncTime')}: <span className="text-white font-mono">{lastSyncDate}</span>
+              </div>
             </div>
-            <input 
-              type="checkbox" 
-              checked={formData.notificationsEnabled}
-              onChange={e => setFormData({...formData, notificationsEnabled: e.target.checked})}
-              className="h-5 w-5 accent-[#2E7D32]" 
-            />
+            <div className="text-right">
+              {isOffline && <span className="inline-flex items-center rounded-full bg-yellow-400/10 px-2.5 py-0.5 text-xs font-medium text-yellow-400 border border-yellow-400/20">{t('profile:offlineMode')}</span>}
+              {!isOffline && syncStatus === 'success' && <span className="inline-flex items-center rounded-full bg-green-400/10 px-2.5 py-0.5 text-xs font-medium text-green-400 border border-green-400/20">{t('profile:syncSuccess')}</span>}
+              {!isOffline && syncStatus === 'error' && <span className="inline-flex items-center rounded-full bg-red-400/10 px-2.5 py-0.5 text-xs font-medium text-red-400 border border-red-400/20">{t('profile:syncFailed')}</span>}
+              {!isOffline && syncStatus === 'idle' && !syncing && <span className="inline-flex items-center rounded-full bg-green-400/10 px-2.5 py-0.5 text-xs font-medium text-green-400 border border-green-400/20">{t('profile:syncSuccess')}</span>}
+              {syncing && <span className="inline-flex items-center rounded-full bg-blue-400/10 px-2.5 py-0.5 text-xs font-medium text-blue-400 border border-blue-400/20">{t('profile:syncing')}</span>}
+            </div>
           </div>
 
-          <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div>
-              <div className="text-sm font-semibold text-white">Enable Biometric Login</div>
-              <div className="text-xs text-white/50 mt-1">Use Fingerprint or FaceID to secure the app.</div>
-            </div>
-            <input 
-              type="checkbox" 
-              checked={formData.biometricEnabled}
-              onChange={e => setFormData({...formData, biometricEnabled: e.target.checked})}
-              className="h-5 w-5 accent-[#2E7D32]" 
-            />
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <label className="mb-2 block text-sm font-semibold text-white">Language</label>
-            <select 
-              className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white outline-none focus:border-stroke-2"
-              value={formData.language} 
-              onChange={e => setFormData({...formData, language: e.target.value})}
+          <div className="flex flex-wrap gap-3">
+            <button 
+              type="button" 
+              onClick={() => void handleSync()} 
+              disabled={syncing || isOffline} 
+              className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition disabled:opacity-50"
             >
-              <option value="en">English</option>
-              <option value="hi">हिन्दी (Hindi)</option>
-              <option value="te">తెలుగు (Telugu)</option>
-            </select>
+              <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} /> 
+              {syncing ? t('profile:syncing') : t('profile:syncNow')}
+            </button>
+            
+            <button 
+              type="button" 
+              onClick={() => void handleLogout()} 
+              disabled={loggingOut}
+              className="flex items-center gap-2 rounded-2xl bg-red-500/10 border border-red-500/20 px-6 py-3 text-sm font-semibold text-red-500 hover:bg-red-500/20 transition disabled:opacity-50"
+            >
+              <LogOut size={18} className={loggingOut ? 'animate-pulse' : ''} /> 
+              {loggingOut ? t('profile:loggingOut') : t('profile:logout')}
+            </button>
           </div>
+        </div>
+      </GlassCard>
 
-          <div className="pt-4 flex flex-col gap-4 border-t border-white/10">
-            <div className="flex items-center justify-between text-xs">
-               <div className="text-white/60">
-                 Last synced: <span className="text-white">{lastSyncDate}</span>
-               </div>
-               {isOffline && <div className="text-yellow-400 font-semibold">Offline Mode</div>}
-               {!isOffline && syncStatus === 'success' && <div className="text-green-400 font-semibold">Sync Successful!</div>}
-               {!isOffline && syncStatus === 'error' && <div className="text-red-400 font-semibold">Sync Failed</div>}
-            </div>
+      {/* CARD 4 — ABOUT */}
+      <GlassCard className="p-6" variant="strong">
+        <h2 className="agro-h2 mb-4 flex items-center gap-2.5 text-white">
+          <Info size={20} className="text-[#87A96B]" />
+          {t('profile:about')}
+        </h2>
 
-            <div className="flex flex-wrap gap-3">
-              <button type="submit" className="flex items-center gap-2 rounded-2xl bg-[#2E7D32] px-6 py-3 text-sm font-semibold text-white shadow-glowPrimary hover:opacity-90 transition">
-                <Save size={18} /> Save Settings
-              </button>
-              <button type="button" onClick={() => void handleSync()} disabled={syncing || isOffline} className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition disabled:opacity-50">
-                <RefreshCw size={18} className={syncing ? 'animate-spin' : ''} /> 
-                {syncing ? 'Syncing...' : 'Sync Now'}
-              </button>
-            </div>
+        <div className="space-y-3.5 text-sm">
+          <div className="flex justify-between border-b border-white/5 pb-2">
+            <span className="text-white/50">{t('profile:appVersion')}</span>
+            <span className="font-semibold text-white font-mono">{__APP_VERSION__}</span>
           </div>
-        </form>
-
-        <div className="mt-8 pt-6 border-t border-red-500/20">
-          <button 
-            type="button" 
-            onClick={() => void handleLogout()} 
-            disabled={loggingOut}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-500/10 px-6 py-3 text-sm font-semibold text-red-500 hover:bg-red-500/20 transition border border-red-500/20 disabled:opacity-50"
-          >
-            <LogOut size={18} className={loggingOut ? 'animate-pulse' : ''} /> 
-            {loggingOut ? 'Logging out securely...' : 'Log Out'}
-          </button>
+          <div className="flex justify-between pb-2">
+            <span className="text-white/50">{t('profile:buildVersion')}</span>
+            <span className="font-semibold text-white font-mono">{__BUILD_VERSION__}</span>
+          </div>
         </div>
       </GlassCard>
     </div>

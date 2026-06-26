@@ -4,25 +4,38 @@ import { db } from '@/lib/db'
 import { GlassCard } from '@/components/GlassCard'
 import { SkeletonRow } from '@/components/Skeleton'
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Trash2, Wallet, RefreshCw, Mic, MicOff, AlertCircle, TrendingUp, TrendingDown, Loader2 } from 'lucide-react'
+import { Trash2, Wallet, RefreshCw, Mic, MicOff, AlertCircle, TrendingUp, TrendingDown, Loader2, Pencil } from 'lucide-react'
 import { cn } from '@/core/utils/cn'
 import { addTransaction, initDatabase, deleteTransaction } from '@/lib/repository'
-import { backgroundSync } from '@/core/api/syncEngine'
+import { backgroundSync, pushChanges } from '@/core/api/syncEngine'
 import { useCrop } from '@/core/context/CropContext'
+import { useAuth } from '@/core/auth/AuthContext'
+import { useTranslation } from 'react-i18next'
+import { useEnumTranslation } from '@/hooks/useEnumTranslation'
 
 function inr(n: number) {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(n)
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', numberingSystem: 'latn' }).format(n)
 }
 
-function formatLedgerDate(iso: string): string {
+function formatLedgerDate(iso: string, lang: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleString(undefined, { month: 'short', day: '2-digit', year: 'numeric' })
+  return d.toLocaleDateString(lang, { month: 'short', day: '2-digit', year: 'numeric', numberingSystem: 'latn' })
 }
 
 export function DigitalLedgerPage() {
+  const { t, i18n } = useTranslation(['digitalKhata', 'common', 'validation', 'enums'])
+  const { tEnum } = useEnumTranslation()
   const { activeCrop } = useCrop()
+  const { session } = useAuth()
   const [filterByCrop, setFilterByCrop] = useState(true)
+
+  // Editing State for transactions
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editAmount, setEditAmount] = useState('')
+  const [editType, setEditType] = useState<'income' | 'expense'>('expense')
+  const [editCategory, setEditCategory] = useState('')
+  const [editTransactionDate, setEditTransactionDate] = useState('')
 
   const rawTransactions = useLiveQuery(() => db.transactions.orderBy('transaction_date').reverse().toArray())
   const transactions = useMemo(() => rawTransactions || [], [rawTransactions])
@@ -106,11 +119,11 @@ export function DigitalLedgerPage() {
 
     const numAmount = Number(amount)
     if (!amount || Number.isNaN(numAmount) || numAmount <= 0) {
-      alert("Please enter a valid amount.")
+      alert(t('invalidAmount', { ns: 'validation' }))
       return
     }
     if (!category.trim()) {
-      alert("Please enter a category or note.")
+      alert(t('categoryRequired', { ns: 'validation' }))
       return
     }
 
@@ -124,6 +137,9 @@ export function DigitalLedgerPage() {
         note: activeCrop // Tag it with the active crop
       })
 
+      // Trigger targeted sync on creation
+      void pushChanges(session, ['transactions'])
+
       // Reset form
       setAmount('')
       setCategory('')
@@ -131,18 +147,70 @@ export function DigitalLedgerPage() {
       setType('expense')
     } catch (_err) {
       console.error('Transaction failed:', _err)
-      alert('Failed to save transaction. Please try again.')
+      alert(t('saveFailed', { ns: 'validation', defaultValue: 'Failed to save transaction. Please try again.' }))
     } finally {
       setIsSubmitting(false)
     }
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Are you sure you want to delete this transaction?')) return
+    if (!confirm(t('deleteConfirm'))) return
     try {
       await deleteTransaction(id)
     } catch {
-      alert('Failed to delete entry.')
+      alert(t('deleteFailed', { ns: 'validation', defaultValue: 'Failed to delete entry.' }))
+    }
+  }
+
+  const startEditing = (e: any) => {
+    setEditingId(e.id || null)
+    setEditAmount(e.amount.toString())
+    setEditType(e.type)
+    setEditCategory(e.category)
+    setEditTransactionDate(e.transaction_date.slice(0, 10))
+  }
+
+  async function handleSave(id: string, deleted = false) {
+    if (deleted && !confirm(t('deleteConfirm'))) {
+      return
+    }
+
+    const numAmount = Number(editAmount)
+    if (!deleted) {
+      if (!editAmount || Number.isNaN(numAmount) || numAmount <= 0) {
+        alert(t('invalidAmount', { ns: 'validation' }))
+        return
+      }
+      if (!editCategory.trim()) {
+        alert(t('categoryRequired', { ns: 'validation' }))
+        return
+      }
+    }
+
+    try {
+      const now = new Date().toISOString()
+      const updateData: any = {
+        amount: numAmount,
+        category: editCategory.trim(),
+        type: editType,
+        transaction_date: new Date(editTransactionDate).toISOString(),
+        notes: editCategory.trim(),
+        updated_at: now,
+        sync_status: 'pending'
+      }
+
+      if (deleted) {
+        updateData.deleted_at = now
+      }
+
+      await db.transactions.update(id, updateData)
+
+      // Immediately after the Dexie update, trigger pushChanges and exit edit state
+      void pushChanges(session, ['transactions'])
+      setEditingId(null)
+    } catch (err) {
+      console.error('Failed to update transaction:', err)
+      alert(t('updateFailed', { ns: 'validation', defaultValue: 'Failed to save changes. Please try again.' }))
     }
   }
 
@@ -158,7 +226,7 @@ export function DigitalLedgerPage() {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
 
     if (!SpeechRecognition) {
-      setVoiceError('Voice recognition not supported in this browser.')
+      setVoiceError(t('voiceUnsupported'))
       return
     }
 
@@ -171,7 +239,13 @@ export function DigitalLedgerPage() {
     const recognition = new SpeechRecognition()
     recognitionRef.current = recognition
 
-    recognition.lang = 'en-US'
+    if (i18n.language === 'hi') {
+      recognition.lang = 'hi-IN'
+    } else if (i18n.language === 'te') {
+      recognition.lang = 'te-IN'
+    } else {
+      recognition.lang = 'en-US'
+    }
     recognition.interimResults = false
     recognition.maxAlternatives = 1
 
@@ -182,9 +256,9 @@ export function DigitalLedgerPage() {
     recognition.onerror = (event: any) => {
       console.error('Speech Recognition Error:', event.error)
       if (event.error === 'not-allowed') {
-        setVoiceError('Microphone permission denied.')
+        setVoiceError(t('voicePermissionDenied', { defaultValue: 'Microphone permission denied.' }))
       } else {
-        setVoiceError(`Voice error: ${event.error}`)
+        setVoiceError(t('voiceError', { defaultValue: `Voice error: {{error}}`, error: event.error }))
       }
       setIsListening(false)
     }
@@ -199,14 +273,14 @@ export function DigitalLedgerPage() {
       if (amountMatch) setAmount(amountMatch[0])
 
       // Intent extraction
-      const isIncome = /(earned|received|income|plus|add|credit|got)/i.test(transcript)
-      const isExpense = /(spent|paid|expense|minus|debit|gave|lost|on)/i.test(transcript)
+      const isIncome = /(earned|received|income|plus|add|credit|got|कमाई|प्राप्त|जमा|जोड़ें)/i.test(transcript)
+      const isExpense = /(spent|paid|expense|minus|debit|gave|lost|on|खर्च|भुगतान|व्यय|घटाएं|दिए)/i.test(transcript)
 
       if (isIncome && !isExpense) setType('income')
       if (isExpense) setType('expense')
 
       // Category extraction
-      const prepositions = ['on', 'for', 'from', 'at', 'to']
+      const prepositions = ['on', 'for', 'from', 'at', 'to', 'पर', 'के लिए', 'से', 'में']
       const words = transcript.split(' ')
       let categoryFound = ''
 
@@ -223,7 +297,7 @@ export function DigitalLedgerPage() {
       }
 
       if (!amountMatch && !categoryFound) {
-        setVoiceError("I caught some text, but couldn't find an amount or category. Try saying 'Spent 500 on seeds'.")
+        setVoiceError(t('voiceErrorNoMatch'))
       }
     }
 
@@ -231,7 +305,7 @@ export function DigitalLedgerPage() {
       recognition.start()
     } catch (err) {
       console.error('Failed to start recognition:', err)
-      setVoiceError('Recognition failed to start.')
+      setVoiceError(t('voiceStartFailed', { defaultValue: 'Recognition failed to start.' }))
     }
   }
 
@@ -242,18 +316,18 @@ export function DigitalLedgerPage() {
       const { synced, failed } = await backgroundSync()
       if (failed > 0) {
         setSyncMsg({
-          text: `Sync partially completed. ${synced} synced, ${failed} failed.`,
+          text: t('syncPartial', { synced, failed }),
           type: 'info'
         })
       } else {
         setSyncMsg({
-          text: `All transactions synced successfully (${synced} records).`,
+          text: t('syncSuccess', { synced }),
           type: 'success'
         })
       }
     } catch (e) {
       setSyncMsg({
-        text: e instanceof Error ? e.message : 'Global sync failed. Check network.',
+        text: e instanceof Error ? e.message : t('syncFailed'),
         type: 'error'
       })
     } finally {
@@ -269,9 +343,9 @@ export function DigitalLedgerPage() {
         <div>
           <h1 className="agro-h1 flex items-center gap-3">
             <Wallet className="text-secondary" />
-            Digital Khata
+            {t('title')}
           </h1>
-          <p className="subtle mt-1 text-sm">Offline-first ledger for your daily farm transactions.</p>
+          <p className="subtle mt-1 text-sm">{t('subtitle')}</p>
         </div>
         <button
           onClick={() => void handleSync()}
@@ -279,7 +353,7 @@ export function DigitalLedgerPage() {
           className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-6 py-2.5 text-sm font-bold text-white hover:bg-white/10 transition-all disabled:opacity-50"
         >
           <RefreshCw size={18} className={cn(syncing && 'animate-spin')} />
-          Sync Ledger
+          {t('syncLedger')}
         </button>
       </div>
 
@@ -300,21 +374,27 @@ export function DigitalLedgerPage() {
         <GlassCard className="p-6 border-l-4 border-green-500" variant="strong">
           <div className="flex items-center gap-3 text-white/50 mb-2">
             <TrendingUp size={16} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Income ({filterByCrop ? activeCrop : 'All'})</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">
+              {t('incomeCrop', { crop: filterByCrop ? tEnum('cropType', activeCrop) : t('all', { ns: 'common' }) })}
+            </span>
           </div>
           <div className="text-2xl font-black text-green-400">{inr(income)}</div>
         </GlassCard>
         <GlassCard className="p-6 border-l-4 border-red-500" variant="strong">
           <div className="flex items-center gap-3 text-white/50 mb-2">
             <TrendingDown size={16} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Expenses ({filterByCrop ? activeCrop : 'All'})</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">
+              {t('expensesCrop', { crop: filterByCrop ? tEnum('cropType', activeCrop) : t('all', { ns: 'common' }) })}
+            </span>
           </div>
           <div className="text-2xl font-black text-red-400">{inr(expense)}</div>
         </GlassCard>
         <GlassCard className={cn("p-6 border-l-4", profit >= 0 ? "border-secondary" : "border-amber-500")} variant="strong">
           <div className="flex items-center gap-3 text-white/50 mb-2">
             <Wallet size={16} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Net Profit ({filterByCrop ? activeCrop : 'All'})</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">
+              {t('netProfitCrop', { crop: filterByCrop ? tEnum('cropType', activeCrop) : t('all', { ns: 'common' }) })}
+            </span>
           </div>
           <div className={cn("text-2xl font-black", profit >= 0 ? "text-white" : "text-amber-500")}>
             {inr(profit)}
@@ -327,7 +407,7 @@ export function DigitalLedgerPage() {
         <div className="space-y-6">
           <GlassCard className="p-6" variant="strong">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="agro-h2">New Entry ({activeCrop})</h2>
+              <h2 className="agro-h2">{t('newEntry', { crop: tEnum('cropType', activeCrop) })}</h2>
               <div className="flex flex-col items-end">
                 <button
                   type="button"
@@ -346,7 +426,13 @@ export function DigitalLedgerPage() {
                     <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-white border-2 border-red-500" />
                   )}
                 </button>
-                {voiceError && <span className="mt-2 text-[10px] text-red-400 font-bold">{voiceError}</span>}
+                {isListening ? (
+                  <span className="mt-2 text-[10px] text-primary-400 font-bold animate-pulse">{t('listeningPlaceholder')}</span>
+                ) : voiceError ? (
+                  <span className="mt-2 text-[10px] text-red-400 font-bold">{voiceError}</span>
+                ) : (
+                  <span className="mt-2 text-[10px] text-white/30 text-right max-w-[150px] leading-tight block">{t('voiceTip')}</span>
+                )}
               </div>
             </div>
 
@@ -357,19 +443,19 @@ export function DigitalLedgerPage() {
                   onClick={() => setType('expense')}
                   className={cn("flex-1 py-2 text-xs font-bold rounded-xl transition-all", type === 'expense' ? "bg-red-500/20 text-red-400 shadow-sm" : "text-white/30")}
                 >
-                  Expense
+                  {t('expense')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setType('income')}
                   className={cn("flex-1 py-2 text-xs font-bold rounded-xl transition-all", type === 'income' ? "bg-green-500/20 text-green-400 shadow-sm" : "text-white/30")}
                 >
-                  Income
+                  {t('income')}
                 </button>
               </div>
 
               <div>
-                <label className="mb-1.5 block text-[10px] font-bold text-white/40 uppercase tracking-wider">Amount (INR)</label>
+                <label className="mb-1.5 block text-[10px] font-bold text-white/40 uppercase tracking-wider">{t('amountInr')}</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-white/30">₹</span>
                   <input
@@ -384,19 +470,19 @@ export function DigitalLedgerPage() {
               </div>
 
               <div>
-                <label className="mb-1.5 block text-[10px] font-bold text-white/40 uppercase tracking-wider">Category / Details</label>
+                <label className="mb-1.5 block text-[10px] font-bold text-white/40 uppercase tracking-wider">{t('categoryDetails')}</label>
                 <input
                   type="text"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className={inputClass}
-                  placeholder="e.g. Fertilizer, Seeds, Sale of Wheat"
+                  placeholder={t('categoryPlaceholder')}
                   required
                 />
               </div>
 
               <div>
-                <label className="mb-1.5 block text-[10px] font-bold text-white/40 uppercase tracking-wider">Transaction Date</label>
+                <label className="mb-1.5 block text-[10px] font-bold text-white/40 uppercase tracking-wider">{t('transactionDate')}</label>
                 <input
                   type="date"
                   value={transactionDate}
@@ -411,7 +497,7 @@ export function DigitalLedgerPage() {
                 disabled={isSubmitting}
                 className="w-full py-4 rounded-2xl bg-primary-600 text-sm font-black text-white shadow-glowPrimary hover:bg-primary-500 transition-all active:scale-[0.98] disabled:opacity-50"
               >
-                {isSubmitting ? <Loader2 className="mx-auto animate-spin" size={20} /> : 'Post to Ledger'}
+                {isSubmitting ? <Loader2 className="mx-auto animate-spin" size={20} /> : t('postToLedger')}
               </button>
             </form>
           </GlassCard>
@@ -421,7 +507,7 @@ export function DigitalLedgerPage() {
         <div className="space-y-6">
           <GlassCard className="p-0 overflow-hidden" variant="strong">
             <div className="p-6 border-b border-white/5 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-              <h2 className="agro-h2">Recent Transactions</h2>
+              <h2 className="agro-h2">{t('recentTransactions')}</h2>
               
               <button
                 onClick={() => setFilterByCrop(!filterByCrop)}
@@ -432,9 +518,9 @@ export function DigitalLedgerPage() {
                     : "bg-white/5 border-white/10 text-white/60 hover:text-white"
                 )}
               >
-                {filterByCrop ? `Crop Filter: ${activeCrop}` : 'Showing All Crops'}
+                {filterByCrop ? t('cropFilter', { crop: tEnum('cropType', activeCrop) }) : t('showingAllCrops')}
                 <span className="text-[10px] text-white/40 font-normal">
-                  (Toggle)
+                  {t('toggle')}
                 </span>
               </button>
             </div>
@@ -449,49 +535,152 @@ export function DigitalLedgerPage() {
                   <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/5 text-white/20">
                     <Wallet size={32} />
                   </div>
-                  <p className="text-sm font-medium text-white/40">No records found. Start adding your daily transactions.</p>
+                  <p className="text-sm font-medium text-white/40">{t('noRecords')}</p>
                 </div>
               ) : (
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-white/5 text-[10px] font-bold text-white/30 uppercase tracking-widest">
-                      <th className="px-6 py-3 font-bold">Details</th>
-                      <th className="px-6 py-3 font-bold">Date</th>
-                      <th className="px-6 py-3 text-right font-bold">Amount</th>
+                      <th className="px-6 py-3 font-bold">{t('details')}</th>
+                      <th className="px-6 py-3 font-bold">{t('date')}</th>
+                      <th className="px-6 py-3 text-right font-bold">{t('amount')}</th>
                       <th className="px-6 py-3"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {filteredTransactions.filter(t => !t.deleted_at).map((e) => (
-                      <tr key={e.id} className="group hover:bg-white/[0.02] transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-bold text-white/90">{e.category}</div>
-                          <div className="text-[10px] font-bold text-white/30 uppercase flex items-center gap-2">
-                            {e.type}
-                            {e.note && (
-                              <span className="text-[9px] font-black tracking-widest text-[#4ade80] bg-[#1d3526] px-2 py-0.5 rounded border border-[#223328] uppercase">
-                                {e.note}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-xs text-white/50">{formatLedgerDate(e.transaction_date)}</td>
-                        <td className={cn(
-                          "px-6 py-4 text-right text-sm font-black",
-                          e.type === 'income' ? "text-green-400" : "text-red-400"
-                        )}>
-                          {e.type === 'income' ? '+' : '-'}{inr(e.amount)}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => e.id && void handleDelete(e.id)}
-                            className="p-2 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredTransactions.filter(t => !t.deleted_at).map((e) => {
+                      const isEditing = editingId === e.id
+                      return (
+                        <tr key={e.id} className="group hover:bg-white/[0.02] transition-colors">
+                          {isEditing ? (
+                            <>
+                              <td className="px-6 py-4">
+                                <input
+                                  type="text"
+                                  value={editCategory}
+                                  onChange={(ev) => setEditCategory(ev.target.value)}
+                                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-1.5 text-xs text-white placeholder:text-white/30 outline-none transition focus:border-stroke-2 focus:ring-1 focus:ring-stroke-2/30"
+                                  placeholder={t('categoryDetails')}
+                                  required
+                                />
+                                <div className="mt-2 flex gap-2 p-0.5 bg-white/5 rounded-xl border border-white/5 w-fit">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditType('expense')}
+                                    className={cn(
+                                      "px-3 py-1 text-[10px] font-bold rounded-lg transition-all",
+                                      editType === 'expense'
+                                        ? "bg-red-500/20 text-red-400 shadow-sm"
+                                        : "text-white/30 hover:text-white/60"
+                                    )}
+                                  >
+                                    {t('expense')}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditType('income')}
+                                    className={cn(
+                                      "px-3 py-1 text-[10px] font-bold rounded-lg transition-all",
+                                      editType === 'income'
+                                        ? "bg-green-500/20 text-green-400 shadow-sm"
+                                        : "text-white/30 hover:text-white/60"
+                                    )}
+                                  >
+                                    {t('income')}
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <input
+                                  type="date"
+                                  value={editTransactionDate}
+                                  onChange={(ev) => setEditTransactionDate(ev.target.value)}
+                                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-1.5 text-xs text-white outline-none transition focus:border-stroke-2 focus:ring-1 focus:ring-stroke-2/30"
+                                  required
+                                />
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-white/30">₹</span>
+                                  <input
+                                    type="number"
+                                    value={editAmount}
+                                    onChange={(ev) => setEditAmount(ev.target.value)}
+                                    className="w-full rounded-xl border border-white/10 bg-black/30 pl-7 pr-3 py-1.5 text-xs text-white text-right outline-none transition focus:border-stroke-2 focus:ring-1 focus:ring-stroke-2/30"
+                                    placeholder="0.00"
+                                    required
+                                  />
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    onClick={() => e.id && void handleSave(e.id, false)}
+                                    className="px-3 py-1.5 rounded-xl bg-primary-600 hover:bg-primary-500 text-xs font-bold text-white transition-all shadow-glowPrimary"
+                                    title={t('save')}
+                                  >
+                                    {t('save')}
+                                  </button>
+                                  <button
+                                    onClick={() => e.id && void handleSave(e.id, true)}
+                                    className="p-2 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+                                    title={t('deleteEntry')}
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingId(null)}
+                                    className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-white/60 transition-all border border-white/10"
+                                    title={t('cancel')}
+                                  >
+                                    {t('cancel')}
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="px-6 py-4">
+                                <div className="text-sm font-bold text-white/90">{tEnum('ledgerCategory', e.category)}</div>
+                                <div className="text-[10px] font-bold text-white/30 uppercase flex items-center gap-2">
+                                  {t(e.type)}
+                                  {e.note && (
+                                    <span className="text-[9px] font-black tracking-widest text-[#4ade80] bg-[#1d3526] px-2 py-0.5 rounded border border-[#223328] uppercase">
+                                      {tEnum('cropType', e.note)}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-xs text-white/50">{formatLedgerDate(e.transaction_date, i18n.language)}</td>
+                              <td className={cn(
+                                "px-6 py-4 text-right text-sm font-black",
+                                e.type === 'income' ? "text-green-400" : "text-red-400"
+                              )}>
+                                {e.type === 'income' ? '+' : '-'}{inr(e.amount)}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                  <button
+                                    onClick={() => startEditing(e)}
+                                    className="p-2 text-white/40 hover:text-[#4ade80] hover:bg-white/5 rounded-xl transition-all"
+                                    title={t('editEntry', { defaultValue: 'Edit Entry' })}
+                                  >
+                                    <Pencil size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => e.id && void handleDelete(e.id)}
+                                    className="p-2 text-white/20 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+                                    title={t('deleteEntry')}
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               )}
@@ -501,7 +690,7 @@ export function DigitalLedgerPage() {
           {/* Chart Card */}
           <GlassCard className="p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-sm font-black uppercase tracking-widest text-white/40">Profit Trend (6-Week View)</h3>
+              <h3 className="text-sm font-black uppercase tracking-widest text-white/40">{t('profitTrend')}</h3>
             </div>
             <div className="h-[200px] w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -513,8 +702,8 @@ export function DigitalLedgerPage() {
                     itemStyle={{ color: '#fff', fontSize: '12px' }}
                     cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 2 }}
                   />
-                  <Line type="monotone" dataKey="revenue" name="Income" stroke="#4ade80" strokeWidth={3} dot={{ fill: '#4ade80', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
-                  <Line type="monotone" dataKey="expense" name="Expense" stroke="#f87171" strokeWidth={3} dot={{ fill: '#f87171', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                  <Line type="monotone" dataKey="revenue" name={t('income')} stroke="#4ade80" strokeWidth={3} dot={{ fill: '#4ade80', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                  <Line type="monotone" dataKey="expense" name={t('expense')} stroke="#f87171" strokeWidth={3} dot={{ fill: '#f87171', strokeWidth: 2, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { cn } from '../../../core/utils/cn'
 import { db } from '../../../lib/db'
 import { cropCalendarRepository } from '../repositories/cropCalendarRepository'
+import { profileRepository } from '../../../lib/profileRepository'
 import { cropCalendarService } from '../services/cropCalendarService'
 import { cropTemplates } from '../templates/cropTemplates'
 import { getTodayUtcString, formatUtcToLocal } from '../utils/dateUtils'
@@ -20,6 +21,8 @@ import { SectionContainer } from '../shared/ui/SectionContainer'
 import { GlassCard } from '../../../components/GlassCard'
 import { SkeletonCard } from '../../../components/Skeleton'
 import { Trash2, Sprout, Plus, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { useEnumTranslation } from '../../../hooks/useEnumTranslation'
 import {
   getTodayTasks,
   getOverdueTasks,
@@ -34,6 +37,9 @@ import type { WeatherAlert } from '../engines/weatherAdjustmentEngine'
 import type { FarmTaskRecord } from '../../../lib/db'
 
 export function PrecisionPlanningPage() {
+  const { t } = useTranslation(['common', 'cropCalendar'])
+  const { tEnum } = useEnumTranslation()
+
   const [activeTab, setActiveTab] = useState<'today' | 'week' | 'calendar'>('today')
   const [selectedDate, setSelectedDate] = useState(getTodayUtcString())
   const [weatherAlerts, setWeatherAlerts] = useState<WeatherAlert[]>([])
@@ -64,8 +70,11 @@ export function PrecisionPlanningPage() {
 
     const checkWeatherAndAdjust = async () => {
       try {
-        const profile = await db.profiles.toArray().then(a => a[0])
-        const coords = profile?.latitude !== undefined && profile?.longitude !== undefined
+        const profile = await profileRepository.getCurrentProfile()
+        if (!profile) {
+          throw new Error('Profile not found. Cannot evaluate weather adjustment.')
+        }
+        const coords = profile.latitude !== undefined && profile.longitude !== undefined
           ? { latitude: profile.latitude, longitude: profile.longitude }
           : await getUserLocation().catch(() => ({ latitude: 20.5937, longitude: 78.9629 }))
         const forecast = await fetchDailyWeather(coords.latitude, coords.longitude)
@@ -107,18 +116,21 @@ export function PrecisionPlanningPage() {
     limitDate.setUTCDate(limitDate.getUTCDate() + 7)
     const limitDateStr = limitDate.toISOString().split('T')[0]
     
-    return tasks.filter(t => 
-      !t.deleted_at &&
-      t.status !== 'completed' &&
-      t.effective_date > todayStr &&
-      t.effective_date <= limitDateStr
+    return tasks.filter(tVal => 
+      !tVal.deleted_at &&
+      tVal.status !== 'completed' &&
+      tVal.effective_date > todayStr &&
+      tVal.effective_date <= limitDateStr
     )
   }, [tasks, todayStr])
 
   const currentStage = useMemo(() => {
     if (!stages || !activePlan) return undefined
     if (activePlan.farmer_selected_stage) {
-      const matched = stages.find(s => s.name.toLowerCase().includes(activePlan.farmer_selected_stage!.toLowerCase()))
+      const matched = stages.find(s => {
+        const stageName = s.name || s.stage_name;
+        return stageName && stageName.toLowerCase().includes(activePlan.farmer_selected_stage!.toLowerCase());
+      })
       if (matched) return matched
     }
     return selectCurrentStage(stages, activePlan.sowing_date, todayStr)
@@ -157,7 +169,7 @@ export function PrecisionPlanningPage() {
   // Get tasks filtered for the selected calendar date
   const selectedDateTasks = useMemo(() => {
     if (!tasks) return []
-    return tasks.filter(t => t.effective_date === selectedDate && !t.deleted_at)
+    return tasks.filter(tVal => tVal.effective_date === selectedDate && !tVal.deleted_at)
   }, [tasks, selectedDate])
 
   const handleToggleCompletion = async (task: FarmTaskRecord) => {
@@ -186,14 +198,14 @@ export function PrecisionPlanningPage() {
   }
 
   const handleDeletePlan = async () => {
-    if (activePlan && window.confirm('Are you sure you want to delete and reset your current crop calendar?')) {
+    if (activePlan && window.confirm(t('cropCalendar.resetConfirm', 'Are you sure you want to delete and reset your current crop calendar?'))) {
       await cropCalendarService.deleteCropPlan(activePlan.id)
       setWeatherAlerts([])
     }
   }
 
   // Task counters for tabs
-  const pendingTodayCount = useMemo(() => todayTasks.filter(t => t.status !== 'completed').length, [todayTasks])
+  const pendingTodayCount = useMemo(() => todayTasks.filter(tVal => tVal.status !== 'completed').length, [todayTasks])
   const pendingWeekCount = useMemo(() => upcomingTasks.length, [upcomingTasks])
 
   // Loading Skeleton State
@@ -222,9 +234,11 @@ export function PrecisionPlanningPage() {
         <header className="flex items-center justify-between flex-wrap gap-4 border-b border-white/5 pb-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-extrabold text-white flex items-center gap-2">
-              Precision Planning
+              {t('cropCalendar.title', 'Precision Planning')}
             </h1>
-            <p className="text-white/50 mt-1 font-medium text-xs md:text-sm">Track crop growth, operations, and field activities</p>
+            <p className="text-white/50 mt-1 font-medium text-xs md:text-sm">
+              {t('cropCalendar.subtitle', 'Track crop growth, operations, and field activities')}
+            </p>
           </div>
           {activePlan && (
             <button
@@ -232,7 +246,7 @@ export function PrecisionPlanningPage() {
               className="flex items-center gap-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/30 px-4 py-2 rounded-2xl text-xs font-bold transition-all uppercase tracking-wider"
             >
               <Trash2 size={13} />
-              Reset Plan
+              {t('cropCalendar.resetPlan', 'Reset Plan')}
             </button>
           )}
         </header>
@@ -246,27 +260,35 @@ export function PrecisionPlanningPage() {
                   <Sprout size={24} />
                 </div>
                 <div>
-                  <h2 className="text-xl md:text-2xl font-bold text-white">Start New Crop Cycle</h2>
-                  <p className="text-white/40 text-xs mt-1">Sow crop seeds to generate a daily operations schedule</p>
+                  <h2 className="text-xl md:text-2xl font-bold text-white">
+                    {t('cropCalendar.startCycle', 'Start New Crop Cycle')}
+                  </h2>
+                  <p className="text-white/40 text-xs mt-1">
+                    {t('cropCalendar.sowSeedsDesc', 'Sow crop seeds to generate a daily operations schedule')}
+                  </p>
                 </div>
               </div>
 
               <form onSubmit={handleCreatePlan} className="space-y-5">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-2">Crop Type</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-2">
+                    {t('cropCalendar.cropType', 'Crop Type')}
+                  </label>
                   <select
                     value={selectedCrop}
                     onChange={(e) => setSelectedCrop(e.target.value)}
                     className="w-full bg-black/40 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#87A96B]/50 transition-colors"
                   >
                     {Object.keys(cropTemplates).map(c => (
-                      <option key={c} value={c}>{c}</option>
+                      <option key={c} value={c}>{tEnum('cropType', c)}</option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-2">Variety / Seed Brand</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-2">
+                    {t('cropCalendar.varietyBrand', 'Variety / Seed Brand')}
+                  </label>
                   <input
                     type="text"
                     required
@@ -278,7 +300,9 @@ export function PrecisionPlanningPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-2">Sowing Date</label>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-2">
+                      {t('cropCalendar.sowingDate', 'Sowing Date')}
+                    </label>
                     <input
                       type="date"
                       required
@@ -288,7 +312,9 @@ export function PrecisionPlanningPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-2">Acreage (Area)</label>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-2">
+                      {t('cropCalendar.acreage', 'Acreage (Area)')}
+                    </label>
                     <input
                       type="number"
                       step="0.1"
@@ -311,7 +337,7 @@ export function PrecisionPlanningPage() {
                   ) : (
                     <>
                       <Plus size={16} />
-                      Generate Planning Schedule
+                      {t('cropCalendar.generatePlanning', 'Generate Planning Schedule')}
                     </>
                   )}
                 </button>
@@ -323,7 +349,10 @@ export function PrecisionPlanningPage() {
           <div className="space-y-4 md:space-y-6">
             
             {/* 2. CROP LIFECYCLE SECTION (Page Anchor) */}
-            <SectionContainer title="Crop Lifecycle" subtitle="Dynamic growth journey and development stage tracker">
+            <SectionContainer 
+              title={t('cropCalendar.cropLifecycle', 'Crop Lifecycle')} 
+              subtitle={t('cropCalendar.growthJourney', 'Dynamic growth journey and development stage tracker')}
+            >
               <StageTimeline
                 stages={stages || []}
                 currentStage={currentStage}
@@ -356,12 +385,18 @@ export function PrecisionPlanningPage() {
             </div>
 
             {/* 4. WEATHER ADVISORY SECTION */}
-            <SectionContainer title="Weather Advisory" subtitle="Supportive weather forecasts and spray/irrigation advisories">
+            <SectionContainer 
+              title={t('cropCalendar.weatherAdvisory', 'Weather Advisory')} 
+              subtitle={t('cropCalendar.supportiveForecasts', 'Supportive weather forecasts and spray/irrigation advisories')}
+            >
               <WeatherAdvisory alerts={weatherAlerts} />
             </SectionContainer>
 
             {/* 5. FARM OPERATIONS SECTION */}
-            <SectionContainer title="Farm Operations" subtitle="Manage and complete scheduled farming activities">
+            <SectionContainer 
+              title={t('cropCalendar.farmOperations', 'Farm Operations')} 
+              subtitle={t('cropCalendar.manageActivities', 'Manage and complete scheduled farming activities')}
+            >
               <div className="space-y-4">
                 {/* Tabs */}
                 <div className="flex bg-black/30 border border-white/5 p-1 rounded-2xl self-start gap-1">
@@ -374,7 +409,7 @@ export function PrecisionPlanningPage() {
                         : "text-white/40 hover:text-white/70"
                     )}
                   >
-                    <span>Today</span>
+                    <span>{t('cropCalendar.today', 'Today')}</span>
                     <span className={cn(
                       "text-[9px] px-1.5 py-0.5 rounded-full font-extrabold",
                       activeTab === 'today' ? "bg-white/20 text-white" : "bg-white/5 text-white/40"
@@ -391,7 +426,7 @@ export function PrecisionPlanningPage() {
                         : "text-white/40 hover:text-white/70"
                     )}
                   >
-                    <span>This Week</span>
+                    <span>{t('cropCalendar.thisWeek', 'This Week')}</span>
                     <span className={cn(
                       "text-[9px] px-1.5 py-0.5 rounded-full font-extrabold",
                       activeTab === 'week' ? "bg-white/20 text-white" : "bg-white/5 text-white/40"
@@ -408,7 +443,7 @@ export function PrecisionPlanningPage() {
                         : "text-white/40 hover:text-white/70"
                     )}
                   >
-                    Calendar
+                    {t('cropCalendar.calendar', 'Calendar')}
                   </button>
                 </div>
 
@@ -419,7 +454,7 @@ export function PrecisionPlanningPage() {
                     overdueTasks={overdueTasks}
                     onToggleCompletion={handleToggleCompletion}
                     onSaveNotes={handleSaveNotes}
-                    title="Operations Scheduled for Today"
+                    title={t('cropCalendar.operationsScheduledToday', 'Operations Scheduled for Today')}
                   />
                 )}
 
@@ -430,7 +465,7 @@ export function PrecisionPlanningPage() {
                     overdueTasks={overdueTasks}
                     onToggleCompletion={handleToggleCompletion}
                     onSaveNotes={handleSaveNotes}
-                    title="Operations Scheduled for next 7 days"
+                    title={t('cropCalendar.operationsScheduledWeek', 'Operations Scheduled for next 7 days')}
                   />
                 )}
 
@@ -447,7 +482,7 @@ export function PrecisionPlanningPage() {
                       overdueTasks={[]}
                       onToggleCompletion={handleToggleCompletion}
                       onSaveNotes={handleSaveNotes}
-                      title={`Operations Scheduled: ${formatUtcToLocal(selectedDate)}`}
+                      title={t('cropCalendar.operationsScheduledDate', 'Operations Scheduled: {{date}}', { date: formatUtcToLocal(selectedDate) })}
                     />
                   </div>
                 )}
@@ -455,12 +490,18 @@ export function PrecisionPlanningPage() {
             </SectionContainer>
 
             {/* 6. QUICK INSIGHTS SECTION */}
-            <SectionContainer title="Quick Insights" subtitle="Intelligent agronomic observations and observations">
+            <SectionContainer 
+              title={t('cropCalendar.quickInsights', 'Quick Insights')} 
+              subtitle={t('cropCalendar.intelligentObservations', 'Intelligent agronomic observations and observations')}
+            >
               <QuickInsights tasks={tasks || []} weatherAlerts={weatherAlerts} />
             </SectionContainer>
 
             {/* 7. UPCOMING MILESTONES SECTION */}
-            <SectionContainer title="Upcoming Milestones" subtitle="Timeline of next growth phase predictions and harvest expectations">
+            <SectionContainer 
+              title={t('cropCalendar.upcomingMilestones', 'Upcoming Milestones')} 
+              subtitle={t('cropCalendar.timelineOfGrowth', 'Timeline of next growth phase predictions and harvest expectations')}
+            >
               <UpcomingMilestones milestones={milestones} />
             </SectionContainer>
 

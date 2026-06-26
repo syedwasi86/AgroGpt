@@ -51,14 +51,19 @@ export function Auth() {
           pathname: string
         }
       }
-      const from = (location.state as LocationState)?.from?.pathname || '/dashboard'
+      const isSignup = localStorage.getItem('is_signup') === 'true'
+      localStorage.removeItem('is_signup')
+      console.log('[Auth] Redirecting authenticated user. isSignup:', isSignup)
+      const from = isSignup ? '/onboarding' : ((location.state as LocationState)?.from?.pathname || '/dashboard')
       navigate(from, { replace: true })
     }
   }, [user, navigate, location])
 
   const handleGoogleLogin = async () => {
     setError(null)
-    localStorage.setItem('is_signup', authAction === 'signup' ? 'true' : 'false')
+    const isSignup = authAction === 'signup'
+    localStorage.setItem('is_signup', isSignup ? 'true' : 'false')
+    console.log('[Auth] Google Login Pre-flight: is_signup =', isSignup ? 'true' : 'false')
     const { error } = await signInWithGoogle()
     if (error) {
       setError((error as any).message || String(error))
@@ -68,7 +73,9 @@ export function Auth() {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    localStorage.setItem('is_signup', authAction === 'signup' ? 'true' : 'false')
+    const isSignup = authAction === 'signup'
+    localStorage.setItem('is_signup', isSignup ? 'true' : 'false')
+    console.log('[Auth] Phone OTP Pre-flight: is_signup =', isSignup ? 'true' : 'false')
     const { error } = await signInWithPhone(phone)
     if (error) {
       setError((error as any).message || String(error))
@@ -80,14 +87,16 @@ export function Auth() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    localStorage.setItem('is_signup', authAction === 'signup' ? 'true' : 'false')
+    const isSignup = authAction === 'signup'
+    localStorage.setItem('is_signup', isSignup ? 'true' : 'false')
+    console.log('[Auth] Phone Verify OTP Pre-flight: is_signup =', isSignup ? 'true' : 'false')
     const { error } = await verifyOtp(phone, otp)
     if (error) {
       setError((error as any).message || String(error))
     } else {
       // On success, the useEffect will trigger and navigate, 
       // but we can also navigate here explicitly for immediate feedback
-      navigate('/dashboard', { replace: true })
+      navigate(isSignup ? '/onboarding' : '/dashboard', { replace: true })
     }
   }
 

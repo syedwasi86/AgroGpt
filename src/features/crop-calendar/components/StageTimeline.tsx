@@ -37,7 +37,7 @@ export function StageTimeline({
   if (stages.length === 0) return null
 
   const getStageIcon = (name: string, index: number) => {
-    const lname = name.toLowerCase()
+    const lname = (name || '').toLowerCase()
     if (lname.includes('seed') || lname.includes('germ') || lname.includes('nur')) return iconMap.sprout
     if (lname.includes('veg') || lname.includes('till') || lname.includes('stake')) return iconMap.leaf
     if (lname.includes('flower') || lname.includes('bloom') || lname.includes('fruiting') || lname.includes('squar')) return iconMap.flower
@@ -63,7 +63,7 @@ export function StageTimeline({
             <h2 className="text-xl md:text-2xl font-black text-white leading-tight mt-0.5 flex items-center flex-wrap gap-2">
               <span>
                 {currentStage 
-                  ? t('cropCalendar.stageTitle', '{{stage}} Stage', { stage: tEnum('cropStage', currentStage.name) })
+                  ? t('cropCalendar.stageTitle', '{{stage}} Stage', { stage: tEnum('cropStage', currentStage.name || currentStage.stage_name || '') })
                   : t('cropCalendar.cropLifecycle', 'Crop Lifecycle')}
               </span>
               {isFarmerSelectedStage && (
@@ -138,7 +138,7 @@ export function StageTimeline({
                           ? "bg-[#6A8E5C] border-white/10 text-white" 
                           : "bg-[#232723] border-white/5 text-white/30"
                     )}>
-                      {getStageIcon(stage.name, idx)}
+                      {getStageIcon(stage.name || stage.stage_name || '', idx)}
                     </div>
                   </div>
                 )
@@ -162,7 +162,7 @@ export function StageTimeline({
                     "truncate w-full text-center",
                     isCurrent ? "text-[#87A96B] font-black" : "text-white/40"
                   )}>
-                    {tEnum('cropStage', stage.name)}
+                    {tEnum('cropStage', stage.name || stage.stage_name || '')}
                   </span>
                   <span className="text-white/20 mt-0.5 font-semibold block lowercase whitespace-nowrap">
                     {formatUtcToLocal(stage.start_date)}

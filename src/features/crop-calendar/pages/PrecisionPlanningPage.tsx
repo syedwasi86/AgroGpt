@@ -127,7 +127,10 @@ export function PrecisionPlanningPage() {
   const currentStage = useMemo(() => {
     if (!stages || !activePlan) return undefined
     if (activePlan.farmer_selected_stage) {
-      const matched = stages.find(s => s.name.toLowerCase().includes(activePlan.farmer_selected_stage!.toLowerCase()))
+      const matched = stages.find(s => {
+        const stageName = s.name || s.stage_name;
+        return stageName && stageName.toLowerCase().includes(activePlan.farmer_selected_stage!.toLowerCase());
+      })
       if (matched) return matched
     }
     return selectCurrentStage(stages, activePlan.sowing_date, todayStr)

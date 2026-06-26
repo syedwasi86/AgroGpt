@@ -355,18 +355,25 @@ export async function pullUpdates(providedSession?: Session | null): Promise<voi
       const table = db[tableName] as any
 
       for (const record of cloudRecords) {
+        const recordToStore = { ...record }
+        if (tableName === 'crop_stages') {
+          if (recordToStore.stage_name && !recordToStore.name) {
+            recordToStore.name = recordToStore.stage_name
+          }
+        }
+
         // Conflict Resolution using version-first comparison:
-        const local = await table.get(record.id)
+        const local = await table.get(recordToStore.id)
         if (!local) {
-          await table.put({ ...record, sync_status: 'synced' })
+          await table.put({ ...recordToStore, sync_status: 'synced' })
         } else {
-          const hasVersion = record.version !== undefined && local.version !== undefined
-          const remoteIsNewerVersion = hasVersion && record.version > local.version
-          const sameVersionRemoteNewerTimestamp = hasVersion && record.version === local.version && new Date(record.updated_at) > new Date(local.updated_at)
-          const fallbackRemoteNewerTimestamp = !hasVersion && new Date(record.updated_at) > new Date(local.updated_at)
+          const hasVersion = recordToStore.version !== undefined && local.version !== undefined
+          const remoteIsNewerVersion = hasVersion && recordToStore.version > local.version
+          const sameVersionRemoteNewerTimestamp = hasVersion && recordToStore.version === local.version && new Date(recordToStore.updated_at) > new Date(local.updated_at)
+          const fallbackRemoteNewerTimestamp = !hasVersion && new Date(recordToStore.updated_at) > new Date(local.updated_at)
 
           if (remoteIsNewerVersion || sameVersionRemoteNewerTimestamp || fallbackRemoteNewerTimestamp) {
-            await table.put({ ...record, sync_status: 'synced' })
+            await table.put({ ...recordToStore, sync_status: 'synced' })
           }
         }
       }

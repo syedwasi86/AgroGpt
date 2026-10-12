@@ -1,10 +1,14 @@
-import type { 
-  DiseaseKnowledgeBaseEntry, 
-  AIRecommendationResponse, 
-  SeverityLevel 
+import type {
+  DiseaseKnowledgeBaseEntry,
+  AIRecommendationResponse,
+  SeverityLevel
 } from '../features/field-vision/types';
 import i18next from 'i18next';
 import { sanitizeEnumKey } from '../hooks/useEnumTranslation';
+import { sanitizeJsonString } from '../utils/jsonSanitizer';
+import { db } from '../lib/db';
+import { getUserLocation } from '../core/utils/geolocation';
+import { fetchWeather } from '../features/gis/services/weatherService';
 
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
@@ -61,15 +65,15 @@ export function getAIFallbackResponse(
     };
   }
 
-  const baseSummary = kbData 
-    ? kbData.farmerFriendlyExplanation 
+  const baseSummary = kbData
+    ? kbData.farmerFriendlyExplanation
     : i18next.t('fieldVision:fallbackDiseasedSummary', { defaultValue: 'Your {{crop}} crop has been diagnosed with {{disease}}.', crop: transCrop, disease: transDisease });
 
-  const urgencyText = severity === 'high' 
+  const urgencyText = severity === 'high'
     ? i18next.t('fieldVision:fallbackUrgencyHigh', { defaultValue: 'High priority. Widespread crop damage could occur if not treated immediately.' })
     : severity === 'medium'
-    ? i18next.t('fieldVision:fallbackUrgencyMedium', { defaultValue: 'Medium priority. Actions should be taken within the next few days.' })
-    : i18next.t('fieldVision:fallbackUrgencyLow', { defaultValue: 'Low priority. Keep a close eye on the plant and perform preventive measures.' });
+      ? i18next.t('fieldVision:fallbackUrgencyMedium', { defaultValue: 'Medium priority. Actions should be taken within the next few days.' })
+      : i18next.t('fieldVision:fallbackUrgencyLow', { defaultValue: 'Low priority. Keep a close eye on the plant and perform preventive measures.' });
 
   const expertAdviceText = severity === 'high'
     ? i18next.t('fieldVision:fallbackDiseasedExpertHigh', { defaultValue: 'We recommend consulting a local agricultural extension officer to verify local spray effectiveness.' })
@@ -82,7 +86,7 @@ export function getAIFallbackResponse(
       i18next.t('fieldVision:fallbackDiseasedPrev1', { defaultValue: 'Rotate crops.' }),
       i18next.t('fieldVision:fallbackDiseasedPrev2', { defaultValue: 'Use clean farm tools.' })
     ],
-    weatherRiskNote: kbData?.spreadConditions 
+    weatherRiskNote: kbData?.spreadConditions
       ? `Spreads under: Humidity: ${kbData.spreadConditions.humidity || 'N/A'}, Temp: ${kbData.spreadConditions.temperature || 'N/A'}`
       : i18next.t('fieldVision:fallbackDiseasedWeather', { defaultValue: 'Monitor weather reports for high humidity conditions.' }),
     expertAdvice: expertAdviceText,
@@ -104,14 +108,9 @@ export function getAIFallbackResponse(
 function cleanAndParseJSON(text: string): unknown {
   let cleaned = text.trim();
 
-  // 1. Strip markdown code block wrappers if present
-  if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  }
-  cleaned = cleaned.trim();
-
   try {
-    return JSON.parse(cleaned);
+    const sanitized = sanitizeJsonString(cleaned);
+    return JSON.parse(sanitized);
   } catch (firstErr) {
     console.warn('[AgroGPT AI] Direct JSON parse failed, attempting advanced sanitization:', firstErr);
     try {
@@ -130,10 +129,11 @@ function cleanAndParseJSON(text: string): unknown {
         }
       }
       cleaned = chars.join('');
-      return JSON.parse(cleaned);
+      const sanitized = sanitizeJsonString(cleaned);
+      return JSON.parse(sanitized);
     } catch (secondErr) {
       // 3. Fallback regex extraction for fields to ensure we don't crash
-      console.error('[AgroGPT AI] Advanced JSON sanitization failed, trying regex extraction fallback:', secondErr);
+      console.error('[AgroGPT AI] Advanced JSON sanitization failed. Raw text received:\n' + text + '\nError:', secondErr);
 
       const summaryMatch = cleaned.match(/"summary"\s*:\s*"([\s\S]*?)"(?=\s*,|\s*\})/);
       const urgencyMatch = cleaned.match(/"urgency"\s*:\s*"([\s\S]*?)"(?=\s*,|\s*\})/);
@@ -188,6 +188,48 @@ export async function getAIEnhancedRecommendations(
 ): Promise<AIRecommendationResponse> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 
+  let tempC = extraContext?.tempC || 'N/A';
+  let humidity = extraContext?.humidity || 'N/A';
+  const soilType = extraContext?.soilType || 'N/A';
+
+  if (tempC === 'N/A' || humidity === 'N/A') {
+    try {
+      const cachedWeather = await db.dashboard_cache.get('weather');
+      if (cachedWeather && cachedWeather.payload) {
+        const weatherData = cachedWeather.payload as any;
+        if (tempC === 'N/A' && typeof weatherData.temperature === 'number') {
+          tempC = String(weatherData.temperature);
+        }
+        if (humidity === 'N/A' && typeof weatherData.humidity === 'number') {
+          humidity = String(weatherData.humidity);
+        }
+      } else {
+        // Fetch weather dynamically
+        try {
+          const coords = await getUserLocation().catch(() => ({ latitude: 17.385, longitude: 78.4867 }));
+          const weather = await fetchWeather(coords.latitude, coords.longitude);
+          if (weather) {
+            if (tempC === 'N/A') tempC = String(weather.temperature);
+            if (humidity === 'N/A') humidity = String(weather.humidity);
+            // Cache the retrieved weather
+            await db.dashboard_cache.put({
+              key: 'weather',
+              type: 'weather',
+              payload: weather,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+            });
+          }
+        } catch (wErr) {
+          console.warn('[AgroGPT AI] Dynamic weather fetch failed inside geminiRecommendationService:', wErr);
+        }
+      }
+    } catch (dbErr) {
+      console.warn('[AgroGPT AI] Failed to read cached weather inside geminiRecommendationService:', dbErr);
+    }
+  }
+
   // If no API key is present or we are offline, fall back immediately to local structured RAG advice
   if (!apiKey) {
     console.warn('[AgroGPT AI] No API key configured. Utilizing local RAG fallback.');
@@ -217,16 +259,13 @@ export async function getAIEnhancedRecommendations(
     preventionGuidelines: kbData?.prevention || []
   };
 
-  const systemInstructions = `You are an experienced agricultural field advisor. Your goal is to explain and personalize the crop diagnosis with practical, reassuring, weather-aware, and strategic guidance for the farmer.
+  const systemInstructions = `You are AgroGPT, a supportive, expert agricultural companion. Your goal is to provide personalized, actionable, and warm advice to the farmer.
 
-CRITICAL RULES:
-1. AUTHORITATIVE SOURCE: Use the knowledge base as the authoritative source for treatments and disease facts. You may use your own agricultural reasoning to explain disease progression, environmental risks, urgency, and practical farmer guidance, but do NOT invent chemical names, dosages, or unsupported treatments.
-2. CHEMICAL SAFETY HARDENING: Do NOT mention any chemical, dosage, or fungicide brand/active ingredient outside of the approved treatments list provided in the context. If no chemical treatments are listed, state "No chemical treatments are recommended."
-3. AGRICULTURAL REASONING: Explain WHY the disease spreads, WHY humidity/weather matters, WHY urgency matters, crop impact if ignored, WHY recommendations help, and field-level risk progression.
-4. DISTINCT ADVICE AND PREVENTION (NO REPETITION): Ensure that priorityActions (immediate next steps) and preventionTips (preventive practices for future seasons) contain different points and do not duplicate each other. Priority actions must focus on immediate field-level mitigation, whereas prevention tips must focus on long-term disease avoidance.
-5. RESPONSE LENGTH CONTROL: Keep total response concise. The entire output should be approximately 250-350 words maximum. Prioritize practical field guidance over lengthy explanations.
-6. NO SCIENTIFIC JARGON: Respond in a warm, simple, farmer-friendly style. Do not use markdown tables.
-7. JSON COMPLIANCE: Return a raw JSON string matching the requested schema. Do NOT use unescaped double quotes inside string values. If you need quotes inside a string, use single quotes (e.g. 'like this'). Do NOT write raw newlines inside string values. Use escaped \\n instead.`;
+1. **EXPERT PERSONA:** Act as a local agricultural expert. Use your internal training to explain *why* a disease is occurring based on the provided local context. Be helpful, reassuring, and clear.
+2. **SAFE CHEMICAL GUIDANCE:** You must remain safe. Do not invent chemical names, dosages, or brands. If no approved chemical treatments are listed in the provided knowledge base, clearly state: "No chemical treatments are recommended from our verified database." You may discuss biological or cultural control methods freely.
+3. **PRACTICAL & STRATEGIC:** Explain disease progression and urgency in simple terms. Prioritize "Immediate Actions" (what the farmer can do right now to save the crop) and "Prevention Tips" (long-term habits). These must be distinct and non-repetitive.
+4. **NO JARGON:** Avoid heavy scientific or academic terminology. Use farmer-friendly language. Do not use markdown tables.
+5. **JSON FORMATTING:** Return pure raw JSON only. Ensure strings are properly escaped (especially newlines as \\n). Do not wrap in markdown code blocks. Ensure that all nested quotes inside string values are escaped or represented using single quotes (e.g. 'like this'). Do NOT write raw unescaped line breaks or control characters inside JSON string values. Do NOT include trailing commas.`;
 
   const payload = {
     contents: [
@@ -242,20 +281,20 @@ FARMER FIELD CONTEXT:
 - Disease: ${disease}
 - AI Confidence: ${confidence}%
 - Farmer Assessed Field Severity: ${severity.toUpperCase()}
-- Soil Type: ${extraContext?.soilType || 'N/A'}
-- Current Temperature: ${extraContext?.tempC || 'N/A'}°C
-- Current Relative Humidity: ${extraContext?.humidity || 'N/A'}%
+- Soil Type: ${soilType}
+- Current Temperature: ${tempC}°C
+- Current Relative Humidity: ${humidity}%
 
 CURATED KNOWLEDGE BASE CONTEXT (AUTHORITATIVE REFERENCE):
 ${JSON.stringify(curatedContext, null, 2)}
 
 TASK:
 Write an insightful, encouraging agricultural advisor analysis for the farmer in language: ${langName} (ISO code: ${langCode}).
-Return a JSON object conforming exactly to this schema (do NOT wrap in markdown backticks, return raw JSON string):
+Return a JSON object conforming exactly to this schema. Output *pure raw JSON string format only*, ensuring all nested quotes are escaped and newlines within strings are properly represented as \\n:
 {
   "summary": "Explain WHY this disease is dangerous to the ${crop} plant, how it progresses in the field, and the likely crop impact/what happens to the harvest if ignored. Keep it warm, contextual, and field-oriented.",
   "urgency": "Explain WHY the current urgency is classified as ${severity} based on the severity and weather conditions, and how fast the disease is likely to spread in the field.",
-  "next48HourRisk": "Predictive warning reasoning. Explain how current weather conditions (Temp: ${extraContext?.tempC || 'N/A'}°C, Humidity: ${extraContext?.humidity || 'N/A'}%) are likely to impact disease spread over the next 48 hours (e.g. accelerating spread or slowing it).",
+  "next48HourRisk": "Predictive warning reasoning. Explain how current weather conditions (Temp: ${tempC}°C, Humidity: ${humidity}%) are likely to impact disease spread over the next 48 hours (e.g. accelerating spread or slowing it).",
   "priorityActions": ["List of 3-5 of the MOST important immediate actions as a checklist-style prioritized guide (incorporating the KB actions). MUST be different from prevention tips."],
   "preventionTips": ["List of 2-3 prevention methods explaining WHY they protect future crops (incorporating the KB prevention guidelines). MUST be different from priority actions."],
   "weatherRiskNote": "Explain WHY the current weather conditions increase or decrease the risk of spread.",
@@ -268,7 +307,7 @@ Return a JSON object conforming exactly to this schema (do NOT wrap in markdown 
     generationConfig: {
       temperature: 0.6, // Configured to 0.6 as requested to allow natural reasoning and advisory variability while remaining stable
       responseMimeType: 'application/json',
-      maxOutputTokens: 1024
+      maxOutputTokens: 1500
     }
   };
 

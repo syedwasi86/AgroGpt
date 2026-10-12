@@ -6,6 +6,8 @@ import { getTodayUtcString } from '../crop-calendar/utils/dateUtils'
 import { fetchWeather, getWeatherCondition, type WeatherData } from '../gis/services/weatherService'
 import { getUserLocation } from '../../core/utils/geolocation'
 import { profileRepository } from '../../lib/profileRepository'
+import { sanitizeJsonString } from '../../utils/jsonSanitizer'
+import { formatConfidence } from '../../utils/confidenceFormatter'
 
 let inFlightAIInsightsPromise: Promise<any> | null = null
 
@@ -24,6 +26,7 @@ export interface FocusOperationItem {
 export interface DashboardSnapshot {
   farm: {
     name: string
+    farmerName: string
     city: string
     soilType: string
     totalAcreage: number
@@ -341,6 +344,7 @@ export const dashboardRepository = {
     const snapshot: DashboardSnapshot = {
       farm: {
         name: farmName,
+        farmerName: profile?.name || 'Farmer',
         city: farmCity,
         soilType: farmSoilType,
         totalAcreage: farmAcreage,
@@ -367,7 +371,7 @@ export const dashboardRepository = {
         zoom: 14,
         activeCrop: activePlan?.crop_type,
         acreage: farmAcreage,
-        lastScanStatus: lastScan ? `${lastScan.prediction} (${Math.round(lastScan.confidence * 100)}%)` : 'No scans'
+        lastScanStatus: lastScan ? `${lastScan.prediction} (${formatConfidence(lastScan.confidence)}%)` : 'No scans'
       }
     }
 
@@ -576,7 +580,7 @@ export const dashboardRepository = {
         id: `pest-warning-${lastScan.id}`,
         type: 'alert',
         title: `Pest Warning: ${lastScan.prediction}`,
-        subtitle: `Infection detected at ${Math.round(lastScan.confidence * 100)}% confidence. Review IPM actions.`,
+        subtitle: `Infection detected at ${formatConfidence(lastScan.confidence)}% confidence. Review IPM actions.`,
         priority: 'high',
         link: '/field-vision'
       })
@@ -649,7 +653,7 @@ export const dashboardRepository = {
         id: `alert-scan-${lastScan.id}`,
         type: 'danger',
         title: 'Active Disease Detected',
-        message: `${lastScan.prediction} detected in latest scans with ${Math.round(lastScan.confidence * 100)}% confidence.`
+        message: `${lastScan.prediction} detected in latest scans with ${formatConfidence(lastScan.confidence)}% confidence.`
       })
     }
 
@@ -838,14 +842,14 @@ Weather Code: ${weather.weatherCode} (${getWeatherCondition(weather.weatherCode)
 
 Recent Scan Detections:
 Last Diagnosis: ${lastScan ? lastScan.prediction : 'None'}
-Confidence: ${lastScan ? `${Math.round(lastScan.confidence * 100)}%` : 'N/A'}
+Confidence: ${lastScan ? `${formatConfidence(lastScan.confidence)}%` : 'N/A'}
 
 Today's Pending Tasks:
 ${todayTasks.map(t => `- ${t.title}: ${t.description}`).join('\n') || 'No pending tasks scheduled.'}
 
 TASK:
 Provide a structured agricultural review. Keep statements warm, concise, and focused on operational awareness.
-Return EXACTLY a JSON object matching this schema (do NOT wrap in markdown backticks, return a raw JSON string):
+Return a JSON object conforming exactly to this schema. Output *pure raw JSON string format only*, ensuring all nested quotes are escaped and newlines within strings are properly represented as \n:
 {
   "dailyInsight": "A single compact dashboard summary of the farm's immediate state and what the farmer should look out for today.",
   "todayAdvice": "A checklist summary of exactly what the farmer should execute or focus on today.",
@@ -853,6 +857,13 @@ Return EXACTLY a JSON object matching this schema (do NOT wrap in markdown backt
   "pestAdvice": "A forecast warning about pests or disease spreading factors based on current humidity/weather.",
   "fertilizerAdvice": "A nutrient/fertilizer dosage recommendation aligned with current crop stage and soil defaults."
 }
+
+OUTPUT FORMAT REQUIREMENT:
+Return a PURE RAW JSON string format only conforming to the schema. Do NOT wrap the response in markdown code blocks or backticks.
+Ensure the JSON is perfectly valid:
+- Do NOT use unescaped double quotes inside JSON string property values. If you need quotes inside a string, use single quotes (e.g. 'like this').
+- Do NOT include raw line breaks or control characters within JSON string values; represent newlines within strings strictly as '\\n'.
+- Do NOT include any trailing commas.
 `
 
           const response = await fetch(
@@ -879,15 +890,20 @@ Return EXACTLY a JSON object matching this schema (do NOT wrap in markdown backt
             throw new Error(`Gemini API error: ${response.statusText}`)
           }
           const resBody = await response.json()
-          let text = resBody.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+          const text = resBody.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
           if (!text) {
             throw new Error('Empty Gemini response')
           }
-          // Strip markdown code block wrappers if present
-          if (text.startsWith('```')) {
-            text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+          
+          let parsed: any
+          try {
+            const sanitizedText = sanitizeJsonString(text)
+            parsed = JSON.parse(sanitizedText)
+          } catch (parseErr) {
+            console.error(`[DashboardRepository] Failed to parse Gemini response JSON. Raw text received:\n${text}\nError:`, parseErr)
+            throw parseErr
           }
-          const parsed = JSON.parse(text)
+
           const aiData = {
             dailyInsight: parsed.dailyInsight || '',
             todayAdvice: parsed.todayAdvice || '',

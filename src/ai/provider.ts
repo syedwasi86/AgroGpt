@@ -14,6 +14,8 @@
 import i18next from 'i18next'
 import { db } from '../lib/db'
 import { profileRepository } from '../lib/profileRepository'
+import { getUserLocation } from '../core/utils/geolocation'
+import { fetchWeather } from '../features/gis/services/weatherService'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -113,8 +115,9 @@ async function fetchRAGContext(): Promise<RAGContext> {
   let nitrogen = 'N/A'
   let phosphorus = 'N/A'
   let potassium = 'N/A'
+  let profile: any = null
   try {
-    const profile = await profileRepository.getCurrentProfile()
+    profile = await profileRepository.getCurrentProfile()
     if (!profile) {
       throw new Error('Profile not found. Cannot gather RAG context.')
     }
@@ -127,8 +130,38 @@ async function fetchRAGContext(): Promise<RAGContext> {
     throw err
   }
 
-  // 3. Latest weather (Offline fallback: unavailable since cache removed)
-  const tempC = 'N/A'
+  // 3. Latest weather (retrieve from cache or fetch live weather)
+  let tempC = 'N/A'
+  try {
+    const cachedWeather = await db.dashboard_cache.get('weather')
+    if (cachedWeather && cachedWeather.payload) {
+      const weatherData = cachedWeather.payload as any
+      if (typeof weatherData.temperature === 'number') {
+        tempC = String(weatherData.temperature)
+      }
+    } else {
+      // Fetch live weather if cache is empty
+      const coords = profile?.latitude !== undefined && profile?.longitude !== undefined
+        ? { latitude: profile.latitude, longitude: profile.longitude }
+        : await getUserLocation().catch(() => ({ latitude: 17.385, longitude: 78.4867 }))
+      
+      const weather = await fetchWeather(coords.latitude, coords.longitude)
+      if (weather && typeof weather.temperature === 'number') {
+        tempC = String(weather.temperature)
+        // Cache the newly fetched weather
+        await db.dashboard_cache.put({
+          key: 'weather',
+          type: 'weather',
+          payload: weather,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() // 1 hour expiry
+        })
+      }
+    }
+  } catch (err) {
+    console.warn('[AgroGPT AI] Failed to read or fetch weather for RAG:', err)
+  }
 
   return { cropName, soilType, nitrogen, phosphorus, potassium, tempC }
 }

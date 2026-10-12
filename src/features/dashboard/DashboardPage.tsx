@@ -18,11 +18,13 @@ import { GlassCard } from '../../components/GlassCard'
 import { SkeletonCard } from '../../components/Skeleton'
 import { dashboardRepository, type DashboardSnapshot } from './dashboardRepository'
 import { askAgroGPT } from '../../ai/provider'
+import { formatConfidence } from '../../utils/confidenceFormatter'
 import { saveAiQuery } from '../../lib/repository'
 import { useAuth } from '../../core/auth/AuthContext'
 import { useTranslation } from 'react-i18next'
 import { useEnumTranslation } from '../../hooks/useEnumTranslation'
 import { sanitizeEnumKey } from '../../hooks/useEnumTranslation'
+import { useConnectivity } from '../../hooks/useConnectivity'
 
 
 // ─── Main Dashboard Page ───────────────────────────────────────────────────────
@@ -32,6 +34,7 @@ export function DashboardPage() {
   const { user } = useAuth()
   const { t, i18n } = useTranslation(['common', 'dashboard', 'enums', 'validation', 'profile', 'cropCalendar'])
   const { tEnum } = useEnumTranslation()
+  const connectivity = useConnectivity()
 
   // State Management
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null)
@@ -203,7 +206,7 @@ export function DashboardPage() {
         
         <div className="flex items-center gap-3">
           {/* Online/Offline Status Indicator */}
-          {dashboardRepository.isOnline() ? (
+          {connectivity !== 'offline' ? (
             <span className="glass-chip border-green-500/30 bg-green-500/10 text-green-400">
               <Wifi size={13} className="animate-pulse" />
               {t('common:online')}
@@ -279,7 +282,7 @@ export function DashboardPage() {
                     {t('dashboard:liveDiagnostics')}
                   </span>
                   <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                    {t('dashboard:greeting', { name: snapshot?.farm?.name.split("'")[0] || t('common:farmer', 'Farmer') })}
+                    {t('dashboard:greeting', { name: snapshot?.farm?.farmerName || t('common:farmer', 'Farmer') })}
                   </h2>
                   <p className="subtle">
                     {snapshot?.farm?.city} · {tEnum('soilType', snapshot?.farm?.soilType)}
@@ -753,7 +756,7 @@ export function DashboardPage() {
               </span>
               <span className="font-semibold text-white font-mono">
                 {snapshot?.exploreMetrics?.fieldVision?.confidence ? (
-                  `${Math.round(snapshot.exploreMetrics.fieldVision.confidence * 100)}%`
+                  `${formatConfidence(snapshot.exploreMetrics.fieldVision.confidence)}%`
                 ) : 'N/A'}
               </span>
             </div>

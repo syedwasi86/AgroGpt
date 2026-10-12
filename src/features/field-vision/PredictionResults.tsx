@@ -17,6 +17,7 @@ import { getSeverityQuestions } from './severityQuestions';
 import type { DiseaseKnowledgeBaseEntry, SeverityLevel } from './types';
 import { useTranslation } from 'react-i18next';
 import { useEnumTranslation } from '../../hooks/useEnumTranslation';
+import { formatConfidence } from '../../utils/confidenceFormatter';
 
 interface Props {
   crop: string;
@@ -37,6 +38,7 @@ export function PredictionResults({
 }: Props) {
   const { t, i18n } = useTranslation(['common', 'fieldVision', 'enums']);
   const { tEnum } = useEnumTranslation();
+  const formattedConfidence = formatConfidence(confidence);
   const [kbData, setKbData] = useState<DiseaseKnowledgeBaseEntry | null>(null);
   const [loadingKB, setLoadingKB] = useState(true);
   const [answers, setAnswers] = useState<Record<string, number>>({});
@@ -109,7 +111,7 @@ export function PredictionResults({
   };
 
   // Compile recommendation response using local engine
-  const recResponse = generateRecommendation(crop, disease, confidence, severity, kbData);
+  const recResponse = generateRecommendation(crop, disease, formattedConfidence, severity, kbData);
 
   // Resolve localized display name
   const langCode = i18n.language || 'en';
@@ -134,11 +136,11 @@ export function PredictionResults({
           <div className={cn(
             "grid h-12 w-12 place-items-center rounded-2xl border shadow-lg",
             isHealthy ? "border-green-500/30 bg-green-500/10 text-green-400" :
-            (confidence < 75) ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400" :
+            (formattedConfidence < 75) ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-400" :
             "border-red-500/30 bg-red-500/10 text-red-400"
           )}>
             {isHealthy ? <CheckCircle size={24} /> :
-             (confidence < 75) ? <AlertTriangle size={24} /> :
+             (formattedConfidence < 75) ? <AlertTriangle size={24} /> :
              <Activity size={24} />}
           </div>
           <div>
@@ -157,15 +159,15 @@ export function PredictionResults({
       <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4">
         <div className="flex justify-between items-center mb-2">
           <div className="text-sm font-medium text-white/70">{t('fieldVision.aiConfidenceScore', 'AI Confidence Score')}</div>
-          <div className="text-sm font-bold text-white">{confidence}%</div>
+          <div className="text-sm font-bold text-white">{formattedConfidence}%</div>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-black/40 mb-2">
           <div 
             className={cn(
               "h-full rounded-full transition-all duration-1000 ease-out",
-              confidence >= 90 ? "bg-primary-500" : confidence >= 75 ? "bg-primary-600/70" : "bg-yellow-500"
+              formattedConfidence >= 90 ? "bg-primary-500" : formattedConfidence >= 75 ? "bg-primary-600/70" : "bg-yellow-500"
             )}
-            style={{ width: `${confidence}%` }}
+            style={{ width: `${formattedConfidence}%` }}
           />
         </div>
         <p className="text-xs text-white/50">{recResponse.confidenceMessage}</p>

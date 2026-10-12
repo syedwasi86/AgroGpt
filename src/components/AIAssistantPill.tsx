@@ -250,7 +250,7 @@ export function AIAssistantPill() {
                 <div className="space-y-2 pb-2">
                   {messages.map((m, idx) => (
                     <div key={idx} className={cn(
-                      'max-w-[92%] rounded-3xl border px-4 py-3 text-sm leading-relaxed',
+                      'max-w-[92%] rounded-3xl border px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap',
                       m.role === 'assistant' ? 'border-white/10 bg-white/5 text-white/80' : 'ml-auto border-stroke-2 bg-primary-700/20 text-white'
                     )}>
                       {m.content}

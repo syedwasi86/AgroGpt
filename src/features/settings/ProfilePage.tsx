@@ -14,6 +14,7 @@ import { cn } from '../../core/utils/cn'
 import { GlassCard } from '../../components/GlassCard'
 import Tesseract from 'tesseract.js'
 import * as pdfjsLib from 'pdfjs-dist'
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import {
   User,
   Languages,
@@ -40,7 +41,7 @@ import {
 } from 'lucide-react'
 
 // Configure PDF.js Worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker
 
 type ExtractionStatus = 'idle' | 'processing' | 'success' | 'partial' | 'failed'
 
@@ -419,9 +420,9 @@ export function ProfilePage() {
 
   // ─── NPK OCR LAB EXTRACTION ────────────────────────────────────────────────
   const parseNpkFromText = (text: string) => {
-    const nMatch = text.match(/(?:Nitrogen|N)[:\s]+(\d+(?:\.\d+)?)/i)
-    const pMatch = text.match(/(?:Phosphorus|P)[:\s]+(\d+(?:\.\d+)?)/i)
-    const kMatch = text.match(/(?:Potassium|K)[:\s]+(\d+(?:\.\d+)?)/i)
+    const nMatch = text.match(/(?:(?:Available\s+)?\bNitrogen\b(?:\s*\(N\))?|\bN\b)[\s\n:-]*(\d+(?:\.\d+)?)/i)
+    const pMatch = text.match(/(?:(?:Available\s+)?\bPhosphorus\b(?:\s*\(P\))?|\bP\b)[\s\n:-]*(\d+(?:\.\d+)?)/i)
+    const kMatch = text.match(/(?:(?:Available\s+)?\bPotassium\b(?:\s*\(K\))?|\bK\b)[\s\n:-]*(\d+(?:\.\d+)?)/i)
 
     return {
       nitrogen: nMatch ? parseFloat(nMatch[1]) : null,
@@ -445,11 +446,14 @@ export function ProfilePage() {
     setRawOcrText('')
 
     try {
-      let imageData: string | null = null
+      let ocrSource: HTMLCanvasElement | string | null = null
 
       if (file.type === 'application/pdf') {
         const arrayBuffer = await file.arrayBuffer()
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+        console.log('PDF loaded')
+        console.log('Number of pages:', pdf.numPages)
+
         const page = await pdf.getPage(1)
         const viewport = page.getViewport({ scale: 2.0 })
         const canvas = document.createElement('canvas')
@@ -459,16 +463,21 @@ export function ProfilePage() {
         if (context) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await page.render({ canvasContext: context, viewport } as any).promise
-          imageData = canvas.toDataURL('image/png')
+          console.log('Page rendered')
+          console.log('Canvas size:', `${canvas.width}x${canvas.height}`)
+          ocrSource = canvas
         }
       } else {
-        imageData = await fileToDataURL(file)
+        ocrSource = await fileToDataURL(file)
       }
 
-      if (!imageData) throw new Error('Failed to load file data')
+      if (!ocrSource) throw new Error('Failed to load file data')
 
-      const result = await Tesseract.recognize(imageData, 'eng')
+      console.log('OCR started')
+      const result = await Tesseract.recognize(ocrSource, 'eng')
+      console.log('OCR completed')
       const text = result.data.text
+      console.log('Raw OCR text (first 500 chars):', text.slice(0, 500))
       setRawOcrText(text)
 
       const extracted = parseNpkFromText(text)

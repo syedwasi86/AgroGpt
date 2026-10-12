@@ -1,10 +1,6 @@
 # 🌾 AgroGPT — Next-Gen Offline-First AI Agronomy System
 
 <p align="center">
-  <img src="./public/pwa-512x512.png" alt="AgroGPT Logo" width="120" height="120" style="border-radius: 24px;" onerror="this.style.display='none'"/>
-</p>
-
-<p align="center">
   <strong>Empowering farmers with offline-first intelligence, on-device disease diagnosis, dynamic precision crop scheduling, and AI-driven agronomy.</strong>
 </p>
 

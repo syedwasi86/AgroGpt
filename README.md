@@ -126,10 +126,17 @@ flowchart TD
 - **Post-Harvest Guidance:** Advice on optimal selling windows, moisture content guidelines, and storage recommendations.
 
 ### 7. Bidirectional Offline-First Sync Engine
-- **Push Phase:** Batches local mutations (`pending`, `pending_delete`) and sends upserts to Supabase in foreign-key safe order (`profiles` → `crop_plans` → `crop_stages` → `farm_tasks`).
-- **Pull Phase & Conflict Resolution:** Pulls incremental changes (`updated_at > lastSync`) using a **Version-First / Last-Write-Wins** strategy:
-  $$\text{Winner} = \max(\text{version}) \implies \max(\text{updated\_at})$$
-- **Soft-Delete Propagation:** Tombstone records ensure seamless cross-device synchronization without orphan foreign key breaks.
+
+* **Push Phase:** Batches local mutations (`pending`, `pending_delete`) and sends upserts to Supabase in foreign-key-safe order (`profiles` → `crop_plans` → `crop_stages` → `farm_tasks`).
+
+* **Pull Phase & Conflict Resolution:** Pulls incremental changes (`updated_at > lastSync`) using a **Version-First / Last-Write-Wins** strategy.
+
+  **Conflict resolution rule:**
+
+  The record with the highest `version` wins. If versions are equal, the record with the latest `updated_at` wins.
+
+* **Soft-Delete Propagation:** Tombstone records ensure seamless cross-device synchronization without orphan foreign-key breaks.
+
 
 ### 8. Vernacular Multi-Language Localization
 - Complete runtime translation across **English (`en`)**, **हिन्दी / Hindi (`hi`)**, and **తెలుగు / Telugu (`te`)** using `i18next`.
